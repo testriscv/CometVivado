@@ -29,3 +29,18 @@ different sections of the binary file, extracts the program instructions and dat
 memory. The functions to handle the the elf file are in [elfFile.cpp](src/elfFile.cpp), [elf.h](include/elf.h) and 
 [elfFile.h](include/elfFile.h). The process which calls these functions, fills the memory and starts the execution of the 
 processor, is defined in [reformeddm_sim.cpp](src/reformeddm_sim.cpp). 
+To verify the simulator behavior, you can run a benchmark through it and check that the output is coherent with the [check.py](check.py) python script.
+
+## Benchmarks
+```
+git clone --recursive https://github.com/riscv/riscv-gnu-toolchain 
+export RISCV=/where/you/want/the/compilation/to/install
+./configure –with-arch=rv32im –with-abi=ilp32
+make
+```
+Now that you have compiled the compiler, you can compile the benchmarks:
+```
+cd benchmarks
+make
+```
+After this, you can `./catapult.sim benchmarks/build/matmul_int_4.riscv` and this will run the benchmarks through the simulator.
