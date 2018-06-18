@@ -557,33 +557,211 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
 #ifndef __SYNTHESIS__
     case RISCV_SYSTEM:
     {
-        switch(dctoEx.funct3)
-        {
-        case RISCV_SYSTEM_ENV:
-            extoMem.result = syscall->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
-            break;
-        case RISCV_SYSTEM_CSRRW:
-            //assert(false);
-            break;
-        case RISCV_SYSTEM_CSRRS:
-            extoMem.WBena = false;
-            extoMem.result = dctoEx.memValue | dctoEx.dataa;
+        static ac_int<32, false> mstatus    =   0x00001900;
+        static ac_int<32, false> misa       =   0x40000100;
+        static ac_int<32, false> medeleg    =   0x00000000;
+        static ac_int<32, false> mideleg    =   0x00000000;
+        static ac_int<32, false> mie        =   0x00000000;
+        static ac_int<32, false> mtvec      =   0x00000000;
+        static ac_int<32, false> mcounteren =   0x00000000;
+        static ac_int<32, false> mscratch   =   0x00000000;
+        static ac_int<32, false> mepc       =   0x00000000;
+        static ac_int<32, false> mcause     =   0x00000000;
+        static ac_int<32, false> mtval      =   0x00000000;
+        static ac_int<32, false> mip        =   0x00000000;
 
-            break;
-        case RISCV_SYSTEM_CSRRC:
-            //assert(false);
-            break;
-        case RISCV_SYSTEM_CSRRWI:
-            //assert(false);
-            break;
-        case RISCV_SYSTEM_CSRRSI:
-            //assert(false);
-            break;
-        case RISCV_SYSTEM_CSRRCI:
-            //assert(false);
-            break;
-        EXDEFAULT();
+        if(dctoEx.funct3 == 0)
+        {
+            extoMem.result = solveSysCall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, &extoMem.sys_status);
+            fprintf(stderr, "Syscall @%06x\n", dctoEx.pc.to_int());
         }
+        else
+        {
+            ac_int<32, false> workonme;
+            switch((ac_int<2, false>) dctoEx.memValue.slc<2>(8))
+            {
+            case 0:
+                fprintf(stderr, "User level CSR not implemented\n");
+                assert(false && "User level CSR not implemented\n");
+                break;
+            case 1:
+                fprintf(stderr, "Supervisor level CSR not implemented\n");
+                assert(false && "Supervisor level CSR not implemented\n");
+                break;
+            case 2:
+                fprintf(stderr, "Reserved CSR not implemented\n");
+                assert(false && "Reserved CSR not implemented\n");
+                break;
+            case 3:
+                break;
+            }
+            switch(dctoEx.memValue) // put this in DC stage (DC is responsible for loading registers)
+            {
+            case RISCV_CSR_MSTATUS:
+                workonme = mstatus;
+                break;
+            case RISCV_CSR_MISA:
+                workonme = misa;
+                break;
+            case RISCV_CSR_MEDELEG:
+                workonme = medeleg;
+                break;
+            case RISCV_CSR_MIDELEG:
+                workonme = mideleg;
+                break;
+            case RISCV_CSR_MIE:
+                workonme = mie;
+                break;
+            case RISCV_CSR_MTVEC:
+                workonme = mtvec;
+                break;
+            case RISCV_CSR_MCOUNTEREN:
+                workonme = mcounteren;
+                break;
+            case RISCV_CSR_MSCRATCH:
+                workonme = mscratch;
+                break;
+            case RISCV_CSR_MEPC:
+                workonme = mepc;
+                break;
+            case RISCV_CSR_MCAUSE:
+                workonme = mcause;
+                break;
+            case RISCV_CSR_MTVAL:
+                workonme = mtval;
+                break;
+            case RISCV_CSR_MIP:
+                workonme = mip;
+                break;
+            case RISCV_CSR_MCYCLE:
+                workonme = cycles.slc<32>(0);
+                break;
+            case RISCV_CSR_MINSTRET:
+                workonme = instrets.slc<32>(0);
+                break;
+            case RISCV_CSR_MCYCLEH:
+                workonme = cycles.slc<32>(32);
+                break;
+            case RISCV_CSR_MINSTRETH:
+                workonme = instrets.slc<32>(32);
+                break;
+            case RISCV_CSR_MVENDORID:
+                workonme = 0;
+                break;
+            case RISCV_CSR_MARCHID:
+                workonme = 0;
+                break;
+            case RISCV_CSR_MIMPID:
+                workonme = 0;
+                break;
+            case RISCV_CSR_MHARTID:
+                workonme = 0;
+                break;
+            default:
+                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", dctoEx.memValue, dctoEx.pc.to_int());
+                assert(false && "Unknown CSR id\n");
+            }
+            extoMem.result = workonme;
+            debug("Accessing CSR @%03x  @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
+            fprintf(stderr, "Accessing CSR @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
+            if(dctoEx.rs1)
+            {
+                switch(dctoEx.funct3)
+                {
+                case RISCV_SYSTEM_CSRRW:
+                    workonme = dctoEx.dataa;
+                    break;
+                case RISCV_SYSTEM_CSRRS:
+                    workonme |= dctoEx.dataa;
+                    break;
+                case RISCV_SYSTEM_CSRRC:
+                    workonme &= (ac_int<32, false>)~dctoEx.dataa;
+                    break;
+                case RISCV_SYSTEM_CSRRWI:
+                    workonme = dctoEx.rs1;
+                    break;
+                case RISCV_SYSTEM_CSRRSI:
+                    workonme |= dctoEx.rs1;
+                    break;
+                case RISCV_SYSTEM_CSRRCI:
+                    workonme &= (ac_int<32, false>)~dctoEx.rs1;
+                    break;
+                default:
+                    fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
+                    assert(false && "Unknown operation in Ex/SYSTEM stage");
+                    break;
+                }
+
+                switch(dctoEx.memValue) // put this in WB stage (WB is responsible for writting result back)
+                {
+                case RISCV_CSR_MSTATUS:
+                    mstatus = workonme;
+                    break;
+                case RISCV_CSR_MISA:
+                    misa = workonme;
+                    break;
+                case RISCV_CSR_MEDELEG:
+                    medeleg = workonme;
+                    break;
+                case RISCV_CSR_MIDELEG:
+                    mideleg = workonme;
+                    break;
+                case RISCV_CSR_MIE:
+                    mie = workonme;
+                    break;
+                case RISCV_CSR_MTVEC:
+                    mtvec = workonme;
+                    break;
+                case RISCV_CSR_MCOUNTEREN:
+                    mcounteren = workonme;
+                    break;
+                case RISCV_CSR_MSCRATCH:
+                    mscratch = workonme;
+                    break;
+                case RISCV_CSR_MEPC:
+                    mepc = workonme;
+                    break;
+                case RISCV_CSR_MCAUSE:
+                    mcause = workonme;
+                    break;
+                case RISCV_CSR_MTVAL:
+                    mtval = workonme;
+                    break;
+                case RISCV_CSR_MIP:
+                    mip = workonme;
+                    break;
+                case RISCV_CSR_MCYCLE:
+                    cycles.set_slc(0, workonme);
+                    break;
+                case RISCV_CSR_MINSTRET:
+                    instrets.set_slc(0, workonme);
+                    break;
+                case RISCV_CSR_MCYCLEH:
+                    cycles.set_slc(32, workonme);
+                    break;
+                case RISCV_CSR_MINSTRETH:
+                    instrets.set_slc(32, workonme);
+                    break;
+                case RISCV_CSR_MVENDORID:
+                    fprintf(stderr, "Read only CSR %03x", dctoEx.memValue);
+                    break;
+                case RISCV_CSR_MARCHID:
+                    fprintf(stderr, "Read only CSR %03x", dctoEx.memValue);
+                    break;
+                case RISCV_CSR_MIMPID:
+                    fprintf(stderr, "Read only CSR %03x", dctoEx.memValue);
+                    break;
+                case RISCV_CSR_MHARTID:
+                    fprintf(stderr, "Read only CSR %03x", dctoEx.memValue);
+                    break;
+                default:
+                    fprintf(stderr, "Unknown CSR id : %03x\n", dctoEx.memValue);
+                    assert(false && "Unknown CSR id\n");
+                }
+            }
+        }
+
+
 
         break;
     }
@@ -820,7 +998,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& wb_bubble, bool& earl
 
 }
 
-void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
+void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit,
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
         #endif
@@ -847,27 +1025,17 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     (void)dirinit;
     static bool valinit = ac::init_array<AC_VAL_0>((bool*)dctrl.valid, Sets*Associativity);
     (void)valinit;
-#if Associativity > 1
-  #if Policy == FIFO
+#if Policy == FIFO
     static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)dctrl.policy, Sets);
     (void)dpolinit;
     static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)ictrl.policy, Sets);
     (void)ipolinit;
-  #elif Policy == LRU
-    #if Associativity == 2
-        static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)dctrl.policy, Sets);
-        (void)dpolinit;
-        static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)ictrl.policy, Sets);
-        (void)ipolinit;
-    #elif Associativity == 4
-        static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)dctrl.policy, Sets);
-        (void)dpolinit;
-        static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)ictrl.policy, Sets);
-        (void)ipolinit;
-    #else
-    #error "LRU with N >= 8 ways associativity is not implemented"
-    #endif
-  #elif Policy == RANDOM
+#elif Policy == LRU
+    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)dctrl.policy, Sets);
+    (void)dpolinit;
+    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)ictrl.policy, Sets);
+    (void)ipolinit;
+#elif Policy == RANDOM
     static bool rndinit = false;
     if(!rndinit)
     {
@@ -875,7 +1043,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
         dctrl.policy = 0xF2D4B698;
         ictrl.policy = 0xF2D4B698;
     }
-  #endif
 #endif
 #endif  // __SYNTHESIS__
     static MemtoWB memtoWB = {0};

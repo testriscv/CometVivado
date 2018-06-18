@@ -71,6 +71,16 @@
 #define RISCV_OPW_ADDSUBW_SUBW  0x20
 #define RISCV_OPW_SRW_SRLW      0x0
 #define RISCV_OPW_SRW_SRAW      0x20
+
+
+
+
+/******************************************************************************************************
+ * Specification of the privileged architecture                                                       *
+ ******************************************************************************************************
+ * This offers system capability                                                                      *
+ ******************************************************************************************************/
+#define RISCV_MISC_MEM          0xf
 #define RISCV_SYSTEM_ENV        0x0
 #define RISCV_SYSTEM_ENV_ECALL  0x0
 #define RISCV_SYSTEM_ENV_EBREAK 0x1
@@ -81,7 +91,33 @@
 #define RISCV_SYSTEM_CSRRSI     0x6
 #define RISCV_SYSTEM_CSRRCI     0x7
 
-#define RISCV_MISC_MEM          0xf
+#define RISCV_CSR_MVENDORID     0xF11 // MRO mvendorid Vendor ID.
+#define RISCV_CSR_MARCHID       0xF12 // MRO marchid Architecture ID.
+#define RISCV_CSR_MIMPID        0xF13 // MRO mimpid Implementation ID.
+#define RISCV_CSR_MHARTID       0xF14 // MRO mhartid Hardware thread ID.
+//Machine Trap Setup
+#define RISCV_CSR_MSTATUS       0x300 // MRW mstatus Machine status register.
+#define RISCV_CSR_MISA          0x301 // MRW misa ISA and extensions
+#define RISCV_CSR_MEDELEG       0x302 // MRW medeleg Machine exception delegation register.
+#define RISCV_CSR_MIDELEG       0x303 // MRW mideleg Machine interrupt delegation register.
+#define RISCV_CSR_MIE           0x304 // MRW mie Machine interrupt-enable register.
+#define RISCV_CSR_MTVEC         0x305 // MRW mtvec Machine trap-handler base address.
+#define RISCV_CSR_MCOUNTEREN    0x306 // MRW mcounteren Machine counter enable.
+//Machine Trap Handling
+#define RISCV_CSR_MSCRATCH      0x340 // MRW mscratch Scratch register for machine trap handlers.
+#define RISCV_CSR_MEPC          0x341 // MRW mepc Machine exception program counter.
+#define RISCV_CSR_MCAUSE        0x342 // MRW mcause Machine trap cause.
+#define RISCV_CSR_MTVAL         0x343 // MRW mtval Machine bad address or instruction.
+#define RISCV_CSR_MIP           0x344 // MRW mip Machine interrupt pending.
+//Machine Protection and Translation
+// not implemented
+
+//Machine Counter/Timers
+#define RISCV_CSR_MCYCLE        0xB00 // MRW mcycle Machine cycle counter.
+#define RISCV_CSR_MINSTRET      0xB02 // MRW minstret Machine instructions-retired counter.
+#define RISCV_CSR_MCYCLEH       0xB80 // MRW mcycleh Upper 32 bits of mcycle, RV32I only.
+#define RISCV_CSR_MINSTRETH     0xB82 // MRW minstreth Upper 32 bits of minstret, RV32I only.
+
 //FIXME some special operations of the base instruction set are not yet supported. (FENCE)
 /******************************************************************************************************
 * Specification of the standard M extension

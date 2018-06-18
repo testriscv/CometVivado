@@ -564,4 +564,3 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
     })
 }
 
-
