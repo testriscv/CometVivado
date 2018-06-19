@@ -12,7 +12,7 @@ RTLTOOL          DesignCompiler
 TECHNOLOGY       {{28nm FDSOI}}
 LIBRARY          ST_singleport_{memsize}x{bitwidth}
 MODULE           ST_SPHD_BB_8192x32m16_aTdol_wrapper
-OUTPUT_DIR       /udd/vegloff/Documents/comet/memories/
+OUTPUT_DIR       ../memories/
 FILES {{
   {{ FILENAME /opt/DesignKit/cmos28fdsoi_29/memcut_28nm/C28SOI_SPHD_BB_170612/4.3-00.00/behaviour/verilog/SPHD_BB_170612.v         FILETYPE Verilog MODELTYPE generic PARSE 1 PATHTYPE abs STATICFILE 1 VHDL_LIB_MAPS work }}
   {{ FILENAME /opt/DesignKit/cmos28fdsoi_29/memcut_28nm/C28SOI_SPHD_BB_170612/4.3-00.00/behaviour/verilog/SPHD_BB_170612_wrapper.v FILETYPE Verilog MODELTYPE generic PARSE 1 PATHTYPE abs STATICFILE 1 VHDL_LIB_MAPS work }}
@@ -61,7 +61,7 @@ project set -incr_directory {cachesize}x32cachecore
 solution new -state initial
 solution options set /Input/CompilerFlags {{-D __CATAPULT__=1}}
 solution options set /Input/SearchPath ../include
-solution options set ComponentLibs/SearchPath /udd/vegloff/Documents/comet/memories -append
+solution options set ComponentLibs/SearchPath ../memories -append
 flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
 solution file add ../src/reformeddm_sim.cpp -type C++
