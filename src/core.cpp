@@ -166,11 +166,7 @@ void Ft(ac_int<32, false>& pc, bool freeze_fetch, ExtoMem extoMem, FtoDC& ftoDC,
 }
 
 void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB, DCtoEx& dctoEx, ac_int<7, false>& prev_opCode,
-        ac_int<32, false>& prev_pc, ac_int<3, false> mem_lock, bool& freeze_fetch, bool& ex_bubble
-    #ifndef __SYNTHESIS__
-        , ac_int<32, false> CSR[0x1000]
-    #endif
-        )
+        ac_int<32, false>& prev_pc, ac_int<3, false> mem_lock, bool& freeze_fetch, bool& ex_bubble)
 {
     ac_int<5, false> rs1 = ftoDC.instruction.slc<5>(15);       // Decoding the instruction, in the DC stage
     ac_int<5, false> rs2 = ftoDC.instruction.slc<5>(20);
@@ -282,7 +278,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
         case RISCV_SYSTEM_CSRRWI:
         case RISCV_SYSTEM_CSRRSI:
         case RISCV_SYSTEM_CSRRCI:
-            dctoEx.memValue = CSR[imm12_I];
+            dctoEx.memValue = imm12_I;
             dctoEx.dest = rd;
             //dataa will contain rs1
             break;
@@ -835,8 +831,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
                                        0,0,0,0,0,0,0,0};
     static ac_int<64, false> cycles = 1;
     static ac_int<64, false> instrets = 0;
-    static ac_int<32, false> mstatus = 0x00001900;
-    static ac_int<32, false> CSR[0x1000] = {0};
     //static ac_int<64, false> timer = 0;
     static ac_int<2, false> sys_status = 0;
 
@@ -906,7 +900,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     if(!cachelock)
     {
         Ex(dctoEx, extoMem, ex_bubble, mem_bubble, sys_status);
-        DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble, CSR);
+        DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble);
         Ft(pc,freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
    #ifndef __SYNTHESIS__
           , cycles

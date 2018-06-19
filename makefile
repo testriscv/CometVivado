@@ -12,10 +12,10 @@ HEADER=cache.h core.h elf.h elfFile.h portability.h riscvISA.h syscall.h
 I_HEADER=$(foreach f, $(HEADER), $(INC)/$f)
 
 catapult: $(S_FILES) $(I_HEADER)
-	g++ -O3 -o catapult.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES)
+	g++ -O3 -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES)
 
 debug: $(S_FILES) $(I_HEADER)
-	g++ -g -o catapult.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -DDebug
+	g++ -g -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -DDebug
 
 vivado.sim: $(S_FILES) $(I_HEADER) 
 	g++ -o vivado.sim $(INC_PARAMS) $(S_FILES) $(VARS_VIV)

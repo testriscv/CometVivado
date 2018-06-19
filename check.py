@@ -445,7 +445,7 @@ def parseall(cached):
 
 	
 	executable = "temp_"+''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-	subprocess.check_call(["cp", "catapult.sim", executable])
+	subprocess.check_call(["cp", "comet.sim", executable])
 	
 	cycles = list()
 	cpis = list()
