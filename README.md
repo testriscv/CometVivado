@@ -9,8 +9,8 @@ RISC-V ISA based 32-bit processor written in C++ for High Level Synthesis (HLS).
 Vivado HLS is used for FPGA IP synthesis and Catapult HLS is used for ASIC synthesis.
 
 * Run `make` to generate the simulator `catapult.sim`.
-* To build it as an FPGA IP, run `script.tcl` in Vivado HLS. (not maintened)
-* To synthesize it to rtl for ASIC, run [genCore.py](catapult/genCore.py) in `catapult` folder. See `genCore.py -h` for argument list.
+* To build it as an FPGA IP, run `script.tcl` in Vivado HLS. (not maintained)
+* To synthesize it to rtl for ASIC, run [genCore.py](catapult/genCore.py) in `catapult` folder. See `genCore.py -h` for argument list. Don't forget to `mkdir memories` at the top before trying to run genCore.py.
 
 ## Documentation 
 The primary design goal behind using High Level Synthesis (HLS) is that for simulating the functionality on a host machine,
@@ -35,12 +35,13 @@ To verify the simulator behavior, you can run a benchmark through it and check t
 ```
 git clone --recursive https://github.com/riscv/riscv-gnu-toolchain 
 export RISCV=/where/you/want/the/compilation/to/install
-./configure –with-arch=rv32im –with-abi=ilp32
+./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
 make
+export PATH=$PATH:$RISCV
 ```
 Now that you have compiled the compiler, you can compile the benchmarks:
 ```
 cd benchmarks
 make
 ```
-After this, you can `./catapult.sim benchmarks/build/matmul_int_4.riscv` and this will run the benchmarks through the simulator.
+After this, you can `./comet.sim benchmarks/build/matmul_int_4.riscv` and this will run the benchmarks through the simulator.
