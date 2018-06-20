@@ -1,4 +1,4 @@
-AC=/opt/Catapult-10.0b/Mgc_home/shared/include
+AC=./include/catapult
 INC=$(AC) ./include
 LINC=./include
 INC_PARAMS=$(foreach d, $(INC), -I$d)
