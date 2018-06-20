@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import os, subprocess, sys, argparse
-import random, string
+import random, string, struct
 
 class Boundaries:
 	"""Class to represents discontinuous set.
@@ -449,9 +449,12 @@ def parseall(cached):
 	
 	cycles = list()
 	cpis = list()
-	for p in progs:		
+	for p in progs:
+		if "float" not in p or "matmul" not in p:
+			continue		
 		try:
 			with subprocess.Popen(["./"+executable, "benchmarks/build/"+p], stdout=subprocess.PIPE, universal_newlines=True) as output:
+				global dmem
 				ipath, dpath, imem, dmem, endmem, cycle, cpi = parsefile(output, p, cached)
 				
 			cycles.append(cycle)
@@ -459,6 +462,7 @@ def parseall(cached):
 			
 			with open("benchmarks/res/"+p[:-6], "r") as resfile:
 				text = resfile.read().split()
+				global res
 				if "char" in p:
 					res = [int(i) & 0xFF for i in text]
 				elif "short" in p:
@@ -490,7 +494,17 @@ def parseall(cached):
 						res.append((i & 0x0000FF00) >> 8)
 						res.append((i & 0x00FF0000) >> 16)
 						res.append((i & 0xFF000000) >> 24)
-			
+				elif "float" in p:
+					text = [float(i) for i in text]
+					res = []
+					for i in text:
+						i = struct.unpack('!i',struct.pack('!f',i))[0]
+						res.append(i & 0x000000FF)
+						res.append((i & 0x0000FF00) >> 8)
+						res.append((i & 0x00FF0000) >> 16)
+						res.append((i & 0xFF000000) >> 24)
+						
+						
 			dmem = [el[0] for el in dmem]
 			
 			def sublist(sub, biglist):

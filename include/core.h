@@ -2,6 +2,7 @@
 #define CORE_H
 
 #include "portability.h"
+#include "syscalls.h"
 
 struct FtoDC
 {
@@ -59,7 +60,7 @@ struct MemtoWB
 
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[N], unsigned int dm[N], bool &exit
         #ifndef __SYNTHESIS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins
+            , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
         #endif
             );
 

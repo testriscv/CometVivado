@@ -3,7 +3,7 @@
 #include "core.h"
 #include "cache.h"
 #ifndef __SYNTHESIS__
-#include "syscall.h"
+#include "syscalls.h"
 #endif
 
 void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
@@ -204,9 +204,6 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
     store_imm.set_slc(0,ftoDC.instruction.slc<5>(7));
     store_imm.set_slc(5,ftoDC.instruction.slc<7>(25));
 
-    ac_int<32, true> reg_rs1 = REG[rs1.slc<5>(0)];
-    ac_int<32, true> reg_rs2 = REG[rs2.slc<5>(0)];
-
     dctoEx.opCode = opcode;
     dctoEx.funct3 = funct3;
     dctoEx.funct7_smaller = funct7_smaller;
@@ -265,6 +262,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
         switch(dctoEx.funct3)
         {
         case RISCV_SYSTEM_ENV:
+            datab_fwd = 1;
             dctoEx.dest = 10;
             rs1 = 17;
             rs2 = 10;
@@ -292,12 +290,16 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
 #endif
     }
 
+    ac_int<32, true> reg_rs1 = REG[rs1.slc<5>(0)];
+    ac_int<32, true> reg_rs2 = REG[rs2.slc<5>(0)];
+
     forward_rs1 = ((extoMem.dest == rs1 && mem_lock < 2) || (memtoWB.dest == rs1 && mem_lock == 0)) ? 1 : 0;
     forward_rs2 = ((extoMem.dest == rs2 && mem_lock < 2) || (memtoWB.dest == rs2 && mem_lock == 0)) ? 1 : 0;
     forward_ex_or_mem_rs1 = (extoMem.dest == rs1) ? 1 : 0;
     forward_ex_or_mem_rs2 = (extoMem.dest == rs2) ? 1 : 0;
 
     dctoEx.dataa = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? extoMem.result : memtoWB.result) : reg_rs1;
+
     if(opcode == RISCV_ST)
     {
         dctoEx.datac = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? extoMem.result : memtoWB.result) : reg_rs2;
@@ -306,7 +308,6 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
     {
         dctoEx.datab = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? extoMem.result : memtoWB.result) : reg_rs2;
     }
-
     // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
     if(prev_opCode == RISCV_LD && (extoMem.dest == rs1 || (opcode != RISCV_LD && extoMem.dest == rs2)) && mem_lock < 2 && prev_pc != ftoDC.pc)
     {
@@ -325,10 +326,13 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
     {
         coredebug("Dc   \n");
     })
-
 }
 
-void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_int<2, false>& sys_status)
+void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_int<2, false>& sys_status
+    #ifndef __SYNTHESIS__
+        , GenericSimulator* syscall
+    #endif
+        )
 {
     ac_int<32, false> unsignedReg1;
     unsignedReg1.set_slc(0,(dctoEx.dataa).slc<32>(0));
@@ -456,15 +460,40 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
                 break;
+        #ifndef __SYNTHESIS__
+            case RISCV_OP_M_DIVU:
+                mul_reg_a[32] = 0;
+                mul_reg_b[32] = 0;
+                break;
+            case RISCV_OP_M_REMU:
+                mul_reg_a[32] = 0;
+                mul_reg_b[32] = 0;
+                break;
+        #endif
             }
-            longResult = mul_reg_a * mul_reg_b;
-            if(dctoEx.funct3 == RISCV_OP_M_MUL)
+        #ifndef __SYNTHESIS__
+            switch(dctoEx.funct3)
             {
-                extoMem.result = longResult.slc<32>(0);
+            case RISCV_OP_M_MUL:
+                longResult = mul_reg_a * mul_reg_b;
+                break;
+            case RISCV_OP_M_DIV:
+                longResult = mul_reg_a / mul_reg_b;
+                break;
+            case RISCV_OP_M_REM:
+                longResult = mul_reg_a % mul_reg_b;
+                break;
+            }
+        #else
+            longResult = mul_reg_a * mul_reg_b;
+        #endif
+            if(dctoEx.funct3 == RISCV_OP_M_MULH || dctoEx.funct3 == RISCV_OP_M_MULHSU || dctoEx.funct3 == RISCV_OP_M_MULHU)
+            {
+                extoMem.result = longResult.slc<32>(32);
             }
             else
             {
-                extoMem.result = longResult.slc<32>(32);
+                extoMem.result = longResult.slc<32>(0);
             }
         }
         else
@@ -502,10 +531,11 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
         break;
 #ifndef __SYNTHESIS__
     case RISCV_SYSTEM:
+    {
         switch(dctoEx.funct3)
         {
         case RISCV_SYSTEM_ENV:
-            extoMem.result = solveSysCall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, &extoMem.sys_status);
+            extoMem.result = syscall->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
             break;
         case RISCV_SYSTEM_CSRRW:
             //assert(false);
@@ -533,6 +563,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
         }
 
         break;
+    }
     default:
         fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
         debug("Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
@@ -768,7 +799,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& wb_bubble, bool& earl
 
 void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
         #ifndef __SYNTHESIS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins
+            , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
         #endif
             )
 {
@@ -845,7 +876,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     static bool mem_bubble = false;
     static bool wb_bubble = false;
     static bool cachelock = false;
-    static ac_int<32, false> pc;
+    static ac_int<32, false> pc = 0;
     static bool init = false;
     if(!init)
     {
@@ -899,7 +930,11 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
     if(!cachelock)
     {
-        Ex(dctoEx, extoMem, ex_bubble, mem_bubble, sys_status);
+        Ex(dctoEx, extoMem, ex_bubble, mem_bubble, sys_status
+   #ifndef __SYNTHESIS__
+           , syscall
+   #endif
+           );
         DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble);
         Ft(pc,freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
    #ifndef __SYNTHESIS__

@@ -1,4 +1,5 @@
 /* vim: set ts=4 ai nu: */
+#include "mc_scverify.h"
 #include "elfFile.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -14,7 +15,8 @@
 #include "cache.h"
 #include "core.h"
 #include "portability.h"
-#include "mc_scverify.h"
+#include "syscalls.h"
+
 
 //#include "sds_lib.h"
 
@@ -257,7 +259,7 @@ CCS_MAIN(int argc, char** argv)
     for(int i = 0; i < N; i++)
     {
         if(im[i])
-            printf("%06x : %08x (%d)\n", 4*i, im[i], im[i]);
+            coredebug("%06x : %08x (%d)\n", 4*i, im[i], im[i]);
     }
     coredebug("data memory :\n");
     for(int i = 0; i < N; i++)
@@ -266,37 +268,42 @@ CCS_MAIN(int argc, char** argv)
         {
             if(dm[i] & (0xFF << (8*j)))
             {
-                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }
     coredebug("end of preambule\n");
 
-    ac_int<64, false> cycles, numins;
+    GenericSimulator* syscall = new GenericSimulator(dm);
+
+    ac_int<64, false> cycles = 0, numins = 0;
     bool exit = false;
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), im, dm, exit
                   #ifndef __SYNTHESIS__
-                      , cycles, numins
+                      , cycles, numins, syscall
                   #endif
                   ));
         if(cycles > (uint64_t)1e7)
             break;
     }
-    coredebug("Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
+    printf("Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
+    delete syscall;
 
-    std::cout << "memory :" <<std::endl;
+    coredebug("memory : \n");
     for(int i = 0; i < N; i++)
     {
         for(int j(0); j < 4; ++j)
         {
             if(dm[i] & (0xFF << (8*j)))
             {
-                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }
 
+    delete[] dm;
+    delete[] im;
     CCS_RETURN(0);
 }

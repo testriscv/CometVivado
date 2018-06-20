@@ -1,6 +1,5 @@
-#ifdef __unix__
 #include <stdio.h>
-#endif
+#include <string.h>
 #include <qsort.h>
 int partition(int low, int hi)
 {
@@ -38,10 +37,18 @@ void qsort(int low, int hi)
 
 int main()
 {
+    int i;
     qsort(0,SIZE-1);
 
-#ifdef __unix__
-    for(int i(0); i < SIZE; ++i)
-        printf("%d\n", A[i]);
-#endif 
+#define STR1(X) #X
+#define STR(X)  STR1(X)
+    for(i = 0; i < SIZE; ++i)
+    {
+        if(strcmp(STR(TYPE), "float") == 0)
+            printf("%f ", A[i]);
+        else if(strcmp(STR(TYPE), "int64") == 0 || strcmp(STR(TYPE), "uint64") == 0)
+            printf("%lld ", A[i]);
+        else
+            printf("%d ", A[i]);                    
+    }
 }

@@ -129,6 +129,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
         for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
             this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
 
+        free(localSectionTable);
     }
     else
     {
@@ -144,6 +145,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
         for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
             this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
 
+        free(localSectionTable);
     }
 
     if (DEBUG)
@@ -322,6 +324,8 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations()
         fread(sectionContent, sizeof(Elf32_Rel), this->size/sizeof(Elf32_Rel), this->containingElfFile->elfFile);
         for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rel); relCounter++)
             result->push_back(new ElfRelocation(sectionContent[relCounter]));
+
+        free(sectionContent);
     }
     else
     {
@@ -330,6 +334,8 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations()
         fread(sectionContent, sizeof(Elf32_Rela), this->size/sizeof(Elf32_Rela), this->containingElfFile->elfFile);
         for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rela); relCounter++)
             result->push_back(new ElfRelocation(sectionContent[relCounter]));
+
+        free(sectionContent);
     }
 
     return result;

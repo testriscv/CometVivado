@@ -1,6 +1,5 @@
-#ifdef __unix__
 #include <stdio.h>
-#endif
+#include <string.h>
 
 #include <matmul.h>
 
@@ -10,8 +9,6 @@ int main(void)
     int j;
     int k;
     TYPE sum;
-    int kk;
-    unsigned int count = 0;
 
     for (i=0; i<SIZE; i++)
     {
@@ -24,14 +21,21 @@ int main(void)
         }
     }
     
-#ifdef __unix__
+#define STR1(x) #x
+#define STR(x) STR1(x)
     for(i = 0; i < SIZE; ++i)
     {
         for(j = 0; j < SIZE; ++j)
-            printf("%d ", result[(i<<SHIFT) + j]);
+        {
+            if(strcmp(STR(TYPE), "float") == 0)
+                printf("%f ", result[(i<<SHIFT) + j]);
+            else if(strcmp(STR(TYPE), "int64") == 0 || strcmp(STR(TYPE), "uint64") == 0)
+                printf("%lld ", result[(i<<SHIFT) + j]);
+            else
+                printf("%d ", result[(i<<SHIFT) + j]);
+        }
         printf("\n");
     }
-#endif
 
     return 0;
 }
