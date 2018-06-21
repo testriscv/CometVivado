@@ -37,7 +37,8 @@ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
 export RISCV=/where/you/want/the/compilation/to/install
 ./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
 make
-export PATH=$PATH:$RISCV
+make install
+export PATH=$PATH:$RISCV/bin
 ```
 Now that you have compiled the compiler, you can compile the benchmarks:
 ```
