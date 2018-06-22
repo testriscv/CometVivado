@@ -45,10 +45,10 @@ int main()
     for(i = 0; i < SIZE; ++i)
     {
         if(strcmp(STR(TYPE), "float") == 0)
-            printf("%f ", A[i]);
+            printf("%f\n", A[i]);
         else if(strcmp(STR(TYPE), "int64") == 0 || strcmp(STR(TYPE), "uint64") == 0)
-            printf("%lld ", A[i]);
+            printf("%lld\n", A[i]);
         else
-            printf("%d ", A[i]);                    
+            printf("%d\n", A[i]);                    
     }
 }

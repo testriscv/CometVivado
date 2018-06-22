@@ -24,8 +24,7 @@ struct DCtoEx
     ac_int<32, true> memValue; //Second data, from register file or immediate value
     ac_int<7, false> funct3 ;
     ac_int<7, false> funct7;
-    ac_int<7, false> funct7_smaller ;
-    ac_int<6, false> shamt;
+    ac_int<5, false> shamt;
     ac_int<5, false> rs1;
     ac_int<5, false> rs2;
 };

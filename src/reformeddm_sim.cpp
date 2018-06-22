@@ -285,10 +285,11 @@ CCS_MAIN(int argc, char** argv)
                       , cycles, numins, syscall
                   #endif
                   ));
-        if(cycles > (uint64_t)1e7)
+        if(cycles > (uint64_t)5e8)
             break;
     }
     printf("Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
+    fprintf(stderr, "Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
     delete syscall;
 
     coredebug("memory : \n");

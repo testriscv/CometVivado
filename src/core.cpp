@@ -184,9 +184,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
     ac_int<7, false> opcode = ftoDC.instruction.slc<7>(0);
     ac_int<7, false> funct7 = ftoDC.instruction.slc<7>(25);
     ac_int<7, false> funct3 = ftoDC.instruction.slc<3>(12);
-    ac_int<7, false> funct7_smaller = 0;
-    funct7_smaller.set_slc(1, ftoDC.instruction.slc<6>(26));
-    ac_int<6, false> shamt = ftoDC.instruction.slc<6>(20);
+    ac_int<6, false> shamt = ftoDC.instruction.slc<5>(20);
     ac_int<13, false> imm13 = 0;
     imm13[12] = ftoDC.instruction[31];
     imm13.set_slc(5, ftoDC.instruction.slc<6>(25));
@@ -216,7 +214,6 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
 
     dctoEx.opCode = opcode;
     dctoEx.funct3 = funct3;
-    dctoEx.funct7_smaller = funct7_smaller;
     dctoEx.funct7 = funct7;
     dctoEx.shamt = shamt;
     dctoEx.rs1 = rs1;
@@ -351,8 +348,6 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
     ac_int<33, true> mul_reg_a = 0;
     ac_int<33, true> mul_reg_b = 0;
     ac_int<66, true> longResult = 0;
-    ac_int<33, true> srli_reg = 0;
-    ac_int<33, true> srli_result = 0;                   // Execution of the Instruction in EX stage
     extoMem.pc = dctoEx.pc;
     extoMem.instruction = dctoEx.instruction;
     extoMem.opCode = dctoEx.opCode;
@@ -444,20 +439,17 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             extoMem.result = dctoEx.dataa << dctoEx.shamt;
             break;
         case RISCV_OPI_SRI:
-            if (dctoEx.funct7_smaller == RISCV_OPI_SRI_SRLI)
-            {
-                srli_reg.set_slc(0,dctoEx.dataa);
-                srli_result = srli_reg >> dctoEx.shamt;
-                extoMem.result = srli_result.slc<32>(0);
-            }
-            else //SRAI
+            if (dctoEx.funct7.slc<1>(5))    //SRAI
                 extoMem.result = dctoEx.dataa >> dctoEx.shamt;
+            else                            //SRLI
+                extoMem.result = ((ac_int<32, false>)dctoEx.dataa) >> dctoEx.shamt;
+            //fprintf(stderr, "@%06x      %08x >> %02x = %08x\n", dctoEx.pc.to_int(), dctoEx.dataa.to_int(), dctoEx.shamt.to_int(), extoMem.result.to_int());
             break;
          EXDEFAULT();
         }
         break;
     case RISCV_OP:
-        if (dctoEx.funct7 == 1)     // M Extension
+        if(dctoEx.funct7.slc<1>(0))     // M Extension
         {
             mul_reg_a = dctoEx.dataa;
             mul_reg_b = dctoEx.datab;
@@ -487,25 +479,24 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             switch(dctoEx.funct3)
             {
             case RISCV_OP_M_MUL:
-            case RISCV_OP_M_MULHU:
             case RISCV_OP_M_MULH:
             case RISCV_OP_M_MULHSU:
+            case RISCV_OP_M_MULHU:
                 longResult = mul_reg_a * mul_reg_b;
                 break;
             case RISCV_OP_M_DIV:
             case RISCV_OP_M_DIVU:
                 if(mul_reg_b)
                     longResult = mul_reg_a / mul_reg_b;
-                else
+                else    // divide by 0 => set all bits to 1
                     longResult = -1;
                 //fprintf(stderr, "DIV @%06x : %08x / %08x = %08x\n", dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
             case RISCV_OP_M_REM:
             case RISCV_OP_M_REMU:
-
                 if(mul_reg_b)
                     longResult = mul_reg_a % mul_reg_b;
-                else
+                else    // modulo 0 => result is first operand
                     longResult = mul_reg_a;
                 //fprintf(stderr, "REM @%06x : %08x %% %08x = %08x\n", dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
@@ -528,10 +519,10 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             switch(dctoEx.funct3)
             {
             case RISCV_OP_ADD:
-                if (dctoEx.funct7 == RISCV_OP_ADD_ADD)
-                    extoMem.result = dctoEx.dataa + dctoEx.datab;
-                else
+                if (dctoEx.funct7.slc<1>(5))    // SUB
                     extoMem.result = dctoEx.dataa - dctoEx.datab;
+                else                            // ADD
+                    extoMem.result = dctoEx.dataa + dctoEx.datab;
                 break;
             case RISCV_OP_SLL:
                 extoMem.result = dctoEx.dataa << ((ac_int<5, false>)dctoEx.datab);

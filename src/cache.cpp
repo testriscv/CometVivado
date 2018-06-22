@@ -257,7 +257,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][
                 ictrl.state = IState::Fetch;
                 ictrl.setctrl.valid[ictrl.currentway] = false;
                 ictrl.i = getOffset(address);
-                ac_int<32, false> wordad;
+                ac_int<32, false> wordad = 0;
                 wordad.set_slc(0, address.slc<30>(2));
                 wordad.set_slc(30, (ac_int<2, false>)0);
                 coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
@@ -307,7 +307,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][
 
         if(++ictrl.i != getOffset(ictrl.workAddress))
         {
-            ac_int<32, false> bytead;
+            ac_int<32, false> bytead = 0;
             setTag(bytead, ictrl.setctrl.tag[ictrl.currentway]);
             setSet(bytead, ictrl.currentset);
             setOffset(bytead, ictrl.i);
@@ -431,7 +431,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
                     dctrl.state = DState::Fetch;
                     dctrl.setctrl.valid[dctrl.currentway] = false;
                     dctrl.i = getOffset(address);
-                    ac_int<32, false> wordad;
+                    ac_int<32, false> wordad = 0;
                     wordad.set_slc(0, address.slc<30>(2));
                     wordad.set_slc(30, (ac_int<2, false>)0);
                     coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
@@ -529,7 +529,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
 
         if(++dctrl.i != getOffset(dctrl.workAddress))
         {
-            ac_int<32, false> bytead;
+            ac_int<32, false> bytead = 0;
             setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
             setSet(bytead, dctrl.currentset);
             setOffset(bytead, dctrl.i);

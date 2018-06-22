@@ -198,7 +198,7 @@ def readpreambule(fichier, prog):
 	return imem, dmem, ibound, dbound, i, pipe
 
 def parsefile(fichier, prog, cache=True):
-	global ipolicy, dpolicy, imem, dmem, ibound, dbound
+	global ipolicy, dpolicy, imem, dmem, ibound, dbound, i
 	imem, dmem, ibound, dbound, i, pipe = readpreambule(fichier, prog)
 	
 	if pipe:
@@ -206,7 +206,8 @@ def parsefile(fichier, prog, cache=True):
 	
 	reg = [0] * 32
 	reg[2] = 0x000F0000
-	global ipath, dpath
+	global ipath, dpath, rpath
+	rpath = [[0]*32]
 	ipath = list()	
 	ipath.append( (0,0,0) )			# pc, registre modifié, nouvelle valeur
 	dpath = list()# (0,0,False,0,False)	# address, valeur, (0:read, 1:write), datasize, sign extension
@@ -251,16 +252,22 @@ def parsefile(fichier, prog, cache=True):
 						i += 1
 						l = line.split()
 						changed = False
+						r = [0]*32
 						for tmp in l[1:]:
 							foo = tmp.split(':')
 							idx = int(foo[0])
 							val = int(foo[1], 16)
+							
+							r[idx] = val
+							
 							if reg[idx] != val:
 								assert changed == False, "{} line {}: {} Multiple registers "\
 								"changed @{:06x}".format(prog, i, line, ad)
 								ipath.append((ad, idx, val))
 								reg[idx] = val
 								changed = True
+								
+						rpath.append(r)
 						if not changed:
 							ipath.append((ad, 0, 0))
 							
@@ -392,7 +399,10 @@ def parsefile(fichier, prog, cache=True):
 	cpi = cycles/numins
 	print("{} done {} instructions in {} cycles ({:.2f} CPI)".format(prog, numins, cycles, cpi))
 	
-	assert fichier.readline() == "memory :\n"
+	line = fichier.readline()
+	lues.append(line)
+	i += 1
+	assert line == "memory : \n"
 	for line in fichier:					# read end memory
 		lues.append(line)
 		i += 1
@@ -418,7 +428,7 @@ def parsefile(fichier, prog, cache=True):
 		assert dmem[ad] == bis[ad], "{}\n Memory not consistent @{:06x} " \
 		": expected {} got {}".format(prog, ad, dmem[ad], bis[ad])		
 		
-	return ipath, dpath, imem, dmem, endmem, cycles, cpi
+	return ipath, dpath, rpath, imem, dmem, endmem, cycles, cpi
 
 def checkoutput(name, cache):
 	with open("output.log", "r") as f:
@@ -449,13 +459,11 @@ def parseall(cached):
 	
 	cycles = list()
 	cpis = list()
-	for p in progs:
-		if "float" not in p or "matmul" not in p:
-			continue		
+	for p in progs:	
 		try:
 			with subprocess.Popen(["./"+executable, "benchmarks/build/"+p], stdout=subprocess.PIPE, universal_newlines=True) as output:
 				global dmem
-				ipath, dpath, imem, dmem, endmem, cycle, cpi = parsefile(output, p, cached)
+				ipath, dpath, rpath, imem, dmem, endmem, cycle, cpi = parsefile(output, p, cached)
 				
 			cycles.append(cycle)
 			cpis.append(cpi)
@@ -574,7 +582,7 @@ if __name__ == "__main__":
 	
 	if args.file is not None:
 		with open(args.file, "r") as file:
-			ipath, dpath, imem, dmem, endmem, cycle, cpi = parsefile(file, args.file, not args.nocache)
+			ipath, dpath, rpath, imem, dmem, endmem, cycle, cpi = parsefile(file, args.file, not args.nocache)
 		sys.exit(0)
 	
 	if args.make:

@@ -2,8 +2,6 @@
 
 void formatread(ac_int<32, false> address, ac_int<2, false> datasize, bool sign, ac_int<32, false>& read)
 {
-    if(address >= N)
-        fprintf(stderr, "ERRUEURUdjAja : %d\n", address.to_int());
     switch(address.slc<2>(0))   // address & offmask
     {
     case 0:
@@ -36,8 +34,6 @@ void formatread(ac_int<32, false> address, ac_int<2, false> datasize, bool sign,
 
 void formatwrite(ac_int<32, false> address, ac_int<2, false> datasize, ac_int<32, false>& mem, ac_int<32, false> write)
 {
-    if(address >= N)
-        fprintf(stderr, "ERRUEURUdjAja : %d\n", address.to_int());
     switch(address.slc<2>(0))
     {
     case 0:

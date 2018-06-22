@@ -63,10 +63,10 @@ void GenericSimulator::initialize(int argc, char** argv){
 }
 
 void GenericSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value){
-    ac_int<32, false> mem = memory[addr];
+    ac_int<32, false> mem = memory[addr >> 2];
     formatwrite(addr, 0, mem, value);
-    this->memory[addr] = mem;
-    fprintf(stderr, "Write @%06x   %02x\n", addr.to_int(), value.to_int());
+    this->memory[addr >> 2] = mem;
+    //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int());
 }
 
 void GenericSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value){
@@ -102,10 +102,10 @@ ac_int<8, true> GenericSimulator::ldb(ac_int<32, false> addr){
     else
         result= 0;*/
     ac_int<8, true> result;
-    ac_int<32, false> read = memory[addr];
+    ac_int<32, false> read = memory[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
-    fprintf(stderr, "Read @%06x    %02x\n", addr.to_int(), result.to_int());
+    //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), memory[addr >> 2]);
     return result;
 }
 
@@ -357,9 +357,10 @@ ac_int<32, false> GenericSimulator::doRead(ac_int<32, false> file, ac_int<32, fa
 
 ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size){
     int localSize = size.slc<32>(0);
-    char* localBuffer = (char*) malloc(localSize*sizeof(char));
+    char* localBuffer = (char*) malloc(localSize*sizeof(char)+1);
     for (int i=0; i<size; i++)
         localBuffer[i] = this->ldb(bufferAddr + i);
+    localBuffer[size] = 0;
 
     ac_int<32, false> result = 0;
     if (file < 5){
@@ -369,8 +370,8 @@ ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, f
             result = fwrite(localBuffer, 1, size, outStreams[streamNB]);
         else
         {
-            result = fwrite(localBuffer, 1, size, stdout);
-            fprintf(stderr, "Write %d bytes : %s\nResult : %d\n", size.to_int(), localBuffer, result.to_int());
+            result = fwrite(localBuffer, 1, size, stderr);
+            //fprintf(stderr, "Write %d bytes : %s\nResult : %d\n", size.to_int(), localBuffer, result.to_int());
         }
 
     }
