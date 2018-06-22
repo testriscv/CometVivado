@@ -8,7 +8,7 @@ RISC-V ISA based 32-bit processor written in C++ for High Level Synthesis (HLS).
 ## Components of the project
 Vivado HLS is used for FPGA IP synthesis and Catapult HLS is used for ASIC synthesis.
 
-* Run `make` to generate the simulator `catapult.sim`.
+* Run `make` to generate the simulator `comet.sim`.
 * To build it as an FPGA IP, run `script.tcl` in Vivado HLS. (not maintained)
 * To synthesize it to rtl for ASIC, run [genCore.py](catapult/genCore.py) in `catapult` folder. See `genCore.py -h` for argument list. Don't forget to `mkdir memories` at the top before trying to run genCore.py.
 
@@ -35,7 +35,9 @@ To verify the simulator behavior, you can run a benchmark through it and check t
 ```
 git clone --recursive https://github.com/riscv/riscv-gnu-toolchain 
 export RISCV=/where/you/want/the/compilation/to/install
-./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
+mkdir build
+cd build
+../configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
 make
 make install
 export PATH=$PATH:$RISCV/bin
