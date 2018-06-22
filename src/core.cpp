@@ -4,6 +4,16 @@
 #include "cache.h"
 #ifndef __SYNTHESIS__
 #include "syscalls.h"
+
+#define EXDEFAULT() default: \
+    fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int()); \
+    debug("Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int()); \
+    assert(false && "Unknown operation in Ex stage");
+
+#else
+
+#define EXDEFAULT()
+
 #endif
 
 void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
@@ -195,10 +205,10 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
     imm21_1_signed.set_slc(0, imm21_1);
     ac_int<32, true> imm31_12 = 0;
     imm31_12.set_slc(12, ftoDC.instruction.slc<20>(12));
-    bool forward_rs1;
-    bool forward_rs2;
-    bool forward_ex_or_mem_rs1;
-    bool forward_ex_or_mem_rs2;
+    bool forward_rs1 = false;
+    bool forward_rs2 = false;
+    bool forward_ex_or_mem_rs1 = false;
+    bool forward_ex_or_mem_rs2 = false;
     bool datab_fwd = 0;
     ac_int<12, true> store_imm = 0;
     store_imm.set_slc(0,ftoDC.instruction.slc<5>(7));
@@ -334,15 +344,15 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
     #endif
         )
 {
-    ac_int<32, false> unsignedReg1;
+    ac_int<32, false> unsignedReg1 = 0;
     unsignedReg1.set_slc(0,(dctoEx.dataa).slc<32>(0));
-    ac_int<32, false> unsignedReg2;
+    ac_int<32, false> unsignedReg2 = 0;
     unsignedReg2.set_slc(0,(dctoEx.datab).slc<32>(0));
-    ac_int<33, true> mul_reg_a;
-    ac_int<33, true> mul_reg_b;
-    ac_int<66, true> longResult;
-    ac_int<33, true> srli_reg;
-    ac_int<33, true> srli_result;                   // Execution of the Instruction in EX stage
+    ac_int<33, true> mul_reg_a = 0;
+    ac_int<33, true> mul_reg_b = 0;
+    ac_int<66, true> longResult = 0;
+    ac_int<33, true> srli_reg = 0;
+    ac_int<33, true> srli_result = 0;                   // Execution of the Instruction in EX stage
     extoMem.pc = dctoEx.pc;
     extoMem.instruction = dctoEx.instruction;
     extoMem.opCode = dctoEx.opCode;
@@ -397,6 +407,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
         case RISCV_BR_BGEU:
             extoMem.result = (unsignedReg1 >= unsignedReg2);
             break;
+        EXDEFAULT();
         }
         extoMem.memValue = dctoEx.pc + dctoEx.datac;
         break;
@@ -442,10 +453,11 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             else //SRAI
                 extoMem.result = dctoEx.dataa >> dctoEx.shamt;
             break;
+         EXDEFAULT();
         }
         break;
     case RISCV_OP:
-        if (dctoEx.funct7 == 1)
+        if (dctoEx.funct7 == 1)     // M Extension
         {
             mul_reg_a = dctoEx.dataa;
             mul_reg_b = dctoEx.datab;
@@ -475,14 +487,29 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             switch(dctoEx.funct3)
             {
             case RISCV_OP_M_MUL:
+            case RISCV_OP_M_MULHU:
+            case RISCV_OP_M_MULH:
+            case RISCV_OP_M_MULHSU:
                 longResult = mul_reg_a * mul_reg_b;
                 break;
             case RISCV_OP_M_DIV:
-                longResult = mul_reg_a / mul_reg_b;
+            case RISCV_OP_M_DIVU:
+                if(mul_reg_b)
+                    longResult = mul_reg_a / mul_reg_b;
+                else
+                    longResult = -1;
+                //fprintf(stderr, "DIV @%06x : %08x / %08x = %08x\n", dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
             case RISCV_OP_M_REM:
-                longResult = mul_reg_a % mul_reg_b;
+            case RISCV_OP_M_REMU:
+
+                if(mul_reg_b)
+                    longResult = mul_reg_a % mul_reg_b;
+                else
+                    longResult = mul_reg_a;
+                //fprintf(stderr, "REM @%06x : %08x %% %08x = %08x\n", dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
+            EXDEFAULT();
             }
         #else
             longResult = mul_reg_a * mul_reg_b;
@@ -507,7 +534,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
                     extoMem.result = dctoEx.dataa - dctoEx.datab;
                 break;
             case RISCV_OP_SLL:
-                extoMem.result = dctoEx.dataa << (dctoEx.datab & 0x3f);
+                extoMem.result = dctoEx.dataa << ((ac_int<5, false>)dctoEx.datab);
                 break;
             case RISCV_OP_SLT:
                 extoMem.result = (dctoEx.dataa < dctoEx.datab) ? 1 : 0;
@@ -518,12 +545,19 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
             case RISCV_OP_XOR:
                 extoMem.result = dctoEx.dataa ^ dctoEx.datab;
                 break;
+            case RISCV_OP_SR:
+                if(dctoEx.funct7.slc<1>(5))     // SRA
+                    extoMem.result = dctoEx.dataa >> ((ac_int<5, false>)dctoEx.datab);
+                else                            // SRL
+                    extoMem.result = ((ac_int<32, false>)dctoEx.dataa) >> ((ac_int<5, false>)dctoEx.datab);
+                break;
             case RISCV_OP_OR:
                 extoMem.result = dctoEx.dataa | dctoEx.datab;
                 break;
             case RISCV_OP_AND:
                 extoMem.result =  dctoEx.dataa & dctoEx.datab;
                 break;
+            EXDEFAULT();
             }
         }
         break;
@@ -557,9 +591,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble, ac_i
         case RISCV_SYSTEM_CSRRCI:
             //assert(false);
             break;
-        default:
-            assert(false);
-            break;
+        EXDEFAULT();
         }
 
         break;
@@ -805,14 +837,17 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 {
     static ICacheControl ictrl = {0};
     static unsigned int idata[Sets][Blocksize][Associativity] = {0};
+#ifdef __SYNTHESIS__
     static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)idata, Sets*Associativity*Blocksize);
     (void)idummy;
     static bool itaginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)ictrl.tag, Sets*Associativity);
     (void)itaginit;
     static bool ivalinit = ac::init_array<AC_VAL_0>((bool*)ictrl.valid, Sets*Associativity);
     (void)ivalinit;
+#endif
     static DCacheControl dctrl = {0};
     static unsigned int ddata[Sets][Blocksize][Associativity] = {0};
+#ifdef __SYNTHESIS__
     static bool dummy = ac::init_array<AC_VAL_DC>((unsigned int*)ddata, Sets*Associativity*Blocksize);
     (void)dummy;
     static bool taginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)dctrl.tag, Sets*Associativity);
@@ -851,15 +886,16 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     }
   #endif
 #endif
-    static MemtoWB memtoWB = {0,0x13,0,0,0,0x13,0};
-    static ExtoMem extoMem = {0,0x13,0,0,0,0,0,0x13,0};
-    static DCtoEx dctoEx = {0,0x13,0,0,0,0,0,0,0x13,0}; // opCode = 0x13
-    static FtoDC ftoDC = {0,0x13};
+#endif  // __SYNTHESIS__
+    static MemtoWB memtoWB = {0};
+    static ExtoMem extoMem = {0};
+    static DCtoEx dctoEx = {0}; // opCode = 0x13
+    static FtoDC ftoDC = {0};
 
-    static ac_int<32, true> REG[32] = {0,0,0xf0000,0,0,0,0,0,   // 0xf0000 is stack address and so is the highest reachable address
+    static ac_int<32, true> REG[32] = {0};/*,0,0xf0000,0,0,0,0,0,   // 0xf0000 is stack address and so is the highest reachable address
                                        0,0,0,0,0,0,0,0,         // we can put whatever needed value for the stack
                                        0,0,0,0,0,0,0,0,
-                                       0,0,0,0,0,0,0,0};
+                                       0,0,0,0,0,0,0,0};*/
     static ac_int<64, false> cycles = 1;
     static ac_int<64, false> instrets = 0;
     //static ac_int<64, false> timer = 0;
@@ -882,6 +918,12 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     {
         init = true;
         pc = startpc;   // startpc - 4 ?
+
+        memtoWB.instruction = memtoWB.opCode = 0x13;
+        extoMem.instruction = extoMem.opCode = 0x13;
+        dctoEx.instruction = dctoEx.opCode = 0x13;
+        ftoDC.instruction = 0x13;
+        REG[2] = 0xf0000;
     }
 
     /// Instruction cache
@@ -936,7 +978,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
    #endif
            );
         DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble);
-        Ft(pc,freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
+        Ft(pc, freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
    #ifndef __SYNTHESIS__
           , cycles
    #endif
@@ -972,12 +1014,14 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     if(early_exit)
     {
         exit = true;
-
+    }
+    #ifndef nocache
         //cache write back for simulation
         for(unsigned int i  = 0; i < Sets; ++i)
             for(unsigned int j = 0; j < Associativity; ++j)
                 if(dctrl.dirty[i][j] && dctrl.valid[i][j])
                     for(unsigned int k = 0; k < Blocksize; ++k)
                         dm[(dctrl.tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = ddata[i][k][j];
-    })
+    #endif
+    )
 }
