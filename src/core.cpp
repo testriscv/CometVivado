@@ -635,7 +635,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
     case RISCV_SYSTEM:
         if(dctoEx.funct3 == 0)
         {
-            extoMem.result = solveSysCall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, &extoMem.sys_status);
+            extoMem.result = syscall->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
             fprintf(stderr, "Syscall @%06x\n", dctoEx.pc.to_int());
         }
         else
@@ -983,7 +983,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& wb_bubble, bool& earl
 
 }
 
-void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit,
+void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
         #endif
@@ -1041,10 +1041,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
                                        0,0,0,0,0,0,0,0,         // we can put whatever needed value for the stack
                                        0,0,0,0,0,0,0,0,
                                        0,0,0,0,0,0,0,0};*/
-    static ac_int<64, false> cycles = 1;
-    static ac_int<64, false> instrets = 0;
-    //static ac_int<64, false> timer = 0;
-    static ac_int<2, false> sys_status = 0;
 
     static ac_int<7, false> prev_opCode = 0;
     static ac_int<32, false> prev_pc = 0;
@@ -1087,10 +1083,10 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     static int readvalue = 0;
     static bool datavalid = false;
 
-    simul(uint64_t oldcycles = cycles);
+    simul(uint64_t oldcycles = csrs.mcycle);
 
     doWB(REG, memtoWB, wb_bubble, early_exit, csrs);
-    simul(coredebug("%d ", cycles.to_int64());
+    simul(coredebug("%d ", csrs.mcycle.to_int64());
     for(int i=0; i<32; i++)
     {
         if(REG[i])
@@ -1103,29 +1099,29 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
            daddress, datasize, signenable, dcacheenable, writeenable, writevalue,       // control & data to cache
            readvalue, datavalid, dm                                                     // data & acknowledgment from cache
        #ifndef __SYNTHESIS__
-           , cycles
+           , csrs.mcycle
        #endif
            );
 
 #ifndef nocache
     dcache(dctrl, dm, ddata, daddress, datasize, signenable, dcacheenable, writeenable, writevalue, readvalue, datavalid
        #ifndef __SYNTHESIS__
-           , cycles
+           , csrs.mcycle
        #endif
            );
 #endif
 
     if(!cachelock)
     {
-        Ex(dctoEx, extoMem, ex_bubble, mem_bubble,
+        Ex(dctoEx, extoMem, ex_bubble, mem_bubble
    #ifndef __SYNTHESIS__
            , syscall
    #endif
            );
-        DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble);
+        DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble, csrs);
         Ft(pc, freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
    #ifndef __SYNTHESIS__
-          , cycles
+          , csrs.mcycle
    #endif
           );
     }
@@ -1134,21 +1130,21 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 #ifndef nocache
     icache(ictrl, ins_memory, idata, iaddress, cachepc, instruction, insvalid
        #ifndef __SYNTHESIS__
-           , cycles
+           , csrs.mcycle
        #endif
            );
 #endif
 
-    cycles++;
+    csrs.mcycle++;
 
     simul(
     int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
-    if(oldcycles + M < cycles)
+    if(oldcycles + M < csrs.mcycle)
     {
-        cycles = oldcycles + M; // we cannot step slower than the worst latency
+        csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
     }
-    c = cycles;
-    numins = instrets;
+    c = csrs.mcycle;
+    numins = csrs.minstret;
     )
 
 
