@@ -22,7 +22,7 @@ struct DCtoEx
     ac_int<5, false> dest; //Register to be written
     ac_int<7, false> opCode;//OpCode of the instruction
     ac_int<32, true> memValue; //Second data, from register file or immediate value
-    ac_int<7, false> funct3 ;
+    ac_int<7, false> funct3;
     ac_int<7, false> funct7;
     ac_int<5, false> shamt;
     ac_int<5, false> rs1;
@@ -40,7 +40,7 @@ struct ExtoMem
     bool WBena; //Is a WB is needed ?
     ac_int<7, false> opCode; //OpCode of the operation
     ac_int<32, true> memValue; //Second data, from register file or immediate value
-    ac_int<5, false> rs2;
+    ac_int<5, false> rs1;
     ac_int<7, false> funct3;
     ac_int<2, false> sys_status;
 };
@@ -50,12 +50,37 @@ struct MemtoWB
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
     ac_int<32, true> result; //Result to be written back
+    ac_int<32, false> rescsr;   // Result for CSR instruction
+    ac_int<12, false> CSRid;    // CSR to be written back
     ac_int<5, false> dest; //Register to be written at WB stage
     bool WBena; //Is a WB is needed ?
     ac_int<7, false> opCode;
     ac_int<2, false> sys_status;
+    ac_int<5, false> rs1;
+    bool csrwb;
 };
 
+struct CSR
+{
+    static const ac_int<32, false> mvendorid;   // RO shared by all cores
+    static const ac_int<32, false> marchid;     // RO shared by all cores
+    static const ac_int<32, false> mimpid;      // RO shared by all cores
+    const ac_int<32, false> mhartid;            // RO but private to core (and i don't want to template everything)
+    ac_int<64, false> mcycle;
+    ac_int<64, false> minstret;
+    ac_int<32, false> mstatus;
+    ac_int<32, false> misa;     // writable...
+    ac_int<32, false> medeleg;
+    ac_int<32, false> mideleg;
+    ac_int<32, false> mie;
+    ac_int<32, false> mtvec;
+    ac_int<32, false> mcounteren;
+    ac_int<32, false> mscratch;
+    ac_int<32, false> mepc;
+    ac_int<32, false> mcause;
+    ac_int<32, false> mtval;
+    ac_int<32, false> mip;
+};
 
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[N], unsigned int dm[N], bool &exit
         #ifndef __SYNTHESIS__
