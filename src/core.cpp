@@ -13,6 +13,7 @@
 #else
 
 #define EXDEFAULT()
+#define fprintf(__VA_ARG__)
 
 #endif
 
