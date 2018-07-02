@@ -530,11 +530,11 @@ def parseall(cached):
 			assert str(res)[1:-1] in str(dmem), "{} result is incorrect".format(p)
 			
 		except BaseException as e:
-				with open("traces/{}cache_{}.log".format("no" if not cached else "", p), "w") as dump:
-					print("Dumping to", dump.name)
-					dump.write("".join(line for line in lues))
-				subprocess.check_call(["rm", executable])
-				raise e
+			subprocess.check_call(["rm", executable])
+			with open("traces/{}cache_{}.log".format("no" if not cached else "", p), "w") as dump:
+				print("Dumping to", dump.name)
+				dump.write("".join(line for line in lues))
+			raise e
 	try:
 		if not cached:
 			with open("timesnocache.txt", "w") as times:
@@ -561,8 +561,8 @@ def parseall(cached):
 					print("{:<30s} {:7d} {:>10.2f} {:10d} {:>10.2f} {:>+10.0%}".format(p, timings[p][0],\
 					timings[p][1], cycles[i], cpis[i], timings[p][1]/cpis[i]), file = res)
 	except BaseException as e:
-		print(lues[0], lues[1][:-1], "done")
 		subprocess.check_call(["rm", executable])
+		print(lues[0], lues[1][:-1], "done")
 		raise e
 
 if __name__ == "__main__":
