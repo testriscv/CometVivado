@@ -118,7 +118,6 @@
 #define RISCV_CSR_MCYCLEH       0xB80 // MRW mcycleh Upper 32 bits of mcycle, RV32I only.
 #define RISCV_CSR_MINSTRETH     0xB82 // MRW minstreth Upper 32 bits of minstret, RV32I only.
 
-//FIXME some special operations of the base instruction set are not yet supported. (FENCE)
 /******************************************************************************************************
 * Specification of the standard M extension
 ********************************************
@@ -141,6 +140,32 @@
 #define RISCV_OPW_M_DIVUW       0x5
 #define RISCV_OPW_M_REMW        0x6
 #define RISCV_OPW_M_REMUW       0x7
+
+
+/******************************************************************************************************
+* Specification of the standard A extension
+********************************************
+* This extension brings the support for atomic operation.
+* It is always of R-type instruction, and funct3 is always 0b010
+* Then funct7[6:2] is used to determine which of the eleven operation to use.
+* Added operations are LR, SC, AMOSWAP, AMOADD, AMOXOR, AMOAND, AMOOR, AMOMIN, AMOMAX, AMOMINU, AMOMAXU
+*****************************************************************************************************/
+#define RISCV_ATOMIC            0x2F
+#define RISCV_ATOMIC_LR         0x2
+#define RISCV_ATOMIC_SC         0x3
+#define RISCV_ATOMIC_SWAP       0x1
+#define RISCV_ATOMIC_ADD        0x0
+#define RISCV_ATOMIC_XOR        0x4
+#define RISCV_ATOMIC_AND        0xC
+#define RISCV_ATOMIC_OR         0x8
+#define RISCV_ATOMIC_MIN        0x10
+#define RISCV_ATOMIC_MAX        0x14
+#define RISCV_ATOMIC_MINU       0x18
+#define RISCV_ATOMIC_MAXU       0x1C
+
+
+
+
 #ifndef __CATAPULT
 #ifndef __NIOS
 //std::string printDecodedInstrRISCV(uint32 instruction);

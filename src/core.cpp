@@ -301,6 +301,9 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
             case 3:
                 break;
             })
+
+            // handle the case for rd = 0 for CSRRW
+            // handle WIRI/WARL/etc.
             switch(imm12_I)
             {
             case RISCV_CSR_MSTATUS:
@@ -523,7 +526,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
                 extoMem.result = ((ac_int<32, false>)dctoEx.dataa) >> dctoEx.shamt;
             //fprintf(stderr, "@%06x      %08x >> %02x = %08x\n", dctoEx.pc.to_int(), dctoEx.dataa.to_int(), dctoEx.shamt.to_int(), extoMem.result.to_int());
             break;
-         EXDEFAULT();
+        EXDEFAULT();
         }
         break;
     case RISCV_OP:
@@ -708,7 +711,7 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
 
 }
 
-void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool& mem_bubble, bool& wb_bubble, bool& cachelock,  // internal core control
+void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool& mem_bubble, bool& cachelock,  // internal core control
             ac_int<32, false>& address, ac_int<2, false>& datasize, bool& signenable, bool& cacheenable, bool& writeenable, int& writevalue,      // control & data to cache
             int readvalue, bool datavalid, unsigned int data_memory[N]
             #ifndef __SYNTHESIS__
@@ -877,7 +880,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
     })
 }
 
-void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& wb_bubble, bool& early_exit, CSR& csrs)
+void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csrs)
 {
     if (memtoWB.WBena == 1 && memtoWB.dest != 0)
     {
@@ -969,13 +972,12 @@ void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& wb_bubble, bool& earl
 
     if(memtoWB.pc)
     {
-        static int lastpc = 0;
-        if(memtoWB.pc != lastpc)
+        if(memtoWB.pc != memtoWB.lastpc)
         {
             csrs.minstret += 1;
-            lastpc = memtoWB.pc;
+            memtoWB.lastpc = memtoWB.pc;
         }
-        coredebug("\nWB   @%06x   %08x   (%d)\n", memtoWB.pc.to_int(), memtoWB.instruction.to_int(), csrs.minstret.to_int());
+        coredebug("\nWB   @%06x   %08x   (%d)\n", memtoWB.pc.to_int(), memtoWB.instruction.to_int(), csrs.minstret.to_int64());
     }
     else
     {
@@ -1052,7 +1054,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     static bool freeze_fetch = false;
     static bool ex_bubble = false;
     static bool mem_bubble = false;
-    static bool wb_bubble = false;
     static bool cachelock = false;
     static ac_int<32, false> pc = 0;
     static bool init = false;
@@ -1086,7 +1087,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
     simul(uint64_t oldcycles = csrs.mcycle);
 
-    doWB(REG, memtoWB, wb_bubble, early_exit, csrs);
+    doWB(REG, memtoWB, early_exit, csrs);
     simul(coredebug("%d ", csrs.mcycle.to_int64());
     for(int i=0; i<32; i++)
     {
@@ -1096,7 +1097,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     )
     coredebug("\n");
 
-    do_Mem(extoMem, memtoWB, mem_lock, mem_bubble, wb_bubble, cachelock,                // internal core control
+    do_Mem(extoMem, memtoWB, mem_lock, mem_bubble, cachelock,                // internal core control
            daddress, datasize, signenable, dcacheenable, writeenable, writevalue,       // control & data to cache
            readvalue, datavalid, dm                                                     // data & acknowledgment from cache
        #ifndef __SYNTHESIS__

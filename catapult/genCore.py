@@ -66,7 +66,7 @@ flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
 solution file add ../src/reformeddm_sim.cpp -type C++
 solution file add ../src/cache.cpp -type C++
-solution file add ../src/syscall.cpp -type C++
+solution file add ../src/syscalls.cpp -type C++
 solution file add ../src/elfFile.cpp -type C++
 solution file add ../src/portability.cpp -type C++
 go new
@@ -255,6 +255,7 @@ def doCore(cachesize, associativity, blocksize, explore=False):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-s", "--shell", help="Launch catapult in shell", action="store_true")
+	parser.add_argument("-n", "--no-cache", help="Synthesize without cache", action="store_true")
 	parser.add_argument("-c", "--cache-size", help="Cache size in bytes", type=int)
 	parser.add_argument("-a", "--associativity", help="Cache associativity", type=int)
 	parser.add_argument("-b", "--blocksize", help="Cache blocksize in bytes", type=int)

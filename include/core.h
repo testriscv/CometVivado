@@ -47,8 +47,11 @@ struct ExtoMem
 
 struct MemtoWB
 {
+    ac_int<32, false> lastpc;
     ac_int<32, false> pc;
+#ifndef __SYNTHESIS__
     ac_int<32, false> instruction;
+#endif
     ac_int<32, true> result; //Result to be written back
     ac_int<32, false> rescsr;   // Result for CSR instruction
     ac_int<12, false> CSRid;    // CSR to be written back
@@ -66,7 +69,7 @@ struct CSR
     static const ac_int<32, false> marchid;     // RO shared by all cores
     static const ac_int<32, false> mimpid;      // RO shared by all cores
     const ac_int<32, false> mhartid;            // RO but private to core (and i don't want to template everything)
-    ac_int<64, false> mcycle;
+    ac_int<64, false> mcycle;                   // could be shared according to specification
     ac_int<64, false> minstret;
     ac_int<32, false> mstatus;
     ac_int<32, false> misa;     // writable...
