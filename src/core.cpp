@@ -376,6 +376,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
             //dataa will contain REG[rs1]
         }
         simul(else assert(false));
+        break;
 #endif
     }
 
