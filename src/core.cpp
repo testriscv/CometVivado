@@ -269,7 +269,6 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
         datab_fwd = 1;
         dctoEx.dest = rd;
         break;
-#ifndef __SYNTHESIS__
     case RISCV_SYSTEM:
         if(dctoEx.funct3 == RISCV_SYSTEM_ENV)
         {
@@ -377,7 +376,6 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
         }
         simul(else assert(false));
         break;
-#endif
     }
 
     ac_int<32, true> reg_rs1 = REG[rs1.slc<5>(0)];
@@ -636,12 +634,13 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
         break;
     case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
         break;
-#ifndef __SYNTHESIS__
     case RISCV_SYSTEM:
         if(dctoEx.funct3 == 0)
         {
+        #ifndef __SYNTHESIS__
             extoMem.result = syscall->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
             fprintf(stderr, "Syscall @%06x\n", dctoEx.pc.to_int());
+        #endif
         }
         else
         {
@@ -667,22 +666,14 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
             case RISCV_SYSTEM_CSRRCI:
                 extoMem.datac = ((ac_int<32, false>)~dctoEx.rs1) & dctoEx.datab;
                 break;
-            default:
-                fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
-                assert(false && "Unknown operation in Ex/SYSTEM stage");
-                break;
+            EXDEFAULT();
             }
             extoMem.result = dctoEx.datab;      // written back to rd
             extoMem.memValue = dctoEx.memValue;
             extoMem.rs1 = dctoEx.rs1;
         }
         break;
-    default:
-        fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
-        debug("Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int());
-        assert(false && "Unknown operation in Ex stage");
-        break;
-#endif
+    EXDEFAULT();
     }
 
     if(ex_bubble)
