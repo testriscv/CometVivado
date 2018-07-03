@@ -49,9 +49,7 @@ struct MemtoWB
 {
     ac_int<32, false> lastpc;
     ac_int<32, false> pc;
-#ifndef __SYNTHESIS__
     ac_int<32, false> instruction;
-#endif
     ac_int<32, true> result; //Result to be written back
     ac_int<32, false> rescsr;   // Result for CSR instruction
     ac_int<12, false> CSRid;    // CSR to be written back
