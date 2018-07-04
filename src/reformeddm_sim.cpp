@@ -73,7 +73,7 @@ CCS_MAIN(int argc, char** argv)
         //fprintf(stderr, "%s\n", benchargv[i]);
     }
 
-    //fprintf(stderr, "Simulating %s\n", binaryFile);
+    fprintf(stderr, "Simulating %s\n", binaryFile);
     std::cout << "Simulating " << binaryFile << std::endl;
 
     Simulator sim(binaryFile, inputFile, outputFile);
