@@ -74,7 +74,6 @@
 
 
 
-
 /******************************************************************************************************
  * Specification of the privileged architecture                                                       *
  ******************************************************************************************************
@@ -91,24 +90,56 @@
 #define RISCV_SYSTEM_CSRRSI     0x6
 #define RISCV_SYSTEM_CSRRCI     0x7
 
+
+
 #define RISCV_CSR_MVENDORID     0xF11 // MRO mvendorid Vendor ID.
 #define RISCV_CSR_MARCHID       0xF12 // MRO marchid Architecture ID.
 #define RISCV_CSR_MIMPID        0xF13 // MRO mimpid Implementation ID.
 #define RISCV_CSR_MHARTID       0xF14 // MRO mhartid Hardware thread ID.
 //Machine Trap Setup
 #define RISCV_CSR_MSTATUS       0x300 // MRW mstatus Machine status register.
+#define RISCV_CSR_MSTATUS_WIRI  0x00000000 // ignore those bits in read & write
+#define RISCV_CSR_MSTATUS_WPRI  0x7F100644 // preserve bits in write, ignore read
+#define RISCV_CSR_MSTATUS_WLRL  0x00000000 // R/W legal value only
+#define RISCV_CSR_MSTATUS_WARL  0x00001900 // write any, read legal
+
 #define RISCV_CSR_MISA          0x301 // MRW misa ISA and extensions
+#define RISCV_CSR_MISA_WIRI     0x3C000000 // ignore those bits in read & write
+#define RISCV_CSR_MISA_WPRI     0x00000000 // preserve bits in write, ignore read
+#define RISCV_CSR_MISA_WLRL     0x00000000 // R/W legal value only
+#define RISCV_CSR_MISA_WARL     0xC3FFFFFF // write any, read legal
+
 #define RISCV_CSR_MEDELEG       0x302 // MRW medeleg Machine exception delegation register.
+#define RISCV_CSR_MEDELEG_WARL  0xFFFFFFFF // write any, read legal
+
 #define RISCV_CSR_MIDELEG       0x303 // MRW mideleg Machine interrupt delegation register.
+#define RISCV_CSR_MIDELEG_WARL  0xFFFFFFFF // write any, read legal
+
 #define RISCV_CSR_MIE           0x304 // MRW mie Machine interrupt-enable register.
+#define RISCV_CSR_MIE_WIRI      0x00000000 // ignore those bits in read & write
+#define RISCV_CSR_MIE_WPRI      0xFFFFF444 // preserve bits in write, ignore read
+#define RISCV_CSR_MIE_WLRL      0x00000000 // R/W legal value only
+#define RISCV_CSR_MIE_WARL      0x00000BBB // write any, read legal
+
 #define RISCV_CSR_MTVEC         0x305 // MRW mtvec Machine trap-handler base address.
+#define RISCV_CSR_MTVEC_WARL    0xFFFFFFFF // write any, read legal
+
 #define RISCV_CSR_MCOUNTEREN    0x306 // MRW mcounteren Machine counter enable.
+
 //Machine Trap Handling
 #define RISCV_CSR_MSCRATCH      0x340 // MRW mscratch Scratch register for machine trap handlers.
 #define RISCV_CSR_MEPC          0x341 // MRW mepc Machine exception program counter.
+#define RISCV_CSR_MEPC_WARL     0xFFFFFFFF
+
 #define RISCV_CSR_MCAUSE        0x342 // MRW mcause Machine trap cause.
+#define RISCV_CSR_MCAUSE_WLRL   0x7FFFFFFF
+
 #define RISCV_CSR_MTVAL         0x343 // MRW mtval Machine bad address or instruction.
+
 #define RISCV_CSR_MIP           0x344 // MRW mip Machine interrupt pending.
+#define RISCV_CSR_MIP_WIRI      0xFFFFF444 // ignore those bits in read & write
+#define RISCV_CSR_MIP_WARL      0x00000BBB // write any, read legal
+
 //Machine Protection and Translation
 // not implemented
 

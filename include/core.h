@@ -2,7 +2,7 @@
 #define CORE_H
 
 #include "portability.h"
-#include "syscalls.h"
+#include "simulator.h"
 
 struct FtoDC
 {
@@ -85,7 +85,7 @@ struct CSR
 
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[N], unsigned int dm[N], bool &exit
         #ifndef __SYNTHESIS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
+            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* syscall
         #endif
             );
 

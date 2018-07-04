@@ -3,7 +3,7 @@
 #include "core.h"
 #include "cache.h"
 #ifndef __SYNTHESIS__
-#include "syscalls.h"
+#include "simulator.h"
 
 #define EXDEFAULT() default: \
     fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", extoMem.pc.to_int(), extoMem.instruction.to_int()); \
@@ -370,6 +370,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
                 assert(false && "Unknown CSR id\n");
                 break;
             }
+            fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", dctoEx.datab.to_int(), imm12_I.to_int(), dctoEx.pc.to_int());
             dctoEx.memValue = imm12_I;
             dctoEx.dest = rd;
             //dataa will contain REG[rs1]
@@ -418,7 +419,7 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
 
 void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
     #ifndef __SYNTHESIS__
-        , GenericSimulator* syscall
+        , Simulator* sim
     #endif
         )
 {
@@ -638,33 +639,37 @@ void Ex(DCtoEx dctoEx, ExtoMem& extoMem, bool& ex_bubble, bool& mem_bubble
         if(dctoEx.funct3 == 0)
         {
         #ifndef __SYNTHESIS__
-            extoMem.result = syscall->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
+            extoMem.result = sim->solveSyscall(dctoEx.dataa, dctoEx.datab, dctoEx.datac, dctoEx.datad, dctoEx.datae, extoMem.sys_status);
             fprintf(stderr, "Syscall @%06x\n", dctoEx.pc.to_int());
         #endif
         }
         else
         {
-            debug("Accessing CSR @%03x  @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
-            fprintf(stderr, "Accessing CSR @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
             switch(dctoEx.funct3)   // dataa is from rs1, datab is from csr
-            {
+            {   // case 0: mret instruction, dctoEx.memValue should be 0x302
             case RISCV_SYSTEM_CSRRW:
                 extoMem.datac = dctoEx.dataa;       // written back to csr
+                fprintf(stderr, "CSRRW @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             case RISCV_SYSTEM_CSRRS:
                 extoMem.datac = dctoEx.dataa | dctoEx.datab;
+                fprintf(stderr, "CSRRS @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             case RISCV_SYSTEM_CSRRC:
                 extoMem.datac = ((ac_int<32, false>)~dctoEx.dataa) & dctoEx.datab;
+                fprintf(stderr, "CSRRC @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             case RISCV_SYSTEM_CSRRWI:
                 extoMem.datac = dctoEx.rs1;
+                fprintf(stderr, "CSRRWI @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             case RISCV_SYSTEM_CSRRSI:
                 extoMem.datac = dctoEx.rs1 | dctoEx.datab;
+                fprintf(stderr, "CSRRSI @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             case RISCV_SYSTEM_CSRRCI:
                 extoMem.datac = ((ac_int<32, false>)~dctoEx.rs1) & dctoEx.datab;
+                fprintf(stderr, "CSRRCI @%03x    @%06x\n", dctoEx.memValue.to_int(), dctoEx.pc.to_int());
                 break;
             EXDEFAULT();
             }
@@ -881,6 +886,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csr
 
     if(memtoWB.rs1 && memtoWB.csrwb)     // condition should be more precise
     {
+        fprintf(stderr, "Writing %08x in CSR @%03x   @%06x\n", memtoWB.rescsr.to_int(), memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
         switch(memtoWB.CSRid)
         {
         case RISCV_CSR_MSTATUS:
@@ -980,7 +986,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csr
 
 void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
         #ifndef __SYNTHESIS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, GenericSimulator* syscall
+            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif
             )
 {
@@ -1058,7 +1064,9 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
         extoMem.instruction = extoMem.opCode = 0x13;
         dctoEx.instruction = dctoEx.opCode = 0x13;
         ftoDC.instruction = 0x13;
-        REG[2] = 0xf0000;
+        REG[2] = STACK_INIT;
+
+        simul(sim->setCore(REG, &dctrl, ddata));
     }
 
     /// Instruction cache
@@ -1109,7 +1117,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     {
         Ex(dctoEx, extoMem, ex_bubble, mem_bubble
    #ifndef __SYNTHESIS__
-           , syscall
+           , sim
    #endif
            );
         DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble, csrs);

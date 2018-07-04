@@ -1,10 +1,3 @@
-/*
- * genericSimulator.cpp
- *
- *  Created on: 25 avr. 2017
- *      Author: simon
- */
-
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,76 +5,201 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <syscalls.h>
 
-#include "portability.h"
+#include "simulator.h"
 
+Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile)
+{
+    ins_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
+    data_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
+    for(int i(0); i < N; i++)
+    {
+        ins_memory[i] = 0;
+        data_memory[i] = 0;
+    }
+    heapAddress = 0;
+    input = output = 0;
 
-void GenericSimulator::initialize(int argc, char** argv){
+    if(inputFile)
+        input = fopen(inputFile, "rb");
+    if(outputFile)
+        output = fopen(outputFile, "wb");
 
-
-    profilingStarts[0] = 0;
-    profilingStarts[1] = 0;
-    profilingStarts[2] = 0;
-
-    profilingDomains[0] = 0;
-    profilingDomains[1] = 0;
-    profilingDomains[2] = 0;
-    cycle = 0;
-
-    //We initialize registers
-    for (int oneReg = 0; oneReg < 32; oneReg++)
-        REG[oneReg] = 0;
-    REG[2] = 0x70000000;
-
-    /******************************************************
-     * Argument passing:
-     * In this part of the initialization code, we will copy argc and argv into the simulator stack memory.
-     *
-     ******************************************************/
-
-    ac_int<32, true> currentPlaceStrings = REG[2] + 8 + 8*argc;
-
-    this->std(REG[2], argc);
-    for (int oneArg = 0; oneArg<argc; oneArg++){
-        this->std(REG[2] + 8*oneArg + 8, currentPlaceStrings);
-
-
-        int oneCharIndex = 0;
-        char oneChar = argv[oneArg][oneCharIndex];
-        while (oneChar != 0){
-            this->stb(currentPlaceStrings + oneCharIndex, oneChar);
-            oneCharIndex++;
-            oneChar = argv[oneArg][oneCharIndex];
+    ElfFile elfFile(binaryFile);
+    int counter = 0;
+    for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
+    {
+        ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
+        if(oneSection->address != 0 && strncmp(oneSection->getName().c_str(), ".text", 5))
+        {
+            //If the address is not null we place its content into memory
+            unsigned char* sectionContent = oneSection->getSectionCode();
+            for (unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
+            {
+                counter++;
+                setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
+            }
+            coredebug("filling data from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
         }
-        this->stb(currentPlaceStrings + oneCharIndex, oneChar);
-        oneCharIndex++;
-        currentPlaceStrings += oneCharIndex;
 
+        if(!strncmp(oneSection->getName().c_str(), ".text", 5))
+        {
+            unsigned char* sectionContent = oneSection->getSectionCode();
+            for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
+            {
+                setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
+            }
+            coredebug("filling instruction from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
+        }
     }
 
+    for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++)
+    {
+        ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
+        const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
+        if (strcmp(name, "_start") == 0)
+        {
+            fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
+            setPC(symbol->offset);
+        }
+    }
+
+    fillMemory();
 }
 
-void GenericSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value){
-    ac_int<32, false> mem = memory[addr >> 2];
+Simulator::~Simulator()
+{
+    free(ins_memory);
+    free(data_memory);
+
+    if(input)
+        fclose(input);
+    if(output)
+        fclose(output);
+}
+
+void Simulator::fillMemory()
+{
+    //Check whether data memory and instruction memory from program will actually fit in processor.
+    //cout << ins_memorymap.size()<<endl;
+
+    if(ins_memorymap.size() / 4 > N)
+    {
+        printf("Error! Instruction memory size exceeded");
+        exit(-1);
+    }
+    if(data_memorymap.size() / 4 > N)
+    {
+        printf("Error! Data memory size exceeded");
+        exit(-1);
+    }
+
+    //fill instruction memory
+    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
+    {
+        ins_memory[(it->first/4) % N].set_slc(((it->first)%4)*8,it->second);
+        //debug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % N, ((it->first)%4)*8, it->second);
+    }
+
+    //fill data memory
+    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = data_memorymap.begin(); it!=data_memorymap.end(); ++it)
+    {
+        //data_memory.set_byte((it->first/4)%N,it->second,it->first%4);
+        data_memory[(it->first%N)/4].set_slc(((it->first%N)%4)*8,it->second);
+    }
+}
+
+void Simulator::setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value)
+{
+    ins_memorymap[addr] = value;
+    if(addr > heapAddress)
+        heapAddress = addr;
+}
+
+void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, true> value)
+{
+    data_memorymap[addr] = value;
+    if(addr > heapAddress)
+        heapAddress = addr;
+}
+
+void Simulator::setDM(unsigned int *d)
+{
+    dm = d;
+}
+
+void Simulator::setIM(unsigned int *i)
+{
+    im = i;
+}
+
+void Simulator::setCore(ac_int<32, true> *r, DCacheControl* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
+{
+    reg = r;
+    dctrl = ctrl;
+    ddata = (unsigned int*)cachedata;
+}
+
+ac_int<32, true>* Simulator::getInstructionMemory() const
+{
+    return ins_memory;
+}
+
+ac_int<32, true>* Simulator::getDataMemory() const
+{
+    return data_memory;
+}
+
+void Simulator::setPC(ac_int<32, false> pc)
+{
+    this->pc = pc;
+}
+
+ac_int<32, false> Simulator::getPC() const
+{
+    return pc;
+}
+
+void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
+{
+#ifndef nocache     // if data is in the cache, we must write in the cache directly
+    int i = getSet(addr);
+    for(int j(0); j < Associativity; ++j)
+    {
+        if(dctrl->tag[i][j] == getTag(addr))
+        {
+            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+            formatwrite(addr, 0, mem, value);
+            ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
+            dctrl->dirty[i][j] = true;      // mark as dirty because we wrote it
+            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+        }
+    }
+#endif
+    // write in main memory as well
+    ac_int<32, false> mem = dm[addr >> 2];
     formatwrite(addr, 0, mem, value);
-    this->memory[addr >> 2] = mem;
-    //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int());
+    dm[addr >> 2] = mem;
+    //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int()&0xFF);
+
 }
 
-void GenericSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value){
+void Simulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
+{
     this->stb(addr+1, value.slc<8>(8));
     this->stb(addr+0, value.slc<8>(0));
 }
 
-void GenericSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value){
+void Simulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
+{
     this->stb(addr+3, value.slc<8>(24));
     this->stb(addr+2, value.slc<8>(16));
     this->stb(addr+1, value.slc<8>(8));
     this->stb(addr+0, value.slc<8>(0));
 }
 
-void GenericSimulator::std(ac_int<32, false> addr, ac_int<32, true> value){
+void Simulator::std(ac_int<32, false> addr, ac_int<32, true> value)
+{
     this->stb(addr+7, value.slc<8>(56));
     this->stb(addr+6, value.slc<8>(48));
     this->stb(addr+5, value.slc<8>(40));
@@ -93,16 +211,10 @@ void GenericSimulator::std(ac_int<32, false> addr, ac_int<32, true> value){
 }
 
 
-ac_int<8, true> GenericSimulator::ldb(ac_int<32, false> addr){
-
-    /*
-    ac_int<8, true> result = 0;
-    if (this->memory.find(addr) != this->memory.end())
-        result = this->memory[addr];
-    else
-        result= 0;*/
+ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
+{
     ac_int<8, true> result;
-    ac_int<32, false> read = memory[addr >> 2];
+    ac_int<32, false> read = dm[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
     //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), memory[addr >> 2]);
@@ -111,16 +223,16 @@ ac_int<8, true> GenericSimulator::ldb(ac_int<32, false> addr){
 
 
 //Little endian version
-ac_int<16, true> GenericSimulator::ldh(ac_int<32, false> addr){
-
+ac_int<16, true> Simulator::ldh(ac_int<32, false> addr)
+{
     ac_int<16, true> result = 0;
     result.set_slc(8, this->ldb(addr+1));
     result.set_slc(0, this->ldb(addr));
     return result;
 }
 
-ac_int<32, true> GenericSimulator::ldw(ac_int<32, false> addr){
-
+ac_int<32, true> Simulator::ldw(ac_int<32, false> addr)
+{
     ac_int<32, true> result = 0;
     result.set_slc(24, this->ldb(addr+3));
     result.set_slc(16, this->ldb(addr+2));
@@ -129,8 +241,8 @@ ac_int<32, true> GenericSimulator::ldw(ac_int<32, false> addr){
     return result;
 }
 
-ac_int<32, true> GenericSimulator::ldd(ac_int<32, false> addr){
-
+ac_int<32, true> Simulator::ldd(ac_int<32, false> addr)
+{
     ac_int<32, true> result = 0;
     result.set_slc(56, this->ldb(addr+7));
     result.set_slc(48, this->ldb(addr+6));
@@ -148,12 +260,12 @@ ac_int<32, true> GenericSimulator::ldd(ac_int<32, false> addr){
 
 
 
-ac_int<32, true> GenericSimulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, ac_int<2, false> &sys_status){
+ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, ac_int<2, false> &sys_status)
+{
     ac_int<32, true> result = 0;
     switch (syscallId)
     {
     case SYS_exit:
-        stop = 1;
         sys_status = 1; //Currently we break on ECALL
         fprintf(stderr, "Syscall : SYS_exit\n");
         break;
@@ -318,7 +430,7 @@ ac_int<32, true> GenericSimulator::solveSyscall(ac_int<32, true> syscallId, ac_i
         sys_status = 2;
         break;
     default:
-        fprintf(stderr, "Syscall : Unknown system call, %x\n", syscallId.to_int());
+        fprintf(stderr, "Syscall : Unknown system call, %d\n", syscallId.to_int());
         sys_status = 2;
         break;
     }
@@ -326,36 +438,49 @@ ac_int<32, true> GenericSimulator::solveSyscall(ac_int<32, true> syscallId, ac_i
     return result;
 }
 
-ac_int<32, false> GenericSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size){
-    //printf("Doign read on file %x\n", file);
+ac_int<32, false> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+{
+    //fprintf(stderr, "Doing read on file %x\n", file);
 
     int localSize = size.slc<32>(0);
     char* localBuffer = (char*) malloc(localSize*sizeof(char));
     ac_int<32, false> result;
 
-    if (file == 0){
-        if (nbInStreams == 1)
-            result = fread(localBuffer, 1, size, inStreams[0]);
+    if (file == 0)
+    {
+        if(input)
+        {
+            fprintf(stderr, "Reading %d bytes on input file\n", size.to_int());
+            result = fread(localBuffer, 1, size, input);
+        }
         else
+        {
+            fprintf(stderr, "Reading %d bytes on stdin\n", size.to_int());
             result = fread(localBuffer, 1, size, stdin);
+        }
     }
-    else{
+    else
+    {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
         result = fread(localBuffer, 1, size, localFile);
         if (localFile == 0)
             return -1;
     }
 
-    for (int i=0; i<result; i++){
+    for (int i(0); i < result; i++)
+    {
         this->stb(bufferAddr + i, localBuffer[i]);
+        //fprintf(stderr, "%02x ", localBuffer[i]&0xFF);
     }
+    //fprintf(stderr, "\n\n");
 
     free(localBuffer);
     return result;
 }
 
 
-ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size){
+ac_int<32, false> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+{
     int localSize = size.slc<32>(0);
     char* localBuffer = (char*) malloc(localSize*sizeof(char)+1);
     for (int i=0; i<size; i++)
@@ -363,11 +488,13 @@ ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, f
     localBuffer[size] = 0;
 
     ac_int<32, false> result = 0;
-    if (file < 5){
-
-        int streamNB = (int) file-nbInStreams;
-        if (nbOutStreams + nbInStreams > file)
-            result = fwrite(localBuffer, 1, size, outStreams[streamNB]);
+    if (file < 5)
+    {
+        if (output)
+        {
+            fprintf(stderr, "Writing %d bytes to output file\n", size.to_int());
+            result = fwrite(localBuffer, 1, size, output);
+        }
         else
         {
             result = fwrite(localBuffer, 1, size, stderr);
@@ -375,8 +502,8 @@ ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, f
         }
 
     }
-    else{
-
+    else
+    {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
         if (localFile == 0)
             result = -1;
@@ -389,10 +516,12 @@ ac_int<32, false> GenericSimulator::doWrite(ac_int<32, false> file, ac_int<32, f
 }
 
 
-ac_int<32, false> GenericSimulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode){
+ac_int<32, false> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+{
     int oneStringElement = this->ldb(path);
     int index = 0;
-    while (oneStringElement != 0){
+    while (oneStringElement != 0)
+    {
         index++;
         oneStringElement = this->ldb(path+index);
     }
@@ -412,7 +541,8 @@ ac_int<32, false> GenericSimulator::doOpen(ac_int<32, false> path, ac_int<32, fa
         localMode = "a";
     else if (flags == O_WRONLY|O_CREAT|O_EXCL)
         localMode = "wx";
-    else{
+    else
+    {
         fprintf(stderr, "Trying to open files with unknown flags... %d\n", flags);
         exit(-1);
     }
@@ -436,13 +566,17 @@ ac_int<32, false> GenericSimulator::doOpen(ac_int<32, false> path, ac_int<32, fa
 
 }
 
-ac_int<32, false> GenericSimulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode){
+ac_int<32, false> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+{
     fprintf(stderr, "Syscall openat not implemented yet...\n");
     exit(-1);
 }
 
-ac_int<32, false> GenericSimulator::doClose(ac_int<32, false> file){
-    if (file > 2 ){
+ac_int<32, false> Simulator::doClose(ac_int<32, false> file)
+{
+    fprintf(stderr, "Closing %d\n", file.to_int());
+    if (file > 2 )
+    {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
         int result = fclose(localFile);
         return result;
@@ -451,8 +585,10 @@ ac_int<32, false> GenericSimulator::doClose(ac_int<32, false> file){
         return 0;
 }
 
-ac_int<32, true> GenericSimulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir){
-    if (file>2){
+ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
+{
+    if (file>2)
+    {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
         if (localFile == 0)
             return -1;
@@ -463,11 +599,12 @@ ac_int<32, true> GenericSimulator::doLseek(ac_int<32, false> file, ac_int<32, fa
         return 0;
 }
 
-ac_int<32, false> GenericSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> ptr){
-
+ac_int<32, false> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false> ptr)
+{
     int oneStringElement = this->ldb(filename);
     int index = 0;
-    while (oneStringElement != 0){
+    while (oneStringElement != 0)
+    {
         index++;
         oneStringElement = this->ldb(filename+index);
     }
@@ -489,18 +626,28 @@ ac_int<32, false> GenericSimulator::doStat(ac_int<32, false> filename, ac_int<32
     return result;
 }
 
-ac_int<32, false> GenericSimulator::doSbrk(ac_int<32, false> value){
-    fprintf(stderr, "sbrk : %d\n", value.to_int());
-    if (value == 0){
+ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
+{
+    fprintf(stderr, "sbrk : %d -> %d (%d)\n", heapAddress, value.to_int(), abs(value.to_int()-(int)heapAddress));
+    if (value == 0)
+    {
         return this->heapAddress;
     }
-    else {
+    else
+    {
         this->heapAddress = value;
         return value;
     }
+
+    if(reg[2] < heapAddress)
+    {
+        fprintf(stderr, "Stack and heap overlaps !!\n");
+        assert(reg[2] > heapAddress && "Stack and heap overlaps !!\n");
+    }
 }
 
-ac_int<32, false> GenericSimulator::doGettimeofday(ac_int<32, false> timeValPtr){
+ac_int<32, false> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
+{
     timeval* oneTimeVal;
     struct timezone* oneTimeZone;
     int result = gettimeofday(oneTimeVal, oneTimeZone);
@@ -509,14 +656,14 @@ ac_int<32, false> GenericSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
 //    this->std(timeValPtr+8, oneTimeVal->tv_usec);
 
     return result;
-
-
 }
 
-ac_int<32, false> GenericSimulator::doUnlink(ac_int<32, false> path){
+ac_int<32, false> Simulator::doUnlink(ac_int<32, false> path)
+{
     int oneStringElement = this->ldb(path);
     int index = 0;
-    while (oneStringElement != 0){
+    while (oneStringElement != 0)
+    {
         index++;
         oneStringElement = this->ldb(path+index);
     }
@@ -533,5 +680,4 @@ ac_int<32, false> GenericSimulator::doUnlink(ac_int<32, false> path){
     free(localPath);
 
     return result;
-
 }

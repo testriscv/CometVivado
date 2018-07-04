@@ -56,6 +56,7 @@
 #define DRAM_SIZE   (1 << 20)
 
 #define N           DRAM_SIZE
+#define STACK_INIT  (N-0x1000)
 
 #ifndef MEMORY_READ_LATENCY
 #define MEMORY_READ_LATENCY     5
