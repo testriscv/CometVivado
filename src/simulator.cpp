@@ -497,6 +497,7 @@ ac_int<32, false> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bu
     else
     {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
+        fprintf(stderr, "Reading %d bytes on localfile %lld\n", size.to_int(), (long long)localFile);
         result = fread(localBuffer, 1, size, localFile);
         if (localFile == 0)
             return -1;
@@ -532,6 +533,7 @@ ac_int<32, false> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> b
         }
         else
         {
+            fprintf(stderr, "Writing %d bytes to stdout\n", size.to_int());
             result = fwrite(localBuffer, 1, size, stderr);
             //fprintf(stderr, "Write %d bytes : %s\nResult : %d\n", size.to_int(), localBuffer, result.to_int());
         }
@@ -544,6 +546,7 @@ ac_int<32, false> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> b
             result = -1;
         else
             result = fwrite(localBuffer, 1, size, localFile);
+        fprintf(stderr, "Writing %d bytes to localfile %lld\n", size.to_int(), (long long)localFile);
     }
 
     free(localBuffer);
@@ -563,7 +566,7 @@ ac_int<32, false> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fl
 
     int pathSize = index+1;
 
-    char* localPath = (char*) malloc(pathSize*sizeof(char));
+    char* localPath = (char*) malloc(pathSize*sizeof(char)+1);
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(path + i);
 
@@ -585,6 +588,16 @@ ac_int<32, false> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fl
     FILE* test = fopen(localPath, localMode);
     unsigned long long result = (unsigned long long) test;
     ac_int<32, true> result_ac = result;
+    if(test == 0)
+    {
+        fprintf(stderr, "Could not open %s with mode %s, reason : ", localPath, localMode);
+        perror("");
+        exit(-1);
+    }
+    else
+    {
+        fprintf(stderr, "Opening %s with mode %s as file %lld\n", localPath, localMode, (long long)test);
+    }
 
     //For some reasons, newlib only store last 16 bits of this pointer, we will then compute a hash and return that.
     //The real pointer is stored here in a hashmap
@@ -609,15 +622,18 @@ ac_int<32, false> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> p
 
 ac_int<32, false> Simulator::doClose(ac_int<32, false> file)
 {
-    fprintf(stderr, "Closing %d\n", file.to_int());
     if (file > 2 )
     {
         FILE* localFile = this->fileMap[file.slc<16>(0)];
         int result = fclose(localFile);
+        fprintf(stderr, "Closing localfile %lld\n", (long long)localFile);
         return result;
     }
     else
+    {
+        fprintf(stderr, "Closing %d\n", file.to_int());
         return 0;
+    }
 }
 
 ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
