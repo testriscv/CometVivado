@@ -1067,45 +1067,45 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     static int readvalue = 0;
     static bool datavalid = false;
 
-    simul(uint64_t oldcycles = csrs.mcycle);
+    simul(uint64_t oldcycles = core.csrs.mcycle);
 
-    doWB(REG, memtoWB, early_exit, csrs);
-    simul(coredebug("%d ", csrs.mcycle.to_int64());
+    doWB(core.REG, core.memtoWB, core.early_exit, core.csrs);
+    simul(coredebug("%d ", core.csrs.mcycle.to_int64());
     for(int i=0; i<32; i++)
     {
-        if(REG[i])
-            coredebug("%d:%08x ", i, (int)REG[i]);
+        if(core.REG[i])
+            coredebug("%d:%08x ", i, (int)core.REG[i]);
     }
     )
     coredebug("\n");
 
-    do_Mem(extoMem, memtoWB, mem_lock, mem_bubble, cachelock,                // internal core control
+    do_Mem(core.extoMem, core.memtoWB, core.mem_lock, core.mem_bubble, core.cachelock,                // internal core control
            daddress, datasize, signenable, dcacheenable, writeenable, writevalue,       // control & data to cache
            readvalue, datavalid, dm                                                     // data & acknowledgment from cache
        #ifndef __SYNTHESIS__
-           , csrs.mcycle
+           , core.csrs.mcycle
        #endif
            );
 
 #ifndef nocache
     dcache(dctrl, dm, ddata, daddress, datasize, signenable, dcacheenable, writeenable, writevalue, readvalue, datavalid
        #ifndef __SYNTHESIS__
-           , csrs.mcycle
+           , core.csrs.mcycle
        #endif
            );
 #endif
 
-    if(!cachelock)
+    if(!core.cachelock)
     {
-        Ex(dctoEx, extoMem, ex_bubble, mem_bubble
+        Ex(core.dctoEx, core.extoMem, core.ex_bubble, core.mem_bubble
    #ifndef __SYNTHESIS__
            , sim
    #endif
            );
-        DC(REG, ftoDC, extoMem, memtoWB, dctoEx, prev_opCode, prev_pc, mem_lock, freeze_fetch, ex_bubble, csrs);
-        Ft(pc, freeze_fetch, extoMem, ftoDC, mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
+        DC(core.REG, core.ftoDC, core.extoMem, core.memtoWB, core.dctoEx, core.prev_opCode, core.prev_pc, core.mem_lock, core.freeze_fetch, core.ex_bubble, core.csrs);
+        Ft(core.pc, core.freeze_fetch, core.extoMem, core.ftoDC, core.mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
    #ifndef __SYNTHESIS__
-          , csrs.mcycle
+          , core.csrs.mcycle
    #endif
           );
     }
@@ -1114,29 +1114,29 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 #ifndef nocache
     icache(ictrl, ins_memory, idata, iaddress, cachepc, instruction, insvalid
        #ifndef __SYNTHESIS__
-           , csrs.mcycle
+           , core.csrs.mcycle
        #endif
            );
 #endif
 
-    csrs.mcycle++;
+    core.csrs.mcycle++;
 
     simul(
     int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
-    if(oldcycles + M < csrs.mcycle)
+    if(oldcycles + M < core.csrs.mcycle)
     {
-        csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
+        core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
     }
-    c = csrs.mcycle;
-    numins = csrs.minstret;
+    c = core.csrs.mcycle;
+    numins = core.csrs.minstret;
     )
 
 
     // riscv specification v2.2 p11
-    assert((pc.to_int() & 3) == 0 && "An instruction address misaligned exception is generated on a taken branch or unconditional jump if the target address is not four-byte aligned.");
+    assert((core.pc.to_int() & 3) == 0 && "An instruction address misaligned exception is generated on a taken branch or unconditional jump if the target address is not four-byte aligned.");
 
     simul(
-    if(early_exit)
+    if(core.early_exit)
     {
         exit = true;
     }
