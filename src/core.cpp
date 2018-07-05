@@ -994,6 +994,11 @@ void coreinit(Core& core, ac_int<32, false> startpc)
     core.dctoEx.instruction = core.dctoEx.opCode = 0x13;
     core.ftoDC.instruction = 0x13;
     core.REG[2] = STACK_INIT;
+
+#if Policy == RANDOM
+    core.dctrl.policy = 0xF2D4B698;
+    core.ictrl.policy = 0xF2D4B698;
+#endif
 }
 
 void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
@@ -1002,70 +1007,45 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
         #endif
             )
 {
-    static ICacheControl ictrl = {0};
-    static unsigned int idata[Sets][Blocksize][Associativity] = {0};
+    static Core core = {0};
+
 #ifdef __SYNTHESIS__
-    static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)idata, Sets*Associativity*Blocksize);
+    static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.idata, Sets*Associativity*Blocksize);
     (void)idummy;
-    static bool itaginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)ictrl.tag, Sets*Associativity);
+    static bool itaginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)core.ictrl.tag, Sets*Associativity);
     (void)itaginit;
-    static bool ivalinit = ac::init_array<AC_VAL_0>((bool*)ictrl.valid, Sets*Associativity);
+    static bool ivalinit = ac::init_array<AC_VAL_0>((bool*)core.ictrl.valid, Sets*Associativity);
     (void)ivalinit;
-#endif
-    static DCacheControl dctrl = {0};
-    static unsigned int ddata[Sets][Blocksize][Associativity] = {0};
-#ifdef __SYNTHESIS__
-    static bool dummy = ac::init_array<AC_VAL_DC>((unsigned int*)ddata, Sets*Associativity*Blocksize);
+
+    static bool dummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.ddata, Sets*Associativity*Blocksize);
     (void)dummy;
-    static bool taginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)dctrl.tag, Sets*Associativity);
+    static bool taginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)core.dctrl.tag, Sets*Associativity);
     (void)taginit;
-    static bool dirinit = ac::init_array<AC_VAL_DC>((bool*)dctrl.dirty, Sets*Associativity);
+    static bool dirinit = ac::init_array<AC_VAL_DC>((bool*)core.dctrl.dirty, Sets*Associativity);
     (void)dirinit;
-    static bool valinit = ac::init_array<AC_VAL_0>((bool*)dctrl.valid, Sets*Associativity);
+    static bool valinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.valid, Sets*Associativity);
     (void)valinit;
 #if Policy == FIFO
-    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)dctrl.policy, Sets);
+    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.dctrl.policy, Sets);
     (void)dpolinit;
-    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)ictrl.policy, Sets);
+    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
 #elif Policy == LRU
-    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)dctrl.policy, Sets);
+    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.dctrl.policy, Sets);
     (void)dpolinit;
-    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)ictrl.policy, Sets);
+    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
-#elif Policy == RANDOM
-    static bool rndinit = false;
-    if(!rndinit)
-    {
-        rndinit = true;
-        dctrl.policy = 0xF2D4B698;
-        ictrl.policy = 0xF2D4B698;
-    }
 #endif
 #endif  // __SYNTHESIS__
-    static Core core = {0};
+
     if(!core.init)
     {
         coreinit(core, startpc);
 
-        simul(sim->setCore(core.REG, &dctrl, ddata));
+        simul(sim->setCore(core.REG, &core.dctrl, core.ddata));
     }
 
-    /// Instruction cache
-    static ac_int<32, false> iaddress = 0;
-    static ac_int<32, false> cachepc = 0;
-    static int instruction = 0;
-    static bool insvalid = false;
 
-    /// Data cache
-    static ac_int<32, false> daddress = 0;
-    static ac_int<2, false> datasize = 0;
-    static bool signenable = false;
-    static bool dcacheenable = false;
-    static bool writeenable = false;
-    static int writevalue = 0;
-    static int readvalue = 0;
-    static bool datavalid = false;
 
     simul(uint64_t oldcycles = core.csrs.mcycle);
 
@@ -1080,15 +1060,16 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     coredebug("\n");
 
     do_Mem(core.extoMem, core.memtoWB, core.mem_lock, core.mem_bubble, core.cachelock,                // internal core control
-           daddress, datasize, signenable, dcacheenable, writeenable, writevalue,       // control & data to cache
-           readvalue, datavalid, dm                                                     // data & acknowledgment from cache
+           core.daddress, core.datasize, core.signenable, core.dcacheenable, core.writeenable, core.writevalue,       // control & data to cache
+           core.readvalue, core.datavalid, dm                                                     // data & acknowledgment from cache
        #ifndef __SYNTHESIS__
            , core.csrs.mcycle
        #endif
            );
 
 #ifndef nocache
-    dcache(dctrl, dm, ddata, daddress, datasize, signenable, dcacheenable, writeenable, writevalue, readvalue, datavalid
+    dcache(core.dctrl, dm, core.ddata, core.daddress, core.datasize, core.signenable, core.dcacheenable,
+           core.writeenable, core.writevalue, core.readvalue, core.datavalid
        #ifndef __SYNTHESIS__
            , core.csrs.mcycle
        #endif
@@ -1103,7 +1084,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
    #endif
            );
         DC(core.REG, core.ftoDC, core.extoMem, core.memtoWB, core.dctoEx, core.prev_opCode, core.prev_pc, core.mem_lock, core.freeze_fetch, core.ex_bubble, core.csrs);
-        Ft(core.pc, core.freeze_fetch, core.extoMem, core.ftoDC, core.mem_lock, iaddress, cachepc, instruction, insvalid, ins_memory
+        Ft(core.pc, core.freeze_fetch, core.extoMem, core.ftoDC, core.mem_lock, core.iaddress, core.cachepc, core.instruction, core.insvalid, ins_memory
    #ifndef __SYNTHESIS__
           , core.csrs.mcycle
    #endif
@@ -1112,7 +1093,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
     // icache is outside because it can still continues fetching
 #ifndef nocache
-    icache(ictrl, ins_memory, idata, iaddress, cachepc, instruction, insvalid
+    icache(core.ictrl, ins_memory, core.idata, core.iaddress, core.cachepc, core.instruction, core.insvalid
        #ifndef __SYNTHESIS__
            , core.csrs.mcycle
        #endif
@@ -1144,9 +1125,9 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
         //cache write back for simulation
         for(unsigned int i  = 0; i < Sets; ++i)
             for(unsigned int j = 0; j < Associativity; ++j)
-                if(dctrl.dirty[i][j] && dctrl.valid[i][j])
+                if(core.dctrl.dirty[i][j] && core.dctrl.valid[i][j])
                     for(unsigned int k = 0; k < Blocksize; ++k)
-                        dm[(dctrl.tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = ddata[i][k][j];
+                        dm[(core.dctrl.tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = core.ddata[i][k][j];
     #endif
     )
 }

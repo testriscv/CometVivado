@@ -104,6 +104,26 @@ struct Core
     bool cachelock;
     ac_int<32, false> pc;
     bool init;
+
+    /// Instruction cache
+    ICacheControl ictrl;
+    unsigned int idata[Sets][Blocksize][Associativity];
+    ac_int<32, false> iaddress;
+    ac_int<32, false> cachepc;
+    int instruction;
+    bool insvalid;
+
+    /// Data cache
+    DCacheControl dctrl;
+    unsigned int ddata[Sets][Blocksize][Associativity];
+    ac_int<32, false> daddress;
+    ac_int<2, false> datasize;
+    bool signenable;
+    bool dcacheenable;
+    bool writeenable;
+    int writevalue;
+    int readvalue;
+    bool datavalid;
 };
 
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[N], unsigned int dm[N], bool &exit
