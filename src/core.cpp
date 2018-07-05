@@ -27,7 +27,7 @@ void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, tru
             #endif
                )
 {
-    ac_int<32, false> wrapped_address = address % N;
+    ac_int<32, false> wrapped_address = address % (4*N);
     ac_int<32, false> location = wrapped_address >> 2;
     ac_int<32, false> memory_val = memory[location];
     simul(cycles += MEMORY_READ_LATENCY);
@@ -43,7 +43,7 @@ ac_int<32, true> memoryGet(unsigned int memory[N], ac_int<32, false> address, ac
                        #endif
                            )
 {
-    ac_int<32, false> wrapped_address = address % N;
+    ac_int<32, false> wrapped_address = address % (4*N);
     ac_int<32, false> location = wrapped_address >> 2;
     ac_int<32, false> mem_read = memory[location];
     simul(cycles += MEMORY_READ_LATENCY);
@@ -106,11 +106,11 @@ void Ft(ac_int<32, false>& pc, bool freeze_fetch, ExtoMem extoMem, FtoDC& ftoDC,
             ftoDC.pc = pc;
             if(control)
             {
-                pc = jump_pc % N;
+                pc = jump_pc % (4*N);
             }
             else
             {
-                pc = next_pc % N;
+                pc = next_pc % (4*N);
             }
             debug("%06x\n", pc.to_int());
         }
@@ -132,7 +132,7 @@ void Ft(ac_int<32, false>& pc, bool freeze_fetch, ExtoMem extoMem, FtoDC& ftoDC,
             // if there's a jump at the same time of a miss, update to jump_pc
             else if(control)
             {
-                pc = jump_pc % N;
+                pc = jump_pc % (4*N);
                 debug("Jumping & ");
             }
             debug("Requesting @%06x\n", pc.to_int());
@@ -813,7 +813,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                     break;
                 }
 #ifndef nocache
-                address = memtoWB.result % N;
+                address = memtoWB.result % (4*N);
                 signenable = sign;
                 cacheenable = true;
                 writeenable = false;
@@ -843,7 +843,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                     break;
                 }
 #ifndef nocache
-                address = memtoWB.result % N;
+                address = memtoWB.result % (4*N);
                 signenable = false;
                 cacheenable = true;
                 writeenable = true;

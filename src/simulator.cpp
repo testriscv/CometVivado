@@ -8,7 +8,7 @@
 
 #include "simulator.h"
 
-Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile)
+Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
 {
     ins_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
     data_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
@@ -64,7 +64,42 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         }
     }
 
+    unsigned int heap = heapAddress;    // keep heap where it is because it will be set over stackpointer
+
+    setDataMemory(STACK_INIT, benchargc & 0xFF);
+    setDataMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
+    setDataMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
+    setDataMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
+    //fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
+
+    ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
+    for (int oneArg = 0; oneArg < benchargc; oneArg++)
+    {
+        setDataMemory(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
+        setDataMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
+        setDataMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
+        setDataMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
+        //fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
+
+        int oneCharIndex = 0;
+        char oneChar = benchargv[oneArg][oneCharIndex];
+        while (oneChar != 0)
+        {
+            setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+
+            //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
+
+            oneCharIndex++;
+            oneChar = benchargv[oneArg][oneCharIndex];
+        }
+        setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+        //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
+        oneCharIndex++;
+        currentPlaceStrings += oneCharIndex;
+    }
+
     fillMemory();
+    heapAddress = heap;
 }
 
 Simulator::~Simulator()
@@ -105,7 +140,7 @@ void Simulator::fillMemory()
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = data_memorymap.begin(); it!=data_memorymap.end(); ++it)
     {
         //data_memory.set_byte((it->first/4)%N,it->second,it->first%4);
-        data_memory[(it->first%N)/4].set_slc(((it->first%N)%4)*8,it->second);
+        data_memory[(it->first/4)%N].set_slc(((it->first%N)%4)*8,it->second);
     }
 }
 
@@ -629,14 +664,15 @@ ac_int<32, false> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false
 ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
 {
     fprintf(stderr, "sbrk : %d -> %d (%d)\n", heapAddress, value.to_int(), abs(value.to_int()-(int)heapAddress));
+    ac_int<32, false> result;
     if (value == 0)
     {
-        return this->heapAddress;
+        result = heapAddress;
     }
     else
     {
         this->heapAddress = value;
-        return value;
+        result = value;
     }
 
     if(reg[2] < heapAddress)
@@ -644,6 +680,7 @@ ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
         fprintf(stderr, "Stack and heap overlaps !!\n");
         assert(reg[2] > heapAddress && "Stack and heap overlaps !!\n");
     }
+    return result;
 }
 
 ac_int<32, false> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)

@@ -76,7 +76,7 @@ CCS_MAIN(int argc, char** argv)
     fprintf(stderr, "Simulating %s\n", binaryFile);
     std::cout << "Simulating " << binaryFile << std::endl;
 
-    Simulator sim(binaryFile, inputFile, outputFile);
+    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
 
     unsigned int* dm = new unsigned int[N];
     unsigned int* im = new unsigned int[N];
@@ -88,36 +88,6 @@ CCS_MAIN(int argc, char** argv)
 
     sim.setDM(dm);
     sim.setIM(im);
-
-    dm[STACK_INIT] = benchargc;
-    //fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
-
-    ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
-    for (int oneArg = 0; oneArg < benchargc; oneArg++)
-    {
-        dm[STACK_INIT+ 4*oneArg + 4] = currentPlaceStrings;
-        //fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
-
-        int oneCharIndex = 0;
-        char oneChar = benchargv[oneArg][oneCharIndex];
-        while (oneChar != 0){
-            ac_int<32, false> mem = dm[currentPlaceStrings + oneCharIndex];
-            formatwrite(currentPlaceStrings + oneCharIndex, 0, mem, oneChar);
-            dm[currentPlaceStrings + oneCharIndex] = mem;
-
-            //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
-
-            oneCharIndex++;
-            oneChar = benchargv[oneArg][oneCharIndex];
-
-        }
-        ac_int<32, false> mem = dm[currentPlaceStrings + oneCharIndex];
-        formatwrite(currentPlaceStrings + oneCharIndex, 0, mem, oneChar);
-        dm[currentPlaceStrings + oneCharIndex] = mem;
-        //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
-        oneCharIndex++;
-        currentPlaceStrings += oneCharIndex;
-    }
 
     coredebug("instruction memory :\n");
     for(int i = 0; i < N; i++)

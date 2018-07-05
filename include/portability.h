@@ -53,10 +53,10 @@
 #endif
 
 #define DRAM_WIDTH  32
-#define DRAM_SIZE   (1 << 20)
+#define DRAM_SIZE   (1 << 20)       // 1 048 576
 
 #define N           DRAM_SIZE
-#define STACK_INIT  (N-0x1000)
+#define STACK_INIT  (4*N-0x1000)
 
 #ifndef MEMORY_READ_LATENCY
 #define MEMORY_READ_LATENCY     5

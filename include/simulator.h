@@ -35,7 +35,7 @@ private:
     unsigned int* ddata; //[Sets][Blocksize][Associativity];
 
 public:
-    Simulator(const char* binaryFile, const char* inputFile, const char* outputFile);
+    Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int argc, char** argv);
     ~Simulator();
 
     void fillMemory();
