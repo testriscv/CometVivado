@@ -124,7 +124,7 @@ go libraries
 
 genCore = """directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly
-directive set /doStep/core/REG:rsc -MAP_TO_MODULE {{[Register]}}
+directive set /doStep/core/core.REG:rsc -MAP_TO_MODULE {{[Register]}}
 directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
 directive set /doStep/core -CLOCK_OVERHEAD 0.0
 directive set /doStep/core/idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
