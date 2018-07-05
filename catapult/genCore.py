@@ -66,7 +66,7 @@ flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
 solution file add ../src/reformeddm_sim.cpp -type C++
 solution file add ../src/cache.cpp -type C++
-solution file add ../src/syscalls.cpp -type C++
+solution file add ../src/simulator.cpp -type C++
 solution file add ../src/elfFile.cpp -type C++
 solution file add ../src/portability.cpp -type C++
 go new
