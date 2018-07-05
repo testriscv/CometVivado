@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import os, subprocess, sys, argparse
-import random, string, struct
+import random, string, struct, re
 
 class Boundaries:
 	"""Class to represents discontinuous set.
@@ -145,8 +145,6 @@ def readpreambule(fichier, prog):
 	while not line.startswith("filling"):
 		line = fichier.readline()
 		lues.append(line)
-	# ~ assert lues[0].split('/')[-1][:-1] == prog, "Wrong matching with "\
-	# ~ "program's name : {}".format(prog)
 	ibound = Boundaries()
 	dbound = Boundaries()
 	while line.startswith("filling"):
@@ -159,16 +157,14 @@ def readpreambule(fichier, prog):
 			assert False, "{} line {} : {} Neither data or instruction found in preamble"\
 			.format(prog, i, line)
 		line = fichier.readline()
-		lues.append(line)
 		i += 1
 	
 	assert line == "instruction memory :\n", "{} line {} : {} Expected instruction memory"\
 			.format(prog, i, line)
 	
 	line = fichier.readline()
-	lues.append(line)
 	i += 1
-	N = 2**20
+	N = 2**22
 	imem = [0] * N
 	while not line.startswith("data"):
 		l = line.split()
@@ -176,14 +172,12 @@ def readpreambule(fichier, prog):
 		val = int(l[2], 16)
 		imem[ad] = val
 		line = fichier.readline()
-		lues.append(line)
 		i += 1
 	
 	assert line == "data memory :\n", "{} line {} : {} Expected data memory"\
 			.format(prog, i, line)
 			
 	line = fichier.readline()
-	lues.append(line)
 	i += 1
 	dmem = [(0, False)] * N
 	while not line.startswith("end"):
@@ -192,7 +186,6 @@ def readpreambule(fichier, prog):
 		val = int(l[2], 16)
 		dmem[ad] = (val, False)
 		line = fichier.readline()
-		lues.append(line)
 		i += 1
 	
 	return imem, dmem, ibound, dbound, i, pipe
@@ -205,7 +198,7 @@ def parsefile(fichier, prog, cache=True):
 		fichier = fichier.stdout
 	
 	reg = [0] * 32
-	reg[2] = 0x000F0000
+	reg[2] = 0x003FF000
 	global ipath, dpath, rpath
 	rpath = [[0]*32]
 	ipath = list()	
@@ -232,7 +225,6 @@ def parsefile(fichier, prog, cache=True):
 
 	try:
 		for line in fichier:
-			lues.append(line)
 			i += 1
 			if line.startswith("W"):		# WriteBack
 				l = line.split()
@@ -248,17 +240,16 @@ def parsefile(fichier, prog, cache=True):
 						
 					if ipath[-1][0] != ad:
 						line = fichier.readline()
-						lues.append(line)
 						i += 1
 						l = line.split()
 						changed = False
-						r = [0]*32
+						# ~ r = [0]*32
 						for tmp in l[1:]:
 							foo = tmp.split(':')
 							idx = int(foo[0])
 							val = int(foo[1], 16)
 							
-							r[idx] = val
+							# ~ r[idx] = val
 							
 							if reg[idx] != val:
 								assert changed == False, "{} line {}: {} Multiple registers "\
@@ -267,7 +258,7 @@ def parsefile(fichier, prog, cache=True):
 								reg[idx] = val
 								changed = True
 								
-						rpath.append(r)
+						# ~ rpath.append(r)
 						if not changed:
 							ipath.append((ad, 0, 0))
 							
@@ -389,6 +380,7 @@ def parsefile(fichier, prog, cache=True):
 				
 			elif line.startswith("Su"):
 				l = line.split()
+				lues.append(line)
 				cycles = " ".join(l[-2:])
 				cycles = int(cycles.split()[0])
 				break
@@ -400,11 +392,9 @@ def parsefile(fichier, prog, cache=True):
 	print("{} done {} instructions in {} cycles ({:.2f} CPI)".format(prog, numins, cycles, cpi))
 	
 	line = fichier.readline()
-	lues.append(line)
 	i += 1
 	assert line == "memory : \n"
 	for line in fichier:					# read end memory
-		lues.append(line)
 		i += 1
 		l = line.split()
 		ad = int(l[0], 16)
@@ -436,23 +426,33 @@ def checkoutput(name, cache):
 		return a
 		
 def parseall(cached):
+	global a, foo, p, progs
 	progs = os.listdir("benchmarks/build")
 	progs[:] = [p for p in progs if p.endswith(".riscv")]
 
+	
 	a = dict()
 	for p in progs:
-		if p.split('_')[0] not in a:
-			a[p.split('_')[0]] = [p]
+		if re.split(r'[_\.]', p)[0] not in a:
+			a[re.split(r'[_\.]', p)[0]] = [p]
 		else:
-			a[p.split('_')[0]].append(p)
+			a[re.split(r'[_\.]', p)[0]].append(p)
 	foo = list()
 	for l in a:
-		a[l].sort(key=lambda p: int(p.split('_')[2].split('.')[0]))
+		try:
+			a[l].sort(key=lambda p: int(p.split('_')[2].split('.')[0]))
+		except IndexError:
+			pass
 		foo.append(a[l])
 	
-	progs = [val for tup in zip(*foo) for val in tup]
-	del a, foo
-
+	M = max(len(p) for p in foo)
+	for p in foo:
+		if len(p) < M:
+			for i in range(M-len(p)):
+				p.append('')
+	
+	progs = [val for tup in zip(*foo) for val in tup if val]
+	del a, foo, M
 	
 	executable = "temp_"+''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 	subprocess.check_call(["cp", "comet.sim", executable])
@@ -461,7 +461,7 @@ def parseall(cached):
 	cpis = list()
 	for p in progs:	
 		try:
-			with subprocess.Popen(["./"+executable, "benchmarks/build/"+p], stdout=subprocess.PIPE, universal_newlines=True) as output:
+			with subprocess.Popen(["./"+executable, "-f", "benchmarks/build/"+p], stdout=subprocess.PIPE, universal_newlines=True) as output:
 				global dmem
 				ipath, dpath, rpath, imem, dmem, endmem, cycle, cpi = parsefile(output, p, cached)
 				
@@ -531,9 +531,6 @@ def parseall(cached):
 			
 		except BaseException as e:
 			subprocess.check_call(["rm", executable])
-			with open("traces/{}cache_{}.log".format("no" if not cached else "", p), "w") as dump:
-				print("Dumping to", dump.name)
-				dump.write("".join(line for line in lues))
 			raise e
 	try:
 		if not cached:
