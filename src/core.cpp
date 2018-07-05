@@ -984,6 +984,18 @@ void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csr
 
 }
 
+void coreinit(Core& core, ac_int<32, false> startpc)
+{
+    core.init = true;
+    core.pc = startpc;   // startpc - 4 ?
+
+    core.memtoWB.instruction = core.memtoWB.opCode = 0x13;
+    core.extoMem.instruction = core.extoMem.opCode = 0x13;
+    core.dctoEx.instruction = core.dctoEx.opCode = 0x13;
+    core.ftoDC.instruction = 0x13;
+    core.REG[2] = STACK_INIT;
+}
+
 void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
@@ -1031,42 +1043,12 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     }
 #endif
 #endif  // __SYNTHESIS__
-    static MemtoWB memtoWB = {0};
-    static ExtoMem extoMem = {0};
-    static DCtoEx dctoEx = {0}; // opCode = 0x13
-    static FtoDC ftoDC = {0};
-
-    static CSR csrs = {0};
-
-    static ac_int<32, true> REG[32] = {0};/*,0,0xf0000,0,0,0,0,0,   // 0xf0000 is stack address and so is the highest reachable address
-                                       0,0,0,0,0,0,0,0,         // we can put whatever needed value for the stack
-                                       0,0,0,0,0,0,0,0,
-                                       0,0,0,0,0,0,0,0};*/
-
-    static ac_int<7, false> prev_opCode = 0;
-    static ac_int<32, false> prev_pc = 0;
-
-    static ac_int<3, false> mem_lock = 0;
-    static bool early_exit = false;
-
-    static bool freeze_fetch = false;
-    static bool ex_bubble = false;
-    static bool mem_bubble = false;
-    static bool cachelock = false;
-    static ac_int<32, false> pc = 0;
-    static bool init = false;
-    if(!init)
+    static Core core = {0};
+    if(!core.init)
     {
-        init = true;
-        pc = startpc;   // startpc - 4 ?
+        coreinit(core, startpc);
 
-        memtoWB.instruction = memtoWB.opCode = 0x13;
-        extoMem.instruction = extoMem.opCode = 0x13;
-        dctoEx.instruction = dctoEx.opCode = 0x13;
-        ftoDC.instruction = 0x13;
-        REG[2] = STACK_INIT;
-
-        simul(sim->setCore(REG, &dctrl, ddata));
+        simul(sim->setCore(core.REG, &dctrl, ddata));
     }
 
     /// Instruction cache

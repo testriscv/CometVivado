@@ -83,6 +83,29 @@ struct CSR
     ac_int<32, false> mip;
 };
 
+struct Core
+{
+    FtoDC ftoDC;
+    DCtoEx dctoEx;
+    ExtoMem extoMem;
+    MemtoWB memtoWB;
+    CSR csrs;
+
+    ac_int<32, true> REG[32];
+    ac_int<7, false> prev_opCode;
+    ac_int<32, false> prev_pc;
+
+    ac_int<3, false> mem_lock;
+    bool early_exit;
+
+    bool freeze_fetch;
+    bool ex_bubble;
+    bool mem_bubble;
+    bool cachelock;
+    ac_int<32, false> pc;
+    bool init;
+};
+
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[N], unsigned int dm[N], bool &exit
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* syscall
