@@ -64,10 +64,10 @@ solution options set /Input/SearchPath ../include
 solution options set ComponentLibs/SearchPath ../memories -append
 flow package require /SCVerify
 solution file add ../src/core.cpp -type C++
-solution file add ../src/reformeddm_sim.cpp -type C++
+solution file add ../src/reformeddm_sim.cpp -type C++ -exclude True
 solution file add ../src/cache.cpp -type C++
-solution file add ../src/simulator.cpp -type C++
-solution file add ../src/elfFile.cpp -type C++
+solution file add ../src/simulator.cpp -type C++ -exclude True
+solution file add ../src/elfFile.cpp -type C++ -exclude True
 solution file add ../src/portability.cpp -type C++
 go new
 directive set -DESIGN_GOAL area
@@ -117,7 +117,6 @@ solution library remove *
 solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
 solution library add ST_singleport_16777216x32
 solution library add ST_singleport_{datasize}x{datawidth}
-solution library add ST_singleport_{interleaveddatasize}x{datawidth}
 solution library add ST_singleport_{sets}x{ctrlwidth}
 go libraries
 """
@@ -145,7 +144,6 @@ directive set /doStep/core/core.dctrl.dirty -WORD_WIDTH {associativity}
 directive set /doStep/core/core.dctrl.valid -RESOURCE core.dctrl.tag:rsc
 directive set /doStep/core/core.dctrl.valid -WORD_WIDTH {associativity}
 directive set /doStep/core/core.dctrl.policy -RESOURCE core.dctrl.tag:rsc
-
 go architect
 cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
 cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0

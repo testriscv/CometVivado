@@ -16,8 +16,11 @@
 
 #endif
 
+//template<unsigned int hartid>
 const ac_int<32, false> CSR::mvendorid = 0;
+//template<unsigned int hartid>
 const ac_int<32, false> CSR::marchid = 0;
+//template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
 
 void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
@@ -200,6 +203,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
 #endif
 }
 
+template<unsigned int hartid>
 void DC(Core& core)
 {
     ac_int<32, false> pc = core.ftoDC.pc;
@@ -548,7 +552,7 @@ void DC(Core& core)
                             rhs = core.csrs.mimpid;
                             break;
                         case 0:
-                            rhs = core.csrs.mhartid;
+                            rhs = hartid;
                             break;
                         }
                     }
@@ -1154,9 +1158,10 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 #endif
 }
 
-void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
+template<unsigned int hartid>
+void doCore(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
         #ifndef __SYNTHESIS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
+            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim = 0
         #endif
             )
 {
@@ -1195,14 +1200,14 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     {
         coreinit(core, startpc);
 
-        simul(sim->setCore(core.REG, &core.dctrl, core.ddata));
+        simul(if(sim) sim->setCore(core.REG, &core.dctrl, core.ddata));
     }
 
     simul(uint64_t oldcycles = core.csrs.mcycle);
     core.csrs.mcycle += 1;
 
     doWB(core);
-    simul(coredebug("%d ", core.csrs.mcycle.to_int64());
+    simul(coredebug("%lld ", core.csrs.mcycle.to_int64());
     for(int i=0; i<32; i++)
     {
         if(core.REG[i])
@@ -1224,7 +1229,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
            , exit, sim
    #endif
            );
-        DC(core);
+        DC<hartid>(core);
         Ft(core, ins_memory
    #ifndef __SYNTHESIS__
           , core.csrs.mcycle
@@ -1305,4 +1310,19 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
                             dm[(core.dctrl.tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = core.ddata[i][k][j];
     #endif
     )
+
+
+}
+
+void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
+        #ifndef __SYNTHESIS__
+            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
+        #endif
+            )
+{
+    doCore<0>(startpc, ins_memory, dm, exit
+          #ifndef __SYNTHESIS__
+              , c, numins, sim
+          #endif
+              );
 }
