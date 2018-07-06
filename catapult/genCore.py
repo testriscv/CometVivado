@@ -123,31 +123,31 @@ go libraries
 
 genCore = """directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly
-directive set /doStep/core/core.REG:rsc -MAP_TO_MODULE {{[Register]}}
+directive set /doStep/core/doCore<0U>:core.REG:rsc -MAP_TO_MODULE {{[Register]}}
 directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
 directive set /doStep/core -CLOCK_OVERHEAD 0.0
-directive set /doStep/core/core.idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/core.idata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/core.ictrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/core.ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/core.ictrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/core.ictrl.valid -RESOURCE core.ictrl.tag:rsc
-directive set /doStep/core/core.ictrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/core.ictrl.policy -RESOURCE core.ictrl.tag:rsc
-directive set /doStep/core/core.ddata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/core.ddata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/core.dctrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/core.dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/core.dctrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/core.dctrl.dirty -RESOURCE core.dctrl.tag:rsc
-directive set /doStep/core/core.dctrl.dirty -WORD_WIDTH {associativity}
-directive set /doStep/core/core.dctrl.valid -RESOURCE core.dctrl.tag:rsc
-directive set /doStep/core/core.dctrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/core.dctrl.policy -RESOURCE core.dctrl.tag:rsc
+directive set /doStep/core/doCore<0U>:core.idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/doCore<0U>:core.idata:rsc -INTERLEAVE {associativity}
+directive set /doStep/core/doCore<0U>:core.ictrl.tag:rsc -PACKING_MODE sidebyside
+directive set /doStep/core/doCore<0U>:core.ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/doCore<0U>:core.ictrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/doCore<0U>:core.ictrl.valid -RESOURCE doCore<0U>:core.ictrl.tag:rsc
+directive set /doStep/core/doCore<0U>:core.ictrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/doCore<0U>:core.ictrl.policy -RESOURCE doCore<0U>:core.ictrl.tag:rsc
+directive set /doStep/core/doCore<0U>:core.ddata:rsc -INTERLEAVE {associativity}
+directive set /doStep/core/doCore<0U>:core.ddata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/doCore<0U>:core.dctrl.tag:rsc -PACKING_MODE sidebyside
+directive set /doStep/core/doCore<0U>:core.dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/doCore<0U>:core.dctrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/doCore<0U>:core.dctrl.dirty -RESOURCE doCore<0U>:core.dctrl.tag:rsc
+directive set /doStep/core/doCore<0U>:core.dctrl.dirty -WORD_WIDTH {associativity}
+directive set /doStep/core/doCore<0U>:core.dctrl.valid -RESOURCE doCore<0U>:core.dctrl.tag:rsc
+directive set /doStep/core/doCore<0U>:core.dctrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/doCore<0U>:core.dctrl.policy -RESOURCE doCore<0U>:core.dctrl.tag:rsc
 go architect
-cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(doCore<0U>:core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(doCore<0U>:core.ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(doCore<0U>:core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(doCore<0U>:core.dctrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/loaddset:read_mem(doCore<0U>:core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(doCore<0U>:core.ictrl.tag:rsc.@) -equal 0
 go schedule
 go extract
 project save {cachesize}x32cachecore.ccs
