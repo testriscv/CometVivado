@@ -282,93 +282,118 @@ void DC(ac_int<32, true> REG[32], FtoDC ftoDC, ExtoMem extoMem, MemtoWB memtoWB,
         }
         else simul(if(dctoEx.funct3 != 0x4))
         {
-
-            simul(switch(imm12_I.slc<2>(8))
-            {
-            case 0:
-                fprintf(stderr, "User level CSR not implemented\n");
-                assert(false && "User level CSR not implemented\n");
-                break;
-            case 1:
-                fprintf(stderr, "Supervisor level CSR not implemented\n");
-                assert(false && "Supervisor level CSR not implemented\n");
-                break;
-            case 2:
-                fprintf(stderr, "Reserved CSR not implemented\n");
-                assert(false && "Reserved CSR not implemented\n");
-                break;
-            case 3:
-                break;
-            })
-
             // handle the case for rd = 0 for CSRRW
             // handle WIRI/WARL/etc.
-            switch(imm12_I)
+            if(imm12_I.slc<2>(8) == 3)
             {
-            case RISCV_CSR_MSTATUS:
-                dctoEx.datab = csrs.mstatus;
-                break;
-            case RISCV_CSR_MISA:
-                dctoEx.datab = csrs.misa;
-                break;
-            case RISCV_CSR_MEDELEG:
-                dctoEx.datab = csrs.medeleg;
-                break;
-            case RISCV_CSR_MIDELEG:
-                dctoEx.datab = csrs.mideleg;
-                break;
-            case RISCV_CSR_MIE:
-                dctoEx.datab = csrs.mie;
-                break;
-            case RISCV_CSR_MTVEC:
-                dctoEx.datab = csrs.mtvec;
-                break;
-            case RISCV_CSR_MCOUNTEREN:
-                dctoEx.datab = csrs.mcounteren;
-                break;
-            case RISCV_CSR_MSCRATCH:
-                dctoEx.datab = csrs.mscratch;
-                break;
-            case RISCV_CSR_MEPC:
-                dctoEx.datab = csrs.mepc;
-                break;
-            case RISCV_CSR_MCAUSE:
-                dctoEx.datab = csrs.mcause;
-                break;
-            case RISCV_CSR_MTVAL:
-                dctoEx.datab = csrs.mtval;
-                break;
-            case RISCV_CSR_MIP:
-                dctoEx.datab = csrs.mip;
-                break;
-            case RISCV_CSR_MCYCLE:
-                dctoEx.datab = csrs.mcycle.slc<32>(0);
-                break;
-            case RISCV_CSR_MINSTRET:
-                dctoEx.datab = csrs.minstret.slc<32>(0);
-                break;
-            case RISCV_CSR_MCYCLEH:
-                dctoEx.datab = csrs.mcycle.slc<32>(32);
-                break;
-            case RISCV_CSR_MINSTRETH:
-                dctoEx.datab = csrs.minstret.slc<32>(32);
-                break;
-            case RISCV_CSR_MVENDORID:
-                dctoEx.datab = csrs.mvendorid;
-                break;
-            case RISCV_CSR_MARCHID:
-                dctoEx.datab = csrs.marchid;
-                break;
-            case RISCV_CSR_MIMPID:
-                dctoEx.datab = csrs.mimpid;
-                break;
-            case RISCV_CSR_MHARTID:
-                dctoEx.datab = csrs.mhartid;
-                break;
-            default:
+                if(imm12_I.slc<2>(10) == 0)
+                {
+                    if(imm12_I.slc<1>(6) == 0)  // 0x30X
+                    {
+                        switch(imm12_I.slc<3>(0))
+                        {
+                        case 0:
+                            dctoEx.datab = csrs.mstatus;
+                            break;
+                        case 1:
+                            dctoEx.datab = csrs.misa;
+                            break;
+                        case 2:
+                            dctoEx.datab = csrs.medeleg;
+                            break;
+                        case 3:
+                            dctoEx.datab = csrs.mideleg;
+                            break;
+                        case 4:
+                            dctoEx.datab = csrs.mie;
+                            break;
+                        case 5:
+                            dctoEx.datab = csrs.mtvec;
+                            break;
+                        case 6:
+                            dctoEx.datab = csrs.mcounteren;
+                            break;
+                        default:
+                            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", imm12_I.to_int(), dctoEx.pc.to_int());
+                            assert(false && "Unknown CSR id\n");
+                            break;
+                        }
+                    }
+                    else                        // 0x34X
+                    {
+                        switch(imm12_I.slc<3>(0))
+                        {
+                        case 0:
+                            dctoEx.datab = csrs.mscratch;
+                            break;
+                        case 1:
+                            dctoEx.datab = csrs.mepc;
+                            break;
+                        case 2:
+                            dctoEx.datab = csrs.mcause;
+                            break;
+                        case 3:
+                            dctoEx.datab = csrs.mtval;
+                            break;
+                        case 4:
+                            dctoEx.datab = csrs.mip;
+                            break;
+                        default:
+                            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", imm12_I.to_int(), dctoEx.pc.to_int());
+                            assert(false && "Unknown CSR id\n");
+                            break;
+                        }
+                    }
+                }
+                else if(imm12_I.slc<2>(10) == 2)
+                {
+                    ac_int<2, false> foo = 0;
+                    foo.set_slc(0, imm12_I.slc<1>(1));
+                    foo.set_slc(1, imm12_I.slc<1>(7));
+                    switch(foo)
+                    {
+                    case 0:
+                        dctoEx.datab = csrs.mcycle.slc<32>(0);
+                        break;
+                    case 1:
+                        dctoEx.datab = csrs.minstret.slc<32>(0);
+                        break;
+                    case 2:
+                        dctoEx.datab = csrs.mcycle.slc<32>(32);
+                        break;
+                    case 3:
+                        dctoEx.datab = csrs.minstret.slc<32>(32);
+                        break;
+                    }
+                }
+                else if(imm12_I.slc<2>(10) == 3)
+                {
+                    switch(imm12_I.slc<2>(0))
+                    {
+                    case 1:
+                        dctoEx.datab = csrs.mvendorid;
+                        break;
+                    case 2:
+                        dctoEx.datab = csrs.marchid;
+                        break;
+                    case 3:
+                        dctoEx.datab = csrs.mimpid;
+                        break;
+                    case 0:
+                        dctoEx.datab = csrs.mhartid;
+                        break;
+                    }
+                }
+                else
+                {
+                    fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", imm12_I.to_int(), dctoEx.pc.to_int());
+                    assert(false && "Unknown CSR id\n");
+                }
+            }
+            else
+            {
                 fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", imm12_I.to_int(), dctoEx.pc.to_int());
                 assert(false && "Unknown CSR id\n");
-                break;
             }
             fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", dctoEx.datab.to_int(), imm12_I.to_int(), dctoEx.pc.to_int());
             dctoEx.memValue = imm12_I;
@@ -887,70 +912,103 @@ void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csr
     if(memtoWB.rs1 && memtoWB.csrwb)     // condition should be more precise
     {
         fprintf(stderr, "Writing %08x in CSR @%03x   @%06x\n", memtoWB.rescsr.to_int(), memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
-        switch(memtoWB.CSRid)
+
+        if(memtoWB.CSRid.slc<2>(8) == 3)
         {
-        case RISCV_CSR_MSTATUS:
-            csrs.mstatus = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MISA:
-            csrs.misa = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MEDELEG:
-            csrs.medeleg = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MIDELEG:
-            csrs.mideleg = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MIE:
-            csrs.mie = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MTVEC:
-            csrs.mtvec = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MCOUNTEREN:
-            csrs.mcounteren = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MSCRATCH:
-            csrs.mscratch = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MEPC:
-            csrs.mepc = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MCAUSE:
-            csrs.mcause = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MTVAL:
-            csrs.mtval = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MIP:
-            csrs.mip = memtoWB.rescsr;
-            break;
-        case RISCV_CSR_MCYCLE:
-            csrs.mcycle.set_slc(0, memtoWB.rescsr);
-            break;
-        case RISCV_CSR_MINSTRET:
-            csrs.minstret.set_slc(0, memtoWB.rescsr);
-            break;
-        case RISCV_CSR_MCYCLEH:
-            csrs.mcycle.set_slc(32, memtoWB.rescsr);
-            break;
-        case RISCV_CSR_MINSTRETH:
-            csrs.minstret.set_slc(32, memtoWB.rescsr);
-            break;
-        case RISCV_CSR_MVENDORID:
-            fprintf(stderr, "Read only CSR %03x", memtoWB.CSRid);
-            break;
-        case RISCV_CSR_MARCHID:
-            fprintf(stderr, "Read only CSR %03x", memtoWB.CSRid);
-            break;
-        case RISCV_CSR_MIMPID:
-            fprintf(stderr, "Read only CSR %03x", memtoWB.CSRid);
-            break;
-        case RISCV_CSR_MHARTID:
-            fprintf(stderr, "Read only CSR %03x", memtoWB.CSRid);
-            break;
-        default:
-            fprintf(stderr, "Unknown CSR id : %03x\n", memtoWB.CSRid);
+            if(memtoWB.CSRid.slc<2>(10) == 0)
+            {
+                if(memtoWB.CSRid.slc<1>(6) == 0)  // 0x30X
+                {
+                    switch(memtoWB.CSRid.slc<3>(0))
+                    {
+                    case 0:
+                        csrs.mstatus = memtoWB.rescsr;
+                        break;
+                    case 1:
+                        csrs.misa = memtoWB.rescsr;
+                        break;
+                    case 2:
+                        csrs.medeleg = memtoWB.rescsr;
+                        break;
+                    case 3:
+                        csrs.mideleg = memtoWB.rescsr;
+                        break;
+                    case 4:
+                        csrs.mie = memtoWB.rescsr;
+                        break;
+                    case 5:
+                        csrs.mtvec = memtoWB.rescsr;
+                        break;
+                    case 6:
+                        csrs.mcounteren = memtoWB.rescsr;
+                        break;
+                    default:
+                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
+                        assert(false && "Unknown CSR id\n");
+                        break;
+                    }
+                }
+                else                        // 0x34X
+                {
+                    switch(memtoWB.CSRid.slc<3>(0))
+                    {
+                    case 0:
+                        csrs.mscratch = memtoWB.rescsr;
+                        break;
+                    case 1:
+                        csrs.mepc = memtoWB.rescsr;
+                        break;
+                    case 2:
+                        csrs.mcause = memtoWB.rescsr;
+                        break;
+                    case 3:
+                        csrs.mtval = memtoWB.rescsr;
+                        break;
+                    case 4:
+                        csrs.mip = memtoWB.rescsr;
+                        break;
+                    default:
+                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
+                        assert(false && "Unknown CSR id\n");
+                        break;
+                    }
+                }
+            }
+            else if(memtoWB.CSRid.slc<2>(10) == 2)
+            {
+                ac_int<2, false> foo = 0;
+                foo.set_slc(0, memtoWB.CSRid.slc<1>(1));
+                foo.set_slc(1, memtoWB.CSRid.slc<1>(7));
+                switch(foo)
+                {
+                case 0:
+                    csrs.mcycle.slc<32>(0) = memtoWB.rescsr;
+                    break;
+                case 1:
+                    csrs.minstret.slc<32>(0) = memtoWB.rescsr;
+                    break;
+                case 2:
+                    csrs.mcycle.slc<32>(32) = memtoWB.rescsr;
+                    break;
+                case 3:
+                    csrs.minstret.slc<32>(32) = memtoWB.rescsr;
+                    break;
+                }
+            }
+            else if(memtoWB.CSRid.slc<2>(10) == 3)
+            {
+                fprintf(stderr, "Read only CSR %03x", memtoWB.CSRid);
+                assert(false && "Read only CSR\n");
+            }
+            else
+            {
+                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
+                assert(false && "Unknown CSR id\n");
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", memtoWB.CSRid.to_int(), memtoWB.pc.to_int());
             assert(false && "Unknown CSR id\n");
         }
     }
