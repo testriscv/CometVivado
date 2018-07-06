@@ -571,17 +571,29 @@ ac_int<32, false> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fl
         localPath[i] = this->ldb(path + i);
 
     const char* localMode;
-    if (flags==0)
+    if(flags == O_RDONLY)
         localMode = "r";
-    else if (flags == 577)
-        localMode = "w";
-    else if (flags == 1089)
-        localMode = "a";
-    else if (flags == O_WRONLY|O_CREAT|O_EXCL)
-        localMode = "wx";
+    else if(flags & O_WRONLY)
+    {
+        if(flags & O_TRUNC)
+            localMode = "w";
+        else if(flags & O_APPEND)
+            localMode = "a";
+        else
+            localMode = "w";
+    }
+    else if(flags & O_RDWR)
+    {
+        if(flags & O_TRUNC)
+            localMode = "w+";
+        else if(flags & O_APPEND)
+            localMode = "a+";
+        else
+            localMode = "r+";
+    }
     else
     {
-        fprintf(stderr, "Trying to open files with unknown flags... %d\n", flags);
+        fprintf(stderr, "Trying to open files with unknown flags... %o\n", flags.to_int());
         exit(-1);
     }
 
@@ -590,7 +602,7 @@ ac_int<32, false> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fl
     ac_int<32, true> result_ac = result;
     if(test == 0)
     {
-        fprintf(stderr, "Could not open %s with mode %s, reason : ", localPath, localMode);
+        fprintf(stderr, "Could not open %s with mode %s (%o), reason : ", localPath, localMode, flags.to_int());
         perror("");
         exit(-1);
     }
