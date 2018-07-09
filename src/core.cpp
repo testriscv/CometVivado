@@ -1,4 +1,5 @@
 /* vim: set ts=4 nu ai: */
+#include "portability.h"
 #include "riscvISA.h"
 #include "core.h"
 #include "cache.h"
@@ -71,7 +72,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
     ac_int<32, false> jump_pc;
     if(core.mem_lock > 1)
     {
-        jump_pc = next_pc;          // this means that we already had a jump before, so prevent double jumping when 2 jumps or branch in a row
+        jump_pc = next_pc;          // this means that we already had a jump before, so prevent double jumping when 2 jumps or branch are consecutive
     }
     else
     {
@@ -119,7 +120,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
 
             if(!init)
             {
-                core.pc %= N;
+                core.pc %= (4*N);
                 init = true;
             }
             else if(core.mem_lock > 1)   // there was a jump ealier, so we do nothing because right instruction still hasn't been fetched
@@ -179,31 +180,74 @@ void Ft(Core& core, unsigned int ins_memory[N]
 
 void DC(Core& core)
 {
-    ac_int<5, false> rs1 = core.ftoDC.instruction.slc<5>(15);       // Decoding the instruction, in the DC stage
-    ac_int<5, false> rs2 = core.ftoDC.instruction.slc<5>(20);
-    ac_int<5, false> rd = core.ftoDC.instruction.slc<5>(7);
-    ac_int<7, false> opcode = core.ftoDC.instruction.slc<7>(0);
-    ac_int<7, false> funct7 = core.ftoDC.instruction.slc<7>(25);
-    ac_int<7, false> funct3 = core.ftoDC.instruction.slc<3>(12);
+    ac_int<32, false> pc = core.ftoDC.pc;
+    ac_int<32, false> instruction = core.ftoDC.instruction;
+
+    // R-type instruction
+    ac_int<7, false> funct7 = instruction.slc<7>(25);
+    ac_int<5, false> rs2 = instruction.slc<5>(20);
+    ac_int<5, false> rs1 = instruction.slc<5>(15);
+    ac_int<7, false> funct3 = instruction.slc<3>(12);
+    ac_int<5, false> rd = instruction.slc<5>(7);
+    ac_int<5, false> opCode = instruction.slc<5>(2);    // reduced to 5 bits because 1:0 is always 11
+
+    assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
+
+    // share immediate for all type of instruction
+    // this should simplify the hardware
+    // double cast as signed int before equality for sign extension
+    ac_int<32, true> immediate = (ac_int<32, true>)(((ac_int<32, true>)instruction).slc<1>(31));
+
+    coredebug("%08x \n", immediate.to_int());
+
+    // S-type instruction
+    // use rs2 rs1 funct3 opCode from R-type
+    // 12 bits immediate
+    if(opCode == RISCV_ST)
+    {
+        immediate.set_slc(5, instruction.slc<6>(25));
+        immediate.set_slc(0, instruction.slc<5>(7));
+    }
+    // B-type instruction
+    // use rs2 rs1 funct3 opCode from R-type
+    // 13 bits immediate
+    else if(opCode == RISCV_BR)
+    {
+        immediate.set_slc(0, (ac_int<1, true>)0);
+        immediate.set_slc(1, instruction.slc<4>(8));
+        immediate.set_slc(5, instruction.slc<6>(25));
+        immediate.set_slc(11, instruction.slc<1>(7));
+    }
+    // J-type instruction
+    // use rd opCode from R-type
+    // 20 bits immediate
+    else if(opCode == RISCV_JAL)
+    {
+        immediate.set_slc(0, (ac_int<1, true>)0);
+        immediate.set_slc(1, instruction.slc<4>(21));
+        immediate.set_slc(5, instruction.slc<6>(25));
+        immediate.set_slc(11, instruction.slc<1>(20));
+        immediate.set_slc(12, instruction.slc<8>(12));
+    }
+    // U-type instruction
+    // use rd opCode from R-type
+    // 20 bits immediate
+    else if(opCode == RISCV_LUI || opCode == RISCV_AUIPC)
+    {
+        immediate.set_slc(0, (ac_int<12, true>)0);
+        immediate.set_slc(12, instruction.slc<19>(12));
+    }
+    // I-type instruction
+    // use rs1 funct3 rd opCode from R-type
+    // 12 bits immediate
+    else
+    {
+        immediate.set_slc(0, instruction.slc<11>(20));
+    }
+
+
     ac_int<6, false> shamt = core.ftoDC.instruction.slc<5>(20);
-    ac_int<13, false> imm13 = 0;
-    imm13[12] = core.ftoDC.instruction[31];
-    imm13.set_slc(5, core.ftoDC.instruction.slc<6>(25));
-    imm13.set_slc(1, core.ftoDC.instruction.slc<4>(8));
-    imm13[11] = core.ftoDC.instruction[7];
-    ac_int<13, true> imm13_signed = 0;
-    imm13_signed.set_slc(0, imm13);
     ac_int<12, false> imm12_I = core.ftoDC.instruction.slc<12>(20);
-    ac_int<12, true> imm12_I_signed = core.ftoDC.instruction.slc<12>(20);
-    ac_int<21, false> imm21_1 = 0;
-    imm21_1.set_slc(12, core.ftoDC.instruction.slc<8>(12));
-    imm21_1[11] = core.ftoDC.instruction[20];
-    imm21_1.set_slc(1, core.ftoDC.instruction.slc<10>(21));
-    imm21_1[20] = core.ftoDC.instruction[31];
-    ac_int<21, true> imm21_1_signed = 0;
-    imm21_1_signed.set_slc(0, imm21_1);
-    ac_int<32, true> imm31_12 = 0;
-    imm31_12.set_slc(12, core.ftoDC.instruction.slc<20>(12));
     bool forward_rs1 = false;
     bool forward_rs2 = false;
     bool forward_ex_or_mem_rs1 = false;
@@ -213,7 +257,7 @@ void DC(Core& core)
     store_imm.set_slc(0,core.ftoDC.instruction.slc<5>(7));
     store_imm.set_slc(5,core.ftoDC.instruction.slc<7>(25));
 
-    core.dctoEx.opCode = opcode;
+    core.dctoEx.opCode = opCode;
     core.dctoEx.funct3 = funct3;
     core.dctoEx.funct7 = funct7;
     core.dctoEx.shamt = shamt;
@@ -222,33 +266,33 @@ void DC(Core& core)
     core.dctoEx.pc = core.ftoDC.pc;
     core.dctoEx.instruction = core.ftoDC.instruction;
     core.freeze_fetch = 0;
-    switch (opcode)
+    switch (opCode)
     {
     case RISCV_LUI:
         core.dctoEx.dest = rd;
-        core.dctoEx.datab = imm31_12;
+        core.dctoEx.datab = immediate;
         break;
     case RISCV_AUIPC:
         core.dctoEx.dest = rd;
-        core.dctoEx.datab = imm31_12;
+        core.dctoEx.datab = immediate;
         break;
     case RISCV_JAL:
         core.dctoEx.dest = rd;
-        core.dctoEx.datab = imm21_1_signed;
+        core.dctoEx.datab = immediate;
         break;
     case RISCV_JALR:
         core.dctoEx.dest = rd;
-        core.dctoEx.datab = imm12_I_signed;
+        core.dctoEx.datab = immediate;
         break;
     case RISCV_BR:
         core.dctoEx.rs2 = rs2;
         datab_fwd = 1;
-        core.dctoEx.datac = imm13_signed;
+        core.dctoEx.datac = immediate;
         core.dctoEx.dest = 0;
         break;
     case RISCV_LD:
         core.dctoEx.dest = rd;
-        core.dctoEx.memValue = imm12_I_signed;
+        core.dctoEx.memValue = immediate;
         break;
     case RISCV_ST:
         core.dctoEx.datad = rs2;
@@ -257,8 +301,7 @@ void DC(Core& core)
         break;
     case RISCV_OPI:
         core.dctoEx.dest = rd;
-        core.dctoEx.memValue = imm12_I_signed;
-        core.dctoEx.datab = imm12_I;
+        core.dctoEx.datab = immediate;
         break;
     case RISCV_OP:
         core.dctoEx.rs2 = rs2;
@@ -410,7 +453,7 @@ void DC(Core& core)
 
     core.dctoEx.dataa = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
 
-    if(opcode == RISCV_ST)
+    if(opCode == RISCV_ST)
     {
         core.dctoEx.datac = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
     }
@@ -419,13 +462,13 @@ void DC(Core& core)
         core.dctoEx.datab = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
     }
     // stall 1 cycle if load to one of the core.REGister we use, e.g lw a5, someaddress followed by any operation that use a5
-    if(core.prev_opCode == RISCV_LD && (core.extoMem.dest == rs1 || (opcode != RISCV_LD && core.extoMem.dest == rs2)) && core.mem_lock < 2 && core.prev_pc != core.ftoDC.pc)
+    if(core.prev_opCode == RISCV_LD && (core.extoMem.dest == rs1 || (opCode != RISCV_LD && core.extoMem.dest == rs2)) && core.mem_lock < 2 && core.prev_pc != core.ftoDC.pc)
     {
         core.freeze_fetch = 1;
         core.ex_bubble = 1;
     }
     // add a stall for core.csrs instruction because they should be atomic? Detect if 2 core.csrs follow each other
-    core.prev_opCode = opcode;
+    core.prev_opCode = opCode;
     core.prev_pc = core.ftoDC.pc;
 
     simul(if(core.dctoEx.pc)
@@ -520,22 +563,22 @@ void Ex(Core& core
         switch(core.dctoEx.funct3)
         {
         case RISCV_OPI_ADDI:
-            core.extoMem.result = core.dctoEx.dataa + core.dctoEx.memValue;
+            core.extoMem.result = core.dctoEx.dataa + core.dctoEx.datab;
             break;
         case RISCV_OPI_SLTI:
-            core.extoMem.result = (core.dctoEx.dataa < core.dctoEx.memValue) ? 1 : 0;
+            core.extoMem.result = (core.dctoEx.dataa < core.dctoEx.datab) ? 1 : 0;
             break;
         case RISCV_OPI_SLTIU:
-            core.extoMem.result = (unsignedReg1 < core.dctoEx.datab) ? 1 : 0;
+            core.extoMem.result = (unsignedReg1 < ((ac_int<32, false>)core.dctoEx.datab)) ? 1 : 0;
             break;
         case RISCV_OPI_XORI:
-            core.extoMem.result = core.dctoEx.dataa ^ core.dctoEx.memValue;
+            core.extoMem.result = core.dctoEx.dataa ^ core.dctoEx.datab;
             break;
         case RISCV_OPI_ORI:
-            core.extoMem.result =  core.dctoEx.dataa | core.dctoEx.memValue;
+            core.extoMem.result =  core.dctoEx.dataa | core.dctoEx.datab;
             break;
         case RISCV_OPI_ANDI:
-            core.extoMem.result = core.dctoEx.dataa & core.dctoEx.memValue;
+            core.extoMem.result = core.dctoEx.dataa & core.dctoEx.datab;
             break;
         case RISCV_OPI_SLLI:
             core.extoMem.result = core.dctoEx.dataa << core.dctoEx.shamt;
@@ -1040,10 +1083,10 @@ void coreinit(Core& core, ac_int<32, false> startpc)
     core.init = true;
     core.pc = startpc;   // startpc - 4 ?
 
-    core.memtoWB.instruction = core.memtoWB.opCode = 0x13;
-    core.extoMem.instruction = core.extoMem.opCode = 0x13;
-    core.dctoEx.instruction = core.dctoEx.opCode = 0x13;
-    core.ftoDC.instruction = 0x13;
+    core.ftoDC.instruction = core.dctoEx.instruction =
+    core.extoMem.instruction = core.memtoWB.instruction = 0x13;
+    core.dctoEx.opCode = core.extoMem.opCode = core.memtoWB.opCode = RISCV_OPI;
+
     core.REG[2] = STACK_INIT;
 
 #if Policy == RANDOM
@@ -1097,8 +1140,8 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     }
 
 
-    core.csrs.mcycle += 1;
     simul(uint64_t oldcycles = core.csrs.mcycle);
+    core.csrs.mcycle += 1;
 
     doWB(core);
     simul(coredebug("%d ", core.csrs.mcycle.to_int64());

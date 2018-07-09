@@ -20,7 +20,7 @@ struct DCtoEx
     ac_int<32, true> datad; //Third data used only for store instruction and corresponding to rb
     ac_int<32, true> datae;
     ac_int<5, false> dest; //Register to be written
-    ac_int<7, false> opCode;//OpCode of the instruction
+    ac_int<5, false> opCode;//OpCode of the instruction
     ac_int<32, true> memValue; //Second data, from register file or immediate value
     ac_int<7, false> funct3;
     ac_int<7, false> funct7;
@@ -38,7 +38,7 @@ struct ExtoMem
     ac_int<32, true> datac; //Data to be stored in memory (if needed)
     ac_int<5, false> dest; //Register to be written at WB stage
     bool WBena; //Is a WB is needed ?
-    ac_int<7, false> opCode; //OpCode of the operation
+    ac_int<5, false> opCode; //OpCode of the operation
     ac_int<32, true> memValue; //Second data, from register file or immediate value
     ac_int<5, false> rs1;
     ac_int<7, false> funct3;
@@ -55,7 +55,7 @@ struct MemtoWB
     ac_int<12, false> CSRid;    // CSR to be written back
     ac_int<5, false> dest; //Register to be written at WB stage
     bool WBena; //Is a WB is needed ?
-    ac_int<7, false> opCode;
+    ac_int<5, false> opCode;
     ac_int<2, false> sys_status;
     ac_int<5, false> rs1;
     bool csrwb;
