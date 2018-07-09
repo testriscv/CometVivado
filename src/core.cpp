@@ -902,7 +902,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
     })
 }
 
-void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csrs)
+void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& early_exit, CSR& csrs)
 {
     if (memtoWB.WBena == 1 && memtoWB.dest != 0)
     {
@@ -1026,6 +1026,7 @@ void doWB(ac_int<32, true> REG[32], MemtoWB& memtoWB, bool& early_exit, CSR& csr
     }
 #endif
 
+    csrs.mcycle += 1;
     if(memtoWB.pc)
     {
         if(memtoWB.pc != memtoWB.lastpc)
@@ -1195,7 +1196,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
            );
 #endif
 
-    csrs.mcycle++;
+    //csrs.mcycle++;
 
     simul(
     int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
