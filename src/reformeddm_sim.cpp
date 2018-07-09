@@ -120,8 +120,8 @@ CCS_MAIN(int argc, char** argv)
         if(cycles > (uint64_t)5e8)
             break;
     }
-    printf("Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
-    fprintf(stderr, "Successfully executed %d instructions in %d cycles\n", numins.to_int64(), cycles.to_int64());
+    printf("Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
+    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
 
     coredebug("memory : \n");
     for(int i = 0; i < N; i++)
