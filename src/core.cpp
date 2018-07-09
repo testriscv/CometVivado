@@ -838,7 +838,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                     break;
                 }
 #ifndef nocache
-                address = memtoWB.result % (4*N);
+                address = extoMem.result % (4*N);
                 signenable = sign;
                 cacheenable = true;
                 writeenable = false;
@@ -847,7 +847,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                 memtoWB.pc = 0;
 #else
                 //debug("%5d  ", cycles);
-                memtoWB.result = memoryGet(data_memory, memtoWB.result, datasize, sign
+                memtoWB.result = memoryGet(data_memory, extoMem.result, datasize, sign
                                        #ifndef __SYNTHESIS__
                                            , cycles
                                        #endif
@@ -868,7 +868,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                     break;
                 }
 #ifndef nocache
-                address = memtoWB.result % (4*N);
+                address = extoMem.result % (4*N);
                 signenable = false;
                 cacheenable = true;
                 writeenable = true;
@@ -878,7 +878,7 @@ void do_Mem(ExtoMem extoMem, MemtoWB& memtoWB, ac_int<3, false>& mem_lock, bool&
                 memtoWB.pc = 0;
 #else
                 //debug("%5d  ", cycles);
-                memorySet(data_memory, memtoWB.result, extoMem.datac, datasize
+                memorySet(data_memory, extoMem.result, extoMem.datac, datasize
                       #ifndef __SYNTHESIS__
                           , cycles
                       #endif
@@ -1026,7 +1026,6 @@ void doWB(ac_int<32, true> REG[32], MemtoWB memtoWB, bool& early_exit, CSR& csrs
     }
 #endif
 
-    csrs.mcycle += 1;
     if(memtoWB.pc)
     {
         if(memtoWB.pc != memtoWB.lastpc)
@@ -1145,6 +1144,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     static bool datavalid = false;
 
     simul(uint64_t oldcycles = csrs.mcycle);
+    csrs.mcycle += 1;
 
     doWB(REG, memtoWB, early_exit, csrs);
     simul(coredebug("%d ", csrs.mcycle.to_int64());
