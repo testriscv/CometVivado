@@ -198,52 +198,98 @@ void DC(Core& core)
     // double cast as signed int before equality for sign extension
     ac_int<32, true> immediate = (ac_int<32, true>)(((ac_int<32, true>)instruction).slc<1>(31));
 
-    coredebug("%08x \n", immediate.to_int());
-
-    // S-type instruction
-    // use rs2 rs1 funct3 opCode from R-type
-    // 12 bits immediate
-    if(opCode == RISCV_ST)
+    if(instruction.slc<1>(3))    // 011
     {
-        immediate.set_slc(5, instruction.slc<6>(25));
-        immediate.set_slc(0, instruction.slc<5>(7));
+        if(instruction.slc<2>(5) == 0)  // misc-mem
+        {
+            immediate.set_slc(0, instruction.slc<11>(20));
+        }
+        else                            // jal
+        {
+            immediate.set_slc(0, (ac_int<1, true>)0);
+            immediate.set_slc(1, instruction.slc<4>(21));
+            immediate.set_slc(5, instruction.slc<6>(25));
+            immediate.set_slc(11, instruction.slc<1>(20));
+            immediate.set_slc(12, instruction.slc<8>(12));
+        }
     }
-    // B-type instruction
-    // use rs2 rs1 funct3 opCode from R-type
-    // 13 bits immediate
-    else if(opCode == RISCV_BR)
+    else if(instruction.slc<1>(4))  // 100 & 101
     {
+        if(instruction.slc<1>(2) == 0)  // OPI & system
+        {
+            immediate.set_slc(0, instruction.slc<11>(20));
+        }
+        else                            // AUIPC & LUI
+        {
+            immediate.set_slc(0, (ac_int<12, true>)0);
+            immediate.set_slc(12, instruction.slc<19>(12));
+        }
+    }
+    else if(instruction.slc<1>(2))  // 001
+    {
+        // JALR
+        immediate.set_slc(0, instruction.slc<11>(20));
+    }
+    else if(instruction.slc<1>(5) == 0) // 000
+    {
+        // LD
+        immediate.set_slc(0, instruction.slc<11>(20));
+    }
+    else
+    {
+        // Branch
         immediate.set_slc(0, (ac_int<1, true>)0);
         immediate.set_slc(1, instruction.slc<4>(8));
         immediate.set_slc(5, instruction.slc<6>(25));
         immediate.set_slc(11, instruction.slc<1>(7));
     }
+
+    /*switch(opCode)
+    {
+    // S-type instruction
+    // use rs2 rs1 funct3 opCode from R-type
+    // 12 bits immediate
+    case RISCV_ST:
+        immediate.set_slc(5, instruction.slc<6>(25));
+        immediate.set_slc(0, instruction.slc<5>(7));
+        break;
+    // B-type instruction
+    // use rs2 rs1 funct3 opCode from R-type
+    // 13 bits immediate
+    case RISCV_BR:
+        immediate.set_slc(0, (ac_int<1, true>)0);
+        immediate.set_slc(1, instruction.slc<4>(8));
+        immediate.set_slc(5, instruction.slc<6>(25));
+        immediate.set_slc(11, instruction.slc<1>(7));
+        break;
     // J-type instruction
     // use rd opCode from R-type
     // 20 bits immediate
-    else if(opCode == RISCV_JAL)
-    {
+    case RISCV_JAL:
         immediate.set_slc(0, (ac_int<1, true>)0);
         immediate.set_slc(1, instruction.slc<4>(21));
         immediate.set_slc(5, instruction.slc<6>(25));
         immediate.set_slc(11, instruction.slc<1>(20));
         immediate.set_slc(12, instruction.slc<8>(12));
-    }
+        break;
     // U-type instruction
     // use rd opCode from R-type
     // 20 bits immediate
-    else if(opCode == RISCV_LUI || opCode == RISCV_AUIPC)
-    {
+    case RISCV_LUI:
         immediate.set_slc(0, (ac_int<12, true>)0);
         immediate.set_slc(12, instruction.slc<19>(12));
-    }
+        break;
+    case RISCV_AUIPC:
+        immediate.set_slc(0, (ac_int<12, true>)0);
+        immediate.set_slc(12, instruction.slc<19>(12));
+        break;
     // I-type instruction
     // use rs1 funct3 rd opCode from R-type
     // 12 bits immediate
-    else
-    {
+    default:
         immediate.set_slc(0, instruction.slc<11>(20));
-    }
+        break;
+    }*/
 
 
     ac_int<6, false> shamt = core.ftoDC.instruction.slc<5>(20);
