@@ -108,26 +108,26 @@ def init(_assoc = 4, _cachesize = 1024, _blocksize = 32, _policy = "lru"):
 	
 def formatread(dmem, ad, size, sign):
 	read = 0
-	for i, j in enumerate(range(ad, ad+size+1)):
+	for i, j in enumerate(range(ad, ad+(1 << size))):
 		read |= (dmem[j][0] << (8*i))
-		# ~ print(i, read)
+		# ~ print(i, hex(read))
 	
-	# ~ print(sign, size, read & (1 << (8*(i+1)-1)))
+	# ~ print(sign, size, hex(read & (1 << (8*(i+1)-1))))
 	if sign and read & (1 << (8*(i+1)-1)):
 		if size == 0:
 			read |= 0xFFFFFF00
 		elif size == 1:
 			read |= 0xFFFF0000
-		# ~ print(read)
+		# ~ print(hex(read))
 
 	return read
 	
 def formatwrite(dmem, ad, size, val):
-	for i, j in enumerate(range(ad, ad+size+1)):
+	for i, j in enumerate(range(ad, ad+(1 << size))):
 		foo = (val & (0xFF << (8*i))) >> (8*i)
 		dmem[j] = (foo, True)
 		
-	return formatread(dmem, ad & 0xFFFFFFFC, 3, False)
+	return formatread(dmem, ad & 0xFFFFFFFC, 2, False)
 	
 def readpreambule(fichier, prog):
 	global lues
@@ -318,7 +318,7 @@ def parsefile(fichier, prog, cache=True):
 					assert check == fwrite, "{} line {} : {} Formatted write failed @{:06x},"\
 					" expected {:02x} got {:02x}".format(prog, i, line, ad, check, fwrite)
 					
-					for n, a in enumerate(range(ad, ad+size+1)):
+					for n, a in enumerate(range(ad, ad+(1 << size))):
 						val = (writevalue & (0xFF << (8*n))) >> (8*n)
 						dpath.append( (a, val, we, size, sign) )
 				else:
@@ -327,7 +327,7 @@ def parsefile(fichier, prog, cache=True):
 					" expected {:02x} got {:02x}".format(prog, i, line, ad, check, fread)
 					
 					readuninit = False
-					for n, a in enumerate(range(ad, ad+size+1)):
+					for n, a in enumerate(range(ad, ad+(1 << size))):
 						# ~ print(n, hex(a), hex(dmem[a][0]), hex((fread >> (8*n)) & 0xFF))
 						val = (fread >> (8*n)) & 0xFF
 						assert dmem[a][0] == val, "{} line {} : {} Read value is incorrect"\
@@ -404,8 +404,9 @@ def parsefile(fichier, prog, cache=True):
 		": expected {:02x} got {:02x}".format(prog, ad, dmem[ad][0], endmem[ad])
 	
 	# rebuilds dmem from dpath
+	# ~ global bis
 	bis = {}
-	for data in dpath:						# address, valeur, (0:read, 1:write), datasize, sign extension
+	for i, data in enumerate(dpath):						# address, valeur, (0:read, 1:write), datasize, sign extension
 		if data[2]:
 			bis[data[0]] = (data[1], True)
 		elif data[0] in bis:
@@ -462,7 +463,6 @@ def parseall(cached):
 	for p in progs:	
 		try:
 			with subprocess.Popen(["./"+executable, "-f", "benchmarks/build/"+p], stdout=subprocess.PIPE, universal_newlines=True) as output:
-				global dmem
 				ipath, dpath, rpath, imem, dmem, endmem, cycle, cpi = parsefile(output, p, cached)
 				
 			cycles.append(cycle)

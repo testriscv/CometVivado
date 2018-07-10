@@ -27,8 +27,8 @@ struct DCtoEx
     bool enableWB;
     bool realInstruction;
 
-    ac_int<32, true> lhs;   // First data from register file
-    ac_int<32, true> rhs;   // Second data, from register file or immediate value
+    ac_int<32, true> lhs;   // left hand side : operand 1
+    ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac;
     ac_int<32, true> datad; //Third data used only for store instruction and corresponding to rb
     ac_int<32, true> datae;
