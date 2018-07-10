@@ -7,32 +7,52 @@
 struct FtoDC
 {
     ac_int<32, false> pc;
+
     ac_int<32, false> instruction; //Instruction to execute
+    bool realInstruction;
 };
 
 struct DCtoEx
 {
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
-    ac_int<32, true> dataa; //First data from register file
-    ac_int<32, true> datab; //Second data, from register file or immediate value
+
+    ac_int<5, false> opCode;    // opCode = instruction[6:2]
+    ac_int<7, false> funct7;    // funct7 = instruction[31:25]
+    ac_int<3, false> funct3;    // funct3 = instruction[14:12]
+    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
+    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
+    ac_int<5, false> rd;        // rd     = instruction[11:7]
+
+    bool enableWB;
+    bool realInstruction;
+
+    ac_int<32, true> lhs;   // First data from register file
+    ac_int<32, true> rhs;   // Second data, from register file or immediate value
     ac_int<32, true> datac;
     ac_int<32, true> datad; //Third data used only for store instruction and corresponding to rb
     ac_int<32, true> datae;
-    ac_int<5, false> dest; //Register to be written
-    ac_int<5, false> opCode;//OpCode of the instruction
     ac_int<32, true> memValue; //Second data, from register file or immediate value
-    ac_int<7, false> funct3;
-    ac_int<7, false> funct7;
-    ac_int<5, false> shamt;
-    ac_int<5, false> rs1;
-    ac_int<5, false> rs2;
+
+    ac_int<2, false> datasize;  // used for LD & ST instruction = funct3[1:0]
+};
+
+struct DCctrl
+{
+    ac_int<5, false> prev_rds[2];
+    ac_int<7, false> prev_opCode;
+    ac_int<32, false> prev_pc;
+
+
 };
 
 struct ExtoMem
 {
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
+
+    bool realInstruction;
+
     ac_int<32, true> result; //Result of the EX stage
     ac_int<32, true> datad;
     ac_int<32, true> datac; //Data to be stored in memory (if needed)
@@ -47,9 +67,12 @@ struct ExtoMem
 
 struct MemtoWB
 {
-    ac_int<32, false> lastpc;
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
+
+    ac_int<32, false> lastpc;
+    bool realInstruction;
+
     ac_int<32, true> result; //Result to be written back
     ac_int<32, false> rescsr;   // Result for CSR instruction
     ac_int<12, false> CSRid;    // CSR to be written back
@@ -91,13 +114,12 @@ struct Core
     MemtoWB memtoWB;
     CSR csrs;
 
+    DCctrl dcctrl;
+
     ac_int<32, true> REG[32];
-    ac_int<7, false> prev_opCode;
-    ac_int<32, false> prev_pc;
 
-    ac_int<3, false> mem_lock;
     bool early_exit;
-
+    ac_int<3, false> mem_lock;
     bool freeze_fetch;
     bool ex_bubble;
     bool mem_bubble;

@@ -529,6 +529,7 @@ def parseall(cached):
 			# ~ assert sublist(res, dmem), "{} result is incorrect".format(p)
 			assert str(res)[1:-1] in str(dmem), "{} result is incorrect".format(p)
 			
+			del ipath, dpath, rpath, imem, dmem, endmem
 		except BaseException as e:
 			subprocess.check_call(["rm", executable])
 			raise e
