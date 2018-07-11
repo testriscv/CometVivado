@@ -42,7 +42,7 @@ struct DCctrl
     ac_int<5, false> prev_rds[2];
     ac_int<7, false> prev_opCode;
     ac_int<32, false> prev_pc;
-
+    ac_int<2, false> lock;      // used to lock dc stage after JAL & JALR
 };
 
 struct ExtoMem

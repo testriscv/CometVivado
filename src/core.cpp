@@ -224,251 +224,6 @@ void DC(Core& core)
     lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
     rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
 
-    switch(opCode)
-    {
-    // R-type instruction
-    case RISCV_OP:
-        break;
-    case RISCV_ATOMIC:
-        assert(false && "Not implemented yet");
-        break;
-    // S-type instruction
-    // use rs2 rs1 funct3 opCode from R-type
-    // 12 bits immediate
-    case RISCV_ST:
-        immediate.set_slc(5, instruction.slc<6>(25));
-        immediate.set_slc(0, instruction.slc<5>(7));
-
-        core.dctoEx.datac = rhs;
-
-        rhs = immediate;
-        rd = 0;
-        enableWB = false;
-        break;
-    // B-type instruction
-    // use rs2 rs1 funct3 opCode from R-type
-    // 13 bits immediate
-    case RISCV_BR:
-        immediate.set_slc(0, (ac_int<1, true>)0);
-        immediate.set_slc(1, instruction.slc<4>(8));
-        immediate.set_slc(5, instruction.slc<6>(25));
-        immediate.set_slc(11, instruction.slc<1>(7));
-
-        core.dctoEx.datac = immediate;
-        rd = 0;
-        enableWB = false;
-        break;
-    // J-type instruction
-    // use rd opCode from R-type
-    // 20 bits immediate
-    case RISCV_JAL:
-        immediate.set_slc(0, (ac_int<1, true>)0);
-        immediate.set_slc(1, instruction.slc<4>(21));
-        immediate.set_slc(5, instruction.slc<6>(25));
-        immediate.set_slc(11, instruction.slc<1>(20));
-        immediate.set_slc(12, instruction.slc<8>(12));
-        rhs = immediate;
-
-        // handle mem_lock here
-        break;
-    // U-type instruction
-    // use rd opCode from R-type
-    // 20 bits immediate
-    case RISCV_LUI:
-        immediate.set_slc(0, (ac_int<12, true>)0);
-        immediate.set_slc(12, instruction.slc<19>(12));
-        lhs = immediate;
-        break;
-    case RISCV_AUIPC:
-        immediate.set_slc(0, (ac_int<12, true>)0);
-        immediate.set_slc(12, instruction.slc<19>(12));
-        lhs = pc;
-        rhs = immediate;
-        break;
-    // I-type instruction
-    // use rs1 funct3 rd opCode from R-type
-    // 12 bits immediate
-    case RISCV_LD:
-        immediate.set_slc(0, instruction.slc<11>(20));
-        rhs = immediate;
-
-        break;
-    case RISCV_OPI:
-        immediate.set_slc(0, instruction.slc<11>(20));
-
-        if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
-            rhs = rs2;
-        else
-            rhs = immediate;
-
-        break;
-    case RISCV_JALR:
-        immediate.set_slc(0, instruction.slc<11>(20));
-        rhs = immediate;
-
-        // handle mem_lock here
-        break;
-    case RISCV_MISC_MEM:
-        immediate.set_slc(0, instruction.slc<11>(20));
-        rhs = immediate;
-        break;
-    default:
-        fprintf(stderr, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
-        assert(false && "Unknown operation in DC stage");
-        break;
-
-    case RISCV_SYSTEM:
-        if(funct3 == RISCV_SYSTEM_ENV)
-        {
-        #ifndef __SYNTHESIS__
-            rd = 10;
-            rs1 = 17;
-            rs2 = 10;
-
-            REG_rs1 = core.REG[rs1];
-            REG_rs2 = core.REG[rs2];
-
-            forward_rs1 = ((core.extoMem.dest == rs1 && core.mem_lock < 2) || (core.memtoWB.dest == rs1 && core.mem_lock == 0)) ? 1 : 0;
-            forward_rs2 = ((core.extoMem.dest == rs2 && core.mem_lock < 2) || (core.memtoWB.dest == rs2 && core.mem_lock == 0)) ? 1 : 0;
-            forward_ex_or_mem_rs1 = (core.extoMem.dest == rs1) ? 1 : 0;
-            forward_ex_or_mem_rs2 = (core.extoMem.dest == rs2) ? 1 : 0;
-
-            lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
-            rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
-
-            core.dctoEx.datac = (core.extoMem.dest == 11 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 11 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[11]);
-            core.dctoEx.datad = (core.extoMem.dest == 12 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 12 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[12]);
-            core.dctoEx.datae = (core.extoMem.dest == 13 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 13 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[13]);
-        #else
-            // ignore ecall in synthesis because it makes no sense
-            // we should jump at some address specified by a csr
-        #endif
-        }
-        else simul(if(funct3 != 0x4))
-        {
-            // handle the case for rd = 0 for CSRRW
-            // handle WIRI/WARL/etc.
-            if(immediate.slc<2>(8) == 3)
-            {
-                if(immediate.slc<2>(10) == 0)
-                {
-                    if(immediate.slc<1>(6) == 0)  // 0x30X
-                    {
-                        switch(immediate.slc<3>(0))
-                        {
-                        case 0:
-                            rhs = core.csrs.mstatus;
-                            break;
-                        case 1:
-                            rhs = core.csrs.misa;
-                            break;
-                        case 2:
-                            rhs = core.csrs.medeleg;
-                            break;
-                        case 3:
-                            rhs = core.csrs.mideleg;
-                            break;
-                        case 4:
-                            rhs = core.csrs.mie;
-                            break;
-                        case 5:
-                            rhs = core.csrs.mtvec;
-                            break;
-                        case 6:
-                            rhs = core.csrs.mcounteren;
-                            break;
-                        default:
-                            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                            assert(false && "Unknown CSR id\n");
-                            break;
-                        }
-                    }
-                    else                        // 0x34X
-                    {
-                        switch(immediate.slc<3>(0))
-                        {
-                        case 0:
-                            rhs = core.csrs.mscratch;
-                            break;
-                        case 1:
-                            rhs = core.csrs.mepc;
-                            break;
-                        case 2:
-                            rhs = core.csrs.mcause;
-                            break;
-                        case 3:
-                            rhs = core.csrs.mtval;
-                            break;
-                        case 4:
-                            rhs = core.csrs.mip;
-                            break;
-                        default:
-                            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                            assert(false && "Unknown CSR id\n");
-                            break;
-                        }
-                    }
-                }
-                else if(immediate.slc<2>(10) == 2)
-                {
-                    ac_int<2, false> foo = 0;
-                    foo.set_slc(0, immediate.slc<1>(1));
-                    foo.set_slc(1, immediate.slc<1>(7));
-                    switch(foo)
-                    {
-                    case 0:
-                        rhs = core.csrs.mcycle.slc<32>(0);
-                        break;
-                    case 1:
-                        rhs = core.csrs.minstret.slc<32>(0);
-                        break;
-                    case 2:
-                        rhs = core.csrs.mcycle.slc<32>(32);
-                        break;
-                    case 3:
-                        rhs = core.csrs.minstret.slc<32>(32);
-                        break;
-                    }
-                }
-                else if(immediate.slc<2>(10) == 3)
-                {
-                    switch(immediate.slc<2>(0))
-                    {
-                    case 1:
-                        rhs = core.csrs.mvendorid;
-                        break;
-                    case 2:
-                        rhs = core.csrs.marchid;
-                        break;
-                    case 3:
-                        rhs = core.csrs.mimpid;
-                        break;
-                    case 0:
-                        rhs = core.csrs.mhartid;
-                        break;
-                    }
-                }
-                else
-                {
-                    fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                    assert(false && "Unknown CSR id\n");
-                }
-            }
-            else
-            {
-                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                assert(false && "Unknown CSR id\n");
-            }
-            fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
-            core.dctoEx.memValue = immediate;
-            //lhs will contain core.REG[rs1]
-        }
-        simul(else assert(false));
-        break;
-    }
-
-
-    core.freeze_fetch = 0;
     // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
     if(core.dcctrl.prev_opCode == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
     || core.dcctrl.prev_rds[0] == rs2) && core.mem_lock < 2 && core.dcctrl.prev_pc != pc)
@@ -490,6 +245,249 @@ void DC(Core& core)
     }
     else
     {
+        switch(opCode)
+        {
+        // R-type instruction
+        case RISCV_OP:
+            break;
+        case RISCV_ATOMIC:
+            assert(false && "Not implemented yet");
+            break;
+        // S-type instruction
+        // use rs2 rs1 funct3 opCode from R-type
+        // 12 bits immediate
+        case RISCV_ST:
+            immediate.set_slc(5, instruction.slc<6>(25));
+            immediate.set_slc(0, instruction.slc<5>(7));
+
+            core.dctoEx.datac = rhs;
+
+            rhs = immediate;
+            rd = 0;
+            enableWB = false;
+            break;
+        // B-type instruction
+        // use rs2 rs1 funct3 opCode from R-type
+        // 13 bits immediate
+        case RISCV_BR:
+            immediate.set_slc(0, (ac_int<1, true>)0);
+            immediate.set_slc(1, instruction.slc<4>(8));
+            immediate.set_slc(5, instruction.slc<6>(25));
+            immediate.set_slc(11, instruction.slc<1>(7));
+
+            core.dctoEx.datac = immediate;
+            rd = 0;
+            enableWB = false;
+            break;
+        // J-type instruction
+        // use rd opCode from R-type
+        // 20 bits immediate
+        case RISCV_JAL:
+            immediate.set_slc(0, (ac_int<1, true>)0);
+            immediate.set_slc(1, instruction.slc<4>(21));
+            immediate.set_slc(5, instruction.slc<6>(25));
+            immediate.set_slc(11, instruction.slc<1>(20));
+            immediate.set_slc(12, instruction.slc<8>(12));
+            rhs = immediate;
+
+            // handle mem_lock here
+            break;
+        // U-type instruction
+        // use rd opCode from R-type
+        // 20 bits immediate
+        case RISCV_LUI:
+            immediate.set_slc(0, (ac_int<12, true>)0);
+            immediate.set_slc(12, instruction.slc<19>(12));
+            lhs = immediate;
+            break;
+        case RISCV_AUIPC:
+            immediate.set_slc(0, (ac_int<12, true>)0);
+            immediate.set_slc(12, instruction.slc<19>(12));
+            lhs = pc;
+            rhs = immediate;
+            break;
+        // I-type instruction
+        // use rs1 funct3 rd opCode from R-type
+        // 12 bits immediate
+        case RISCV_LD:
+            immediate.set_slc(0, instruction.slc<11>(20));
+            rhs = immediate;
+
+            break;
+        case RISCV_OPI:
+            immediate.set_slc(0, instruction.slc<11>(20));
+
+            if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
+                rhs = rs2;
+            else
+                rhs = immediate;
+
+            break;
+        case RISCV_JALR:
+            immediate.set_slc(0, instruction.slc<11>(20));
+            rhs = immediate;
+
+            // handle mem_lock here
+            break;
+        case RISCV_MISC_MEM:
+            immediate.set_slc(0, instruction.slc<11>(20));
+            rhs = immediate;
+            break;
+        default:
+            fprintf(stderr, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
+            assert(false && "Unknown operation in DC stage");
+            break;
+
+        case RISCV_SYSTEM:
+            if(funct3 == RISCV_SYSTEM_ENV)
+            {
+            #ifndef __SYNTHESIS__
+                rd = 10;
+                rs1 = 17;
+                rs2 = 10;
+
+                REG_rs1 = core.REG[rs1];
+                REG_rs2 = core.REG[rs2];
+
+                forward_rs1 = ((core.extoMem.dest == rs1 && core.mem_lock < 2) || (core.memtoWB.dest == rs1 && core.mem_lock == 0)) ? 1 : 0;
+                forward_rs2 = ((core.extoMem.dest == rs2 && core.mem_lock < 2) || (core.memtoWB.dest == rs2 && core.mem_lock == 0)) ? 1 : 0;
+                forward_ex_or_mem_rs1 = (core.extoMem.dest == rs1) ? 1 : 0;
+                forward_ex_or_mem_rs2 = (core.extoMem.dest == rs2) ? 1 : 0;
+
+                lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
+                rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
+
+                core.dctoEx.datac = (core.extoMem.dest == 11 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 11 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[11]);
+                core.dctoEx.datad = (core.extoMem.dest == 12 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 12 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[12]);
+                core.dctoEx.datae = (core.extoMem.dest == 13 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 13 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[13]);
+            #else
+                // ignore ecall in synthesis because it makes no sense
+                // we should jump at some address specified by a csr
+            #endif
+            }
+            else simul(if(funct3 != 0x4))
+            {
+                // handle the case for rd = 0 for CSRRW
+                // handle WIRI/WARL/etc.
+                if(immediate.slc<2>(8) == 3)
+                {
+                    if(immediate.slc<2>(10) == 0)
+                    {
+                        if(immediate.slc<1>(6) == 0)  // 0x30X
+                        {
+                            switch(immediate.slc<3>(0))
+                            {
+                            case 0:
+                                rhs = core.csrs.mstatus;
+                                break;
+                            case 1:
+                                rhs = core.csrs.misa;
+                                break;
+                            case 2:
+                                rhs = core.csrs.medeleg;
+                                break;
+                            case 3:
+                                rhs = core.csrs.mideleg;
+                                break;
+                            case 4:
+                                rhs = core.csrs.mie;
+                                break;
+                            case 5:
+                                rhs = core.csrs.mtvec;
+                                break;
+                            case 6:
+                                rhs = core.csrs.mcounteren;
+                                break;
+                            default:
+                                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                                assert(false && "Unknown CSR id\n");
+                                break;
+                            }
+                        }
+                        else                        // 0x34X
+                        {
+                            switch(immediate.slc<3>(0))
+                            {
+                            case 0:
+                                rhs = core.csrs.mscratch;
+                                break;
+                            case 1:
+                                rhs = core.csrs.mepc;
+                                break;
+                            case 2:
+                                rhs = core.csrs.mcause;
+                                break;
+                            case 3:
+                                rhs = core.csrs.mtval;
+                                break;
+                            case 4:
+                                rhs = core.csrs.mip;
+                                break;
+                            default:
+                                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                                assert(false && "Unknown CSR id\n");
+                                break;
+                            }
+                        }
+                    }
+                    else if(immediate.slc<2>(10) == 2)
+                    {
+                        ac_int<2, false> foo = 0;
+                        foo.set_slc(0, immediate.slc<1>(1));
+                        foo.set_slc(1, immediate.slc<1>(7));
+                        switch(foo)
+                        {
+                        case 0:
+                            rhs = core.csrs.mcycle.slc<32>(0);
+                            break;
+                        case 1:
+                            rhs = core.csrs.minstret.slc<32>(0);
+                            break;
+                        case 2:
+                            rhs = core.csrs.mcycle.slc<32>(32);
+                            break;
+                        case 3:
+                            rhs = core.csrs.minstret.slc<32>(32);
+                            break;
+                        }
+                    }
+                    else if(immediate.slc<2>(10) == 3)
+                    {
+                        switch(immediate.slc<2>(0))
+                        {
+                        case 1:
+                            rhs = core.csrs.mvendorid;
+                            break;
+                        case 2:
+                            rhs = core.csrs.marchid;
+                            break;
+                        case 3:
+                            rhs = core.csrs.mimpid;
+                            break;
+                        case 0:
+                            rhs = core.csrs.mhartid;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                        assert(false && "Unknown CSR id\n");
+                    }
+                }
+                else
+                {
+                    fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                    assert(false && "Unknown CSR id\n");
+                }
+                fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
+                core.dctoEx.memValue = immediate;
+                //lhs will contain core.REG[rs1]
+            }
+            simul(else assert(false));
+            break;
+        }
+        core.freeze_fetch = 0;
         core.dctoEx.opCode = opCode;
         core.dctoEx.funct3 = funct3;
         core.dctoEx.funct7 = funct7;
@@ -504,6 +502,32 @@ void DC(Core& core)
         core.dctoEx.lhs = lhs;
         core.dctoEx.rhs = rhs;
     }
+
+    /*if(core.dcctrl.lock)
+    {
+        core.dcctrl.lock -= 1;
+        core.dctoEx.opCode = RISCV_OPI;
+        core.dctoEx.funct3 = RISCV_OPI_ADDI;
+        core.dctoEx.funct7 = funct7;
+        core.dctoEx.rs1 = 0;
+        core.dctoEx.rs2 = 0;
+        core.dctoEx.rd = 0;
+        core.dctoEx.pc = 0;
+        core.dctoEx.instruction = 0x13;
+        core.dctoEx.enableWB = false;
+        core.dctoEx.realInstruction = false;
+
+        core.dctoEx.lhs = 0;
+        core.dctoEx.rhs = 0;
+    }
+    if(core.dctoEx.opCode == RISCV_JAL || core.dctoEx.opCode == RISCV_JALR)
+    {   // we cannot do this for branch because we don't know yet if it is taken or not
+        core.dcctrl.lock = 2;
+        fprintf(stderr, "@%06x\n", pc.to_int());
+    }*/
+
+
+
     // add a stall for core.csrs instruction because they should be atomic? Detect if 2 core.csrs follow each other
     core.dcctrl.prev_opCode = opCode;
     core.dcctrl.prev_pc = pc;
@@ -829,8 +853,6 @@ void do_Mem(Core& core, unsigned int data_memory[N]
         core.memtoWB.rs1 = core.extoMem.rs1;
         core.memtoWB.csrwb = false;
         core.memtoWB.realInstruction = core.extoMem.realInstruction;
-
-        bool sign = 0;
 
         if(core.mem_lock == 0)
         {
