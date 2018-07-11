@@ -43,7 +43,6 @@ struct DCctrl
     ac_int<7, false> prev_opCode;
     ac_int<32, false> prev_pc;
 
-
 };
 
 struct ExtoMem
@@ -121,8 +120,6 @@ struct Core
     bool early_exit;
     ac_int<3, false> mem_lock;
     bool freeze_fetch;
-    bool ex_bubble;
-    bool mem_bubble;
     bool cachelock;
     ac_int<32, false> pc;
     bool init;

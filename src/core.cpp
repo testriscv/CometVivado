@@ -226,12 +226,20 @@ void DC(Core& core)
 
     switch(opCode)
     {
+    // R-type instruction
+    case RISCV_OP:
+        break;
+    case RISCV_ATOMIC:
+        assert(false && "Not implemented yet");
+        break;
     // S-type instruction
     // use rs2 rs1 funct3 opCode from R-type
     // 12 bits immediate
     case RISCV_ST:
         immediate.set_slc(5, instruction.slc<6>(25));
         immediate.set_slc(0, instruction.slc<5>(7));
+
+        core.dctoEx.datac = rhs;
 
         rhs = immediate;
         rd = 0;
@@ -260,6 +268,8 @@ void DC(Core& core)
         immediate.set_slc(11, instruction.slc<1>(20));
         immediate.set_slc(12, instruction.slc<8>(12));
         rhs = immediate;
+
+        // handle mem_lock here
         break;
     // U-type instruction
     // use rd opCode from R-type
@@ -292,12 +302,21 @@ void DC(Core& core)
             rhs = immediate;
 
         break;
-    default:
+    case RISCV_JALR:
+        immediate.set_slc(0, instruction.slc<11>(20));
+        rhs = immediate;
+
+        // handle mem_lock here
+        break;
+    case RISCV_MISC_MEM:
         immediate.set_slc(0, instruction.slc<11>(20));
         rhs = immediate;
         break;
-    case RISCV_OP:
+    default:
+        fprintf(stderr, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
+        assert(false && "Unknown operation in DC stage");
         break;
+
     case RISCV_SYSTEM:
         if(funct3 == RISCV_SYSTEM_ENV)
         {
@@ -449,42 +468,47 @@ void DC(Core& core)
     }
 
 
-
-
-    core.dcctrl.prev_rds[1] = core.dcctrl.prev_rds[0];
-    core.dcctrl.prev_rds[0] = rd;
-
-
-    core.dctoEx.opCode = opCode;
-    core.dctoEx.funct3 = funct3;
-    core.dctoEx.funct7 = funct7;
-    core.dctoEx.rs1 = rs1;
-    core.dctoEx.rs2 = rs2;
-    core.dctoEx.rd = rd;
-    core.dctoEx.pc = pc;
-    core.dctoEx.instruction = instruction;
-    core.dctoEx.enableWB = true;
-    core.dctoEx.realInstruction = core.ftoDC.realInstruction;
-
-    core.dctoEx.lhs = lhs;
-    core.dctoEx.rhs = rhs;
-
-    if(opCode == RISCV_ST)
-    {
-        core.dctoEx.datac = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
-    }
-    core.ex_bubble = 0;
     core.freeze_fetch = 0;
     // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
-    if(core.dcctrl.prev_opCode == RISCV_LD && (core.extoMem.dest == rs1 || (opCode != RISCV_LD && core.extoMem.dest == rs2)) && core.mem_lock < 2 && core.dcctrl.prev_pc != pc)
+    if(core.dcctrl.prev_opCode == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
+    || core.dcctrl.prev_rds[0] == rs2) && core.mem_lock < 2 && core.dcctrl.prev_pc != pc)
     {
         core.freeze_fetch = 1;
-        core.ex_bubble = 1;
+        core.dctoEx.opCode = RISCV_OPI;
+        core.dctoEx.funct3 = RISCV_OPI_ADDI;
+        core.dctoEx.funct7 = funct7;
+        core.dctoEx.rs1 = 0;
+        core.dctoEx.rs2 = 0;
+        core.dctoEx.rd = 0;
+        core.dctoEx.pc = 0;
+        core.dctoEx.instruction = 0x13;
+        core.dctoEx.enableWB = false;
+        core.dctoEx.realInstruction = false;
+
+        core.dctoEx.lhs = 0;
+        core.dctoEx.rhs = 0;
+    }
+    else
+    {
+        core.dctoEx.opCode = opCode;
+        core.dctoEx.funct3 = funct3;
+        core.dctoEx.funct7 = funct7;
+        core.dctoEx.rs1 = rs1;
+        core.dctoEx.rs2 = rs2;
+        core.dctoEx.rd = rd;
+        core.dctoEx.pc = pc;
+        core.dctoEx.instruction = instruction;
+        core.dctoEx.enableWB = enableWB;
+        core.dctoEx.realInstruction = core.ftoDC.realInstruction;
+
+        core.dctoEx.lhs = lhs;
+        core.dctoEx.rhs = rhs;
     }
     // add a stall for core.csrs instruction because they should be atomic? Detect if 2 core.csrs follow each other
     core.dcctrl.prev_opCode = opCode;
     core.dcctrl.prev_pc = pc;
-
+    core.dcctrl.prev_rds[1] = core.dcctrl.prev_rds[0];
+    core.dcctrl.prev_rds[0] = rd;
     simul(if(pc)
     {
         coredebug("Dc   @%06x   %08x\n", pc.to_int(), instruction.to_int());
@@ -706,7 +730,7 @@ void Ex(Core& core
     case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
         break;
     case RISCV_SYSTEM:
-        if(core.dctoEx.funct3 == 0)
+        if(core.dctoEx.funct3 == RISCV_SYSTEM_ENV)
         {
         #ifndef __SYNTHESIS__
             core.extoMem.result = sim->solveSyscall(core.dctoEx.lhs, core.dctoEx.rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, core.extoMem.sys_status);
@@ -749,23 +773,7 @@ void Ex(Core& core
         }
         break;
     EXDEFAULT();
-    }
-
-    if(core.ex_bubble)
-    {
-        core.mem_bubble = 1;
-        core.extoMem.pc = 0;
-        core.extoMem.result = 0; //Result of the EX stage
-        core.extoMem.datad = 0;
-        core.extoMem.datac = 0;
-        core.extoMem.dest = 0;
-        core.extoMem.WBena = 0;
-        core.extoMem.opCode = 0;
-        core.extoMem.memValue = 0;
-        core.extoMem.rs1 = 0;
-        core.extoMem.funct3 = 0;
-        core.extoMem.realInstruction = false;
-    }
+    }   
 
     simul(if(core.extoMem.pc)
     {
@@ -801,19 +809,6 @@ void do_Mem(Core& core, unsigned int data_memory[N]
         {
             core.memtoWB.pc = 0;
         }
-    }
-    else if(core.mem_bubble)
-    {
-        core.mem_bubble = 0;
-        //wb_bubble = 1;
-        core.memtoWB.pc = 0;
-        core.memtoWB.instruction = 0;
-        core.memtoWB.result = 0; //Result to be written back
-        core.memtoWB.dest = 0; //Register to be written at WB stage
-        core.memtoWB.WBena = 0; //Is a WB is needed ?
-        core.memtoWB.opCode = 0;
-        core.memtoWB.sys_status = 0;
-        core.memtoWB.realInstruction = false;
     }
     else
     {
