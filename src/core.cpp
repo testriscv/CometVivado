@@ -190,7 +190,13 @@ void DC(Core& core)
     ac_int<5, false> rd = instruction.slc<5>(7);
     ac_int<5, false> opCode = instruction.slc<5>(2);    // reduced to 5 bits because 1:0 is always 11
 
-    assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
+    simul(if(instruction.slc<2>(0) != 3)
+    {
+        fprintf(stderr, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
+              pc.to_int(), instruction.to_int());
+        assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
+    })
+
 
     // share immediate for all type of instruction
     // this should simplify the hardware (or not apparently, althouh we test less bits)
@@ -201,12 +207,7 @@ void DC(Core& core)
     bool enableWB = true;
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
-
-    bool forward_rs1 = false;
-    bool forward_rs2 = false;
-    bool forward_ex_or_mem_rs1 = false;
-    bool forward_ex_or_mem_rs2 = false;
-
+    bool realInstruction = true;
 
     ac_int<32, true> REG_rs1 = core.REG[rs1.slc<5>(0)];
     ac_int<32, true> REG_rs2 = core.REG[rs2.slc<5>(0)];
@@ -216,35 +217,80 @@ void DC(Core& core)
     /*assert(prev_rds[0] == core.extoMem.dest);
     assert(prev_rds[1] == core.memtoWB.dest);*/
 
-    forward_rs1 = ((core.extoMem.dest == rs1 && core.mem_lock < 2) || (core.memtoWB.dest == rs1 && core.mem_lock == 0)) ? 1 : 0;
-    forward_rs2 = ((core.extoMem.dest == rs2 && core.mem_lock < 2) || (core.memtoWB.dest == rs2 && core.mem_lock == 0)) ? 1 : 0;
-    forward_ex_or_mem_rs1 = (core.extoMem.dest == rs1) ? 1 : 0;
-    forward_ex_or_mem_rs2 = (core.extoMem.dest == rs2) ? 1 : 0;
-
-    lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
-    rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
-
-    // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
-    if(core.dcctrl.prev_opCode == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
-    || core.dcctrl.prev_rds[0] == rs2) && core.mem_lock < 2 && core.dcctrl.prev_pc != pc)
+    core.freeze_fetch = 0;
+    if(core.dcctrl.prev_opCode[1] == RISCV_BR && core.memtoWB.result)
     {
-        core.freeze_fetch = 1;
-        core.dctoEx.opCode = RISCV_OPI;
-        core.dctoEx.funct3 = RISCV_OPI_ADDI;
-        core.dctoEx.funct7 = funct7;
-        core.dctoEx.rs1 = 0;
-        core.dctoEx.rs2 = 0;
-        core.dctoEx.rd = 0;
-        core.dctoEx.pc = 0;
-        core.dctoEx.instruction = 0x13;
-        core.dctoEx.enableWB = false;
-        core.dctoEx.realInstruction = false;
+        fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
 
-        core.dctoEx.lhs = 0;
-        core.dctoEx.rhs = 0;
+        lhs = 0;
+        rhs = 0;
+    }
+    // had a jump, so lock dc stage for 2 cycles
+    else if(core.dcctrl.lock)
+    {
+        fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
+        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
+        core.dcctrl.lock -= 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+    }
+    // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
+    else if(core.dcctrl.prev_opCode[0] == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
+    || core.dcctrl.prev_rds[0] == rs2) && core.dcctrl.prev_pc != pc)
+    {
+        fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
+        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
+        core.freeze_fetch = 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
     }
     else
     {
+        bool forward_rs1 = false;
+        bool forward_rs2 = false;
+        bool forward_ex_or_mem_rs1 = false;
+        bool forward_ex_or_mem_rs2 = false;
+        forward_rs1 = (core.extoMem.dest == rs1 || core.memtoWB.dest == rs1) ? 1 : 0;
+        forward_rs2 = (core.extoMem.dest == rs2 || core.memtoWB.dest == rs2) ? 1 : 0;
+        forward_ex_or_mem_rs1 = (core.extoMem.dest == rs1) ? 1 : 0;
+        forward_ex_or_mem_rs2 = (core.extoMem.dest == rs2) ? 1 : 0;
+
+        lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
+        rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
+
         switch(opCode)
         {
         // R-type instruction
@@ -290,7 +336,10 @@ void DC(Core& core)
             immediate.set_slc(12, instruction.slc<8>(12));
             rhs = immediate;
 
-            // handle mem_lock here
+            // we cannot do this for branch because we don't know yet if it is taken or not
+            core.dcctrl.lock = 2;
+            fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
+            debug("Jump @%06x, locking decode stage\n", pc.to_int());
             break;
         // U-type instruction
         // use rd opCode from R-type
@@ -327,7 +376,10 @@ void DC(Core& core)
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
 
-            // handle mem_lock here
+            // we cannot do this for branch because we don't know yet if it is taken or not
+            core.dcctrl.lock = 2;
+            fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
+            debug("Jump @%06x, locking decode stage\n", pc.to_int());
             break;
         case RISCV_MISC_MEM:
             immediate.set_slc(0, instruction.slc<11>(20));
@@ -488,51 +540,32 @@ void DC(Core& core)
             break;
         }
         core.freeze_fetch = 0;
-        core.dctoEx.opCode = opCode;
-        core.dctoEx.funct3 = funct3;
-        core.dctoEx.funct7 = funct7;
-        core.dctoEx.rs1 = rs1;
-        core.dctoEx.rs2 = rs2;
-        core.dctoEx.rd = rd;
-        core.dctoEx.pc = pc;
-        core.dctoEx.instruction = instruction;
-        core.dctoEx.enableWB = enableWB;
-        core.dctoEx.realInstruction = core.ftoDC.realInstruction;
-
-        core.dctoEx.lhs = lhs;
-        core.dctoEx.rhs = rhs;
+        realInstruction = core.ftoDC.realInstruction;
     }
-
-    /*if(core.dcctrl.lock)
-    {
-        core.dcctrl.lock -= 1;
-        core.dctoEx.opCode = RISCV_OPI;
-        core.dctoEx.funct3 = RISCV_OPI_ADDI;
-        core.dctoEx.funct7 = funct7;
-        core.dctoEx.rs1 = 0;
-        core.dctoEx.rs2 = 0;
-        core.dctoEx.rd = 0;
-        core.dctoEx.pc = 0;
-        core.dctoEx.instruction = 0x13;
-        core.dctoEx.enableWB = false;
-        core.dctoEx.realInstruction = false;
-
-        core.dctoEx.lhs = 0;
-        core.dctoEx.rhs = 0;
-    }
-    if(core.dctoEx.opCode == RISCV_JAL || core.dctoEx.opCode == RISCV_JALR)
-    {   // we cannot do this for branch because we don't know yet if it is taken or not
-        core.dcctrl.lock = 2;
-        fprintf(stderr, "@%06x\n", pc.to_int());
-    }*/
-
 
 
     // add a stall for core.csrs instruction because they should be atomic? Detect if 2 core.csrs follow each other
-    core.dcctrl.prev_opCode = opCode;
+    core.dcctrl.prev_opCode[1] = core.dcctrl.prev_opCode[0];
+    core.dcctrl.prev_opCode[0] = opCode;
     core.dcctrl.prev_pc = pc;
     core.dcctrl.prev_rds[1] = core.dcctrl.prev_rds[0];
     core.dcctrl.prev_rds[0] = rd;
+
+    core.dctoEx.opCode = opCode;
+    core.dctoEx.funct3 = funct3;
+    core.dctoEx.funct7 = funct7;
+    core.dctoEx.rs1 = rs1;
+    core.dctoEx.rs2 = rs2;
+    core.dctoEx.rd = rd;
+    core.dctoEx.pc = pc;
+    core.dctoEx.instruction = instruction;
+    core.dctoEx.enableWB = enableWB;
+    core.dctoEx.realInstruction = core.ftoDC.realInstruction;
+
+    core.dctoEx.lhs = lhs;
+    core.dctoEx.rhs = rhs;
+
+
     simul(if(pc)
     {
         coredebug("Dc   @%06x   %08x\n", pc.to_int(), instruction.to_int());
@@ -549,6 +582,14 @@ void Ex(Core& core
     #endif
         )
 {
+    static bool taken = false;
+    if(taken)
+    {
+        taken = false;
+        /*fprintf(stderr, "Instruction @%06x is discarded\n", core.dctoEx.pc.to_int());
+        debug("Instruction @%06x is discarded\n", core.dctoEx.pc.to_int());*/
+        return;
+    }
     core.extoMem.pc = core.dctoEx.pc;
     core.extoMem.instruction = core.dctoEx.instruction;
     core.extoMem.opCode = core.dctoEx.opCode;
@@ -559,6 +600,8 @@ void Ex(Core& core
     core.extoMem.sys_status = 0;
     core.extoMem.WBena = core.dctoEx.enableWB;
     core.extoMem.realInstruction = core.dctoEx.realInstruction;
+
+
 
     switch (core.dctoEx.opCode)
     {
@@ -599,6 +642,11 @@ void Ex(Core& core
             break;
         EXDEFAULT();
         }
+        taken = core.extoMem.result;
+        /*fprintf(stderr, "Branch @%06x was %s\n", core.dctoEx.pc.to_int(),
+                taken?"taken":"not taken");
+        debug("Branch @%06x was %s\n", core.dctoEx.pc.to_int(),
+                taken?"taken":"not taken");*/
         core.extoMem.memValue = core.dctoEx.pc + core.dctoEx.datac; // cannot be done by fetch...
         break;
     case RISCV_LD:
@@ -831,20 +879,12 @@ void do_Mem(Core& core, unsigned int data_memory[N]
         }
         else
         {
+            core.memtoWB.WBena = false;
             core.memtoWB.pc = 0;
         }
     }
     else
     {
-        if(core.mem_lock > 0)
-        {
-            core.mem_lock = core.mem_lock - 1;
-            core.memtoWB.WBena = 0;
-            simul(if(core.mem_lock)
-                debug("I    @%06x\n", core.extoMem.pc.to_int());
-            )
-        }
-
         core.memtoWB.sys_status = core.extoMem.sys_status;
         core.memtoWB.opCode = core.extoMem.opCode;
         core.memtoWB.result = core.extoMem.result;
@@ -853,72 +893,50 @@ void do_Mem(Core& core, unsigned int data_memory[N]
         core.memtoWB.rs1 = core.extoMem.rs1;
         core.memtoWB.csrwb = false;
         core.memtoWB.realInstruction = core.extoMem.realInstruction;
-
-        if(core.mem_lock == 0)
+        core.memtoWB.pc = core.extoMem.pc;
+        core.memtoWB.instruction = core.extoMem.instruction;
+        core.memtoWB.WBena = core.extoMem.WBena;
+        core.memtoWB.dest = core.extoMem.dest;
+        if(core.extoMem.opCode == RISCV_LD)
         {
-            core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;
-            core.memtoWB.WBena = core.extoMem.WBena;
-            core.memtoWB.dest = core.extoMem.dest;
-            switch(core.extoMem.opCode) // this should be in DC stage...
-            {
-            case RISCV_BR:
-                if (core.extoMem.result)
-                {
-                    core.mem_lock = 3;
-                }
-                core.memtoWB.WBena = 0;
-                core.memtoWB.dest = 0;
-                break;
-            case RISCV_JAL:
-                core.mem_lock = 3;
-                break;
-            case RISCV_JALR:
-                core.mem_lock = 3;
-                break;
-            case RISCV_LD:
-                core.datasize = core.extoMem.funct3.slc<2>(0);
-                core.signenable = !core.extoMem.funct3.slc<1>(2);
+            core.datasize = core.extoMem.funct3.slc<2>(0);
+            core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
-                core.daddress = core.extoMem.result % (4*N);
-                core.dcacheenable = true;
-                core.writeenable = false;
-                core.cachelock = true;
-                core.memtoWB.WBena = false;
-                core.memtoWB.pc = 0;
+            core.daddress = core.extoMem.result % (4*N);
+            core.dcacheenable = true;
+            core.writeenable = false;
+            core.cachelock = true;
+            core.memtoWB.WBena = false;
+            core.memtoWB.pc = 0;
 #else
-                //debug("%5d  ", cycles);
-                core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
-                                       #ifndef __SYNTHESIS__
-                                           , cycles
-                                       #endif
-                                           );
+            //debug("%5d  ", cycles);
+            core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
+                                   #ifndef __SYNTHESIS__
+                                       , cycles
+                                   #endif
+                                       );
 #endif
-                break;
-            case RISCV_ST:
-                core.datasize = core.extoMem.funct3.slc<2>(0);
+        }
+        else if(core.extoMem.opCode == RISCV_ST)
+        {
+            core.datasize = core.extoMem.funct3.slc<2>(0);
 #ifndef nocache
-                core.daddress = core.extoMem.result % (4*N);
-                core.signenable = false;
-                core.dcacheenable = true;
-                core.writeenable = true;
-                core.writevalue = core.extoMem.datac;
-                core.cachelock = true;
-                core.memtoWB.WBena = false;
-                core.memtoWB.pc = 0;
+            core.daddress = core.extoMem.result % (4*N);
+            core.signenable = false;
+            core.dcacheenable = true;
+            core.writeenable = true;
+            core.writevalue = core.extoMem.datac;
+            core.cachelock = true;
+            core.memtoWB.WBena = false;
+            core.memtoWB.pc = 0;
 #else
-                //debug("%5d  ", cycles);
-                memorySet(data_memory, core.extoMem.result, core.extoMem.datac, core.datasize
-                      #ifndef __SYNTHESIS__
-                          , cycles
-                      #endif
-                          );
+            //debug("%5d  ", cycles);
+            memorySet(data_memory, core.extoMem.result, core.extoMem.datac, core.datasize
+                  #ifndef __SYNTHESIS__
+                      , cycles
+                  #endif
+                      );
 #endif
-                break;
-            case RISCV_SYSTEM:
-                core.memtoWB.csrwb = true;
-                break;
-            }
         }
     }
     simul(if(core.memtoWB.pc)

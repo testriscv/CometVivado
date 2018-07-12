@@ -117,7 +117,7 @@ CCS_MAIN(int argc, char** argv)
                       , cycles, numins, &sim
                   #endif
                   ));
-        if(cycles > (uint64_t)5e8)
+        if(cycles > (uint64_t)1e7)
             break;
     }
     printf("Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
