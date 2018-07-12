@@ -197,7 +197,6 @@ void DC(Core& core)
         assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
     })
 
-
     // share immediate for all type of instruction
     // this should simplify the hardware (or not apparently, althouh we test less bits)
     // refer to the Table 22.1: RISC-V base opcode map, p133 in Instruction set listings of the spec
@@ -209,8 +208,8 @@ void DC(Core& core)
     ac_int<32, true> lhs = 0;
     bool realInstruction = true;
 
-    ac_int<32, true> REG_rs1 = core.REG[rs1.slc<5>(0)];
-    ac_int<32, true> REG_rs2 = core.REG[rs2.slc<5>(0)];
+    ac_int<32, true> REG_rs1 = core.REG[rs1];
+    ac_int<32, true> REG_rs2 = core.REG[rs2];
 
     /*fprintf(stderr, "%d  %d     %d  %d      %d\n", core.extoMem.dest.to_int(), prev_rds[0].to_int(),
             core.memtoWB.dest.to_int(), prev_rds[1].to_int(), rd.to_int());*/
@@ -218,66 +217,16 @@ void DC(Core& core)
     assert(prev_rds[1] == core.memtoWB.dest);*/
 
     core.freeze_fetch = 0;
-    if(core.dcctrl.prev_opCode[1] == RISCV_BR && core.memtoWB.result)
-    {
-        fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
-        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        enableWB = false;
-        realInstruction = false;
 
-        lhs = 0;
-        rhs = 0;
-    }
-    // had a jump, so lock dc stage for 2 cycles
-    else if(core.dcctrl.lock)
-    {
-        fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
-        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
-        core.dcctrl.lock -= 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        enableWB = false;
-        realInstruction = false;
+    ac_int<3, false> state = 0;
+    state[0] = core.dcctrl.prev_opCode[1] == RISCV_BR && core.memtoWB.result;
+    state[1] = (bool)core.dcctrl.lock;
+    state[2] = core.dcctrl.prev_opCode[0] == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
+            || core.dcctrl.prev_rds[0] == rs2) && core.dcctrl.prev_pc != pc;
 
-        lhs = 0;
-        rhs = 0;
-    }
-    // stall 1 cycle if load to one of the register we use, e.g lw a5, someaddress followed by any operation that use a5
-    else if(core.dcctrl.prev_opCode[0] == RISCV_LD && (core.dcctrl.prev_rds[0] == rs1
-    || core.dcctrl.prev_rds[0] == rs2) && core.dcctrl.prev_pc != pc)
+    switch(state)
     {
-        fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
-        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
-        core.freeze_fetch = 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        enableWB = false;
-        realInstruction = false;
-
-        lhs = 0;
-        rhs = 0;
-    }
-    else
+    case 0:        // do normal switch
     {
         bool forward_rs1 = false;
         bool forward_rs2 = false;
@@ -297,7 +246,7 @@ void DC(Core& core)
         case RISCV_OP:
             break;
         case RISCV_ATOMIC:
-            assert(false && "Not implemented yet");
+            assert(false && "Atomic operation not implemented yet");
             break;
         // S-type instruction
         // use rs2 rs1 funct3 opCode from R-type
@@ -336,10 +285,10 @@ void DC(Core& core)
             immediate.set_slc(12, instruction.slc<8>(12));
             rhs = immediate;
 
-            // we cannot do this for branch because we don't know yet if it is taken or not
+            // lock DC for 2 cycles, until we know the jump address
             core.dcctrl.lock = 2;
-            fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
-            debug("Jump @%06x, locking decode stage\n", pc.to_int());
+            /*fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
+            debug("Jump @%06x, locking decode stage\n", pc.to_int());*/
             break;
         // U-type instruction
         // use rd opCode from R-type
@@ -376,10 +325,10 @@ void DC(Core& core)
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
 
-            // we cannot do this for branch because we don't know yet if it is taken or not
+            // lock DC for 2 cycles, until we know the jump address
             core.dcctrl.lock = 2;
-            fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
-            debug("Jump @%06x, locking decode stage\n", pc.to_int());
+            /*fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
+            debug("Jump @%06x, locking decode stage\n", pc.to_int());*/
             break;
         case RISCV_MISC_MEM:
             immediate.set_slc(0, instruction.slc<11>(20));
@@ -542,9 +491,109 @@ void DC(Core& core)
         core.freeze_fetch = 0;
         realInstruction = core.ftoDC.realInstruction;
     }
+        break;
+    case 1:        // a branch was taken
+        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+        break;
+    case 2:        // a jump was taken
+        /*fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
+        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());*/
+        core.dcctrl.lock -= 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+        break;
+    case 3:        // jump but a branch was taken, take the branch, unlock DC stage
+        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
+        core.dcctrl.lock = 0;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+        break;
+    case 4:        // LD a4, OP a4 , stall 1 cycle
+        /*fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
+        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());*/
+        core.freeze_fetch = 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+        break;
+    case 5:        // RAW dependency + branch taken, take the branch, ignore the RAW
+        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        enableWB = false;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+        break;
+    case 6:        // RAW dependency + jump taken, e.g. ld a0, jalr a0
+        fprintf(stderr, "@%06x  RAW + jump\n", pc.to_int());
+        assert(false && "RAW + jump");
+        break;
+    case 7:        // RAW dependency + branch or jump taken
+        fprintf(stderr, "@%06x  RAW + branch or jump ?\n", pc.to_int());
+        assert(false && "RAW + branch or jump");
+        break;
+    default:
+        assert(false);
+        break;
+    }
 
 
-    // add a stall for core.csrs instruction because they should be atomic? Detect if 2 core.csrs follow each other
     core.dcctrl.prev_opCode[1] = core.dcctrl.prev_opCode[0];
     core.dcctrl.prev_opCode[0] = opCode;
     core.dcctrl.prev_pc = pc;
@@ -560,7 +609,7 @@ void DC(Core& core)
     core.dctoEx.pc = pc;
     core.dctoEx.instruction = instruction;
     core.dctoEx.enableWB = enableWB;
-    core.dctoEx.realInstruction = core.ftoDC.realInstruction;
+    core.dctoEx.realInstruction = realInstruction;
 
     core.dctoEx.lhs = lhs;
     core.dctoEx.rhs = rhs;
@@ -582,6 +631,14 @@ void Ex(Core& core
     #endif
         )
 {
+    simul(if(core.dctoEx.pc)
+    {
+        coredebug("Ex   @%06x   %08x\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int());
+    }
+    else
+    {
+        coredebug("Ex   \n");
+    })
     static bool taken = false;
     if(taken)
     {
@@ -676,16 +733,16 @@ void Ex(Core& core
         case RISCV_OPI_ANDI:
             core.extoMem.result = core.dctoEx.lhs & core.dctoEx.rhs;
             break;
-        case RISCV_OPI_SLLI:
-            core.extoMem.result = core.dctoEx.lhs << core.dctoEx.rhs;
+        case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
+            core.extoMem.result = core.dctoEx.lhs << (ac_int<5, false>)core.dctoEx.rhs;
             /*fprintf(stderr, "@%06x      %08x << %02x = %08x\n", core.dctoEx.pc.to_int(), core.dctoEx.lhs.to_int(), core.dctoEx.rs2.to_int(), core.extoMem.result.to_int());
             assert(core.dctoEx.rs2 == core.dctoEx.rhs);*/
             break;
         case RISCV_OPI_SRI:
             if (core.dctoEx.funct7.slc<1>(5))    //SRAI
-                core.extoMem.result = core.dctoEx.lhs >> core.dctoEx.rhs;
+                core.extoMem.result = core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
             else                            //SRLI
-                core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs >> core.dctoEx.rhs;
+                core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
             /*fprintf(stderr, "@%06x      %08x >> %02x = %08x\n", core.dctoEx.pc.to_int(), core.dctoEx.lhs.to_int(), core.dctoEx.rs2.to_int(), core.extoMem.result.to_int());
             assert(core.dctoEx.rs2 == core.dctoEx.rhs);*/
             break;
@@ -846,16 +903,6 @@ void Ex(Core& core
         break;
     EXDEFAULT();
     }   
-
-    simul(if(core.extoMem.pc)
-    {
-        coredebug("Ex   @%06x   %08x\n", core.extoMem.pc.to_int(), core.extoMem.instruction.to_int());
-    }
-    else
-    {
-        coredebug("Ex   \n");
-    })
-
 }
 
 void do_Mem(Core& core, unsigned int data_memory[N]
