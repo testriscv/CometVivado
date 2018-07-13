@@ -8,8 +8,9 @@ struct FtoDC
 {
     ac_int<32, false> pc;
 
-    ac_int<32, false> instruction; //Instruction to execute
+    ac_int<32, false> instruction;  // Instruction to execute
     bool realInstruction;
+    ac_int<32, false> nextpc;       // Next pc to store for JAL & JALR
 };
 
 struct DCtoEx
@@ -118,11 +119,15 @@ struct Core
     ac_int<32, true> REG[32];
 
     bool early_exit;
-    ac_int<3, false> mem_lock;
     bool freeze_fetch;
     bool cachelock;
     ac_int<32, false> pc;
     bool init;
+
+    // used to break dependencies, because using extoMem or memtoWB
+    // implies a dependency from stage ex or mem to dc (i.e. they
+    // are not completely independent)...
+    ac_int<32, true> exresult[3];
 
     /// Instruction cache
     ICacheControl ictrl;

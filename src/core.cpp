@@ -68,16 +68,10 @@ void Ft(Core& core, unsigned int ins_memory[N]
     else
     {
         next_pc = core.pc + 4;
+        core.ftoDC.nextpc = next_pc;
     }
-    ac_int<32, false> jump_pc;
-    if(core.mem_lock > 1)
-    {
-        jump_pc = next_pc;      // this means that we already had a jump before, so prevent double jumping when 2 jumps or branch are consecutive
-    }
-    else
-    {
-        jump_pc = core.extoMem.memValue; // forward the value from ex stage for jump & branch
-    }
+    ac_int<32, false> jump_pc = core.extoMem.memValue; // forward the value from ex stage for jump & branch
+
     bool control = 0;
     switch(core.extoMem.opCode)
     {
@@ -119,12 +113,12 @@ void Ft(Core& core, unsigned int ins_memory[N]
             core.ftoDC.pc = 0;
             core.ftoDC.realInstruction = false;
 
-            if(core.mem_lock > 1)   // there was a jump ealier, so we do nothing because right instruction still hasn't been fetched
+            /*if(core.mem_lock > 1)   // there was a jump ealier, so we do nothing because right instruction still hasn't been fetched
             {
                 debug("Had a jump, not moving & ");
             }
             // if there's a jump at the same time of a miss, update to jump_pc
-            else if(control)
+            else*/ if(control)
             {
                 core.pc = jump_pc % (4*N);
                 debug("Jumping & ");
@@ -197,12 +191,6 @@ void DC(Core& core)
         assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
     })
 
-    // share immediate for all type of instruction
-    // this should simplify the hardware (or not apparently, althouh we test less bits)
-    // refer to the Table 22.1: RISC-V base opcode map, p133 in Instruction set listings of the spec
-    // double cast as signed int before equality for sign extension
-    ac_int<32, true> immediate = (ac_int<32, true>)(((ac_int<32, true>)instruction).slc<1>(31));
-
     bool enableWB = true;
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
@@ -228,6 +216,12 @@ void DC(Core& core)
     {
     case 0:        // do normal switch
     {
+        // share immediate for all type of instruction
+        // this should simplify the hardware (or not apparently, althouh we test less bits)
+        // refer to the Table 22.1: RISC-V base opcode map, p133 in Instruction set listings of the spec
+        // double cast as signed int before equality for sign extension
+        ac_int<32, true> immediate = (ac_int<32, true>)(((ac_int<32, true>)instruction).slc<1>(31));
+
         bool forward_rs1 = false;
         bool forward_rs2 = false;
         bool forward_ex_or_mem_rs1 = false;
@@ -239,6 +233,7 @@ void DC(Core& core)
 
         lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
         rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
+        realInstruction = true;
 
         switch(opCode)
         {
@@ -350,17 +345,17 @@ void DC(Core& core)
                 REG_rs1 = core.REG[rs1];
                 REG_rs2 = core.REG[rs2];
 
-                forward_rs1 = ((core.extoMem.dest == rs1 && core.mem_lock < 2) || (core.memtoWB.dest == rs1 && core.mem_lock == 0)) ? 1 : 0;
-                forward_rs2 = ((core.extoMem.dest == rs2 && core.mem_lock < 2) || (core.memtoWB.dest == rs2 && core.mem_lock == 0)) ? 1 : 0;
+                forward_rs1 = (core.extoMem.dest == rs1 || core.memtoWB.dest == rs1) ? 1 : 0;
+                forward_rs2 = (core.extoMem.dest == rs2 || core.memtoWB.dest == rs2) ? 1 : 0;
                 forward_ex_or_mem_rs1 = (core.extoMem.dest == rs1) ? 1 : 0;
                 forward_ex_or_mem_rs2 = (core.extoMem.dest == rs2) ? 1 : 0;
 
                 lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
                 rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
 
-                core.dctoEx.datac = (core.extoMem.dest == 11 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 11 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[11]);
-                core.dctoEx.datad = (core.extoMem.dest == 12 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 12 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[12]);
-                core.dctoEx.datae = (core.extoMem.dest == 13 && core.mem_lock < 2) ? core.extoMem.result : ((core.memtoWB.dest == 13 && core.mem_lock == 0) ? core.memtoWB.result : core.REG[13]);
+                core.dctoEx.datac = core.extoMem.dest == 11 ? core.extoMem.result : (core.memtoWB.dest == 11 ? core.memtoWB.result : core.REG[11]);
+                core.dctoEx.datad = core.extoMem.dest == 12 ? core.extoMem.result : (core.memtoWB.dest == 12 ? core.memtoWB.result : core.REG[12]);
+                core.dctoEx.datae = core.extoMem.dest == 13 ? core.extoMem.result : (core.memtoWB.dest == 13 ? core.memtoWB.result : core.REG[13]);
             #else
                 // ignore ecall in synthesis because it makes no sense
                 // we should jump at some address specified by a csr
@@ -645,6 +640,16 @@ void Ex(Core& core
         taken = false;
         /*fprintf(stderr, "Instruction @%06x is discarded\n", core.dctoEx.pc.to_int());
         debug("Instruction @%06x is discarded\n", core.dctoEx.pc.to_int());*/
+        core.extoMem.pc = 0;
+        core.extoMem.instruction = 0x13;
+        core.extoMem.WBena = false;
+        core.extoMem.realInstruction = false;
+        core.extoMem.opCode = RISCV_OPI;
+        core.extoMem.dest = 0;
+        core.extoMem.datac = 0;
+        core.extoMem.funct3 = RISCV_OPI_ADDI;
+        core.extoMem.datad = 0;
+        core.extoMem.sys_status = 0;
         return;
     }
     core.extoMem.pc = core.dctoEx.pc;
@@ -699,6 +704,8 @@ void Ex(Core& core
             break;
         EXDEFAULT();
         }
+        if(core.csrs.minstret > 3600)
+            debug(" ");
         taken = core.extoMem.result;
         /*fprintf(stderr, "Branch @%06x was %s\n", core.dctoEx.pc.to_int(),
                 taken?"taken":"not taken");
@@ -902,7 +909,8 @@ void Ex(Core& core
         }
         break;
     EXDEFAULT();
-    }   
+    }
+
 }
 
 void do_Mem(Core& core, unsigned int data_memory[N]
@@ -1241,6 +1249,9 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
    #endif
           );
     }
+
+    core.exresult[2] = core.exresult[1];
+    core.exresult[1] = core.exresult[0];
 
 #ifndef nocache
     // cache should maybe be all the way up or down
