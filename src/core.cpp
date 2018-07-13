@@ -783,32 +783,10 @@ void do_Mem(Core& core, unsigned int data_memory[N]
                 core.mem_lock = 3;
                 break;
             case RISCV_LD:
-                switch(core.extoMem.funct3)
-                {
-                case RISCV_LD_LW:
-                    core.datasize = 3;
-                    sign = 1;
-                    break;
-                case RISCV_LD_LH:
-                    core.datasize = 1;
-                    sign = 1;
-                    break;
-                case RISCV_LD_LHU:
-                    core.datasize = 1;
-                    sign = 0;
-                    break;
-                case RISCV_LD_LB:
-                    core.datasize = 0;
-                    sign = 1;
-                    break;
-                case RISCV_LD_LBU:
-                    core.datasize = 0;
-                    sign = 0;
-                    break;
-                }
+                core.datasize = core.extoMem.funct3.slc<2>(0);
+                core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
                 core.daddress = core.memtoWB.result % (4*N);
-                core.signenable = sign;
                 core.dcacheenable = true;
                 core.writeenable = false;
                 core.cachelock = true;
@@ -824,21 +802,10 @@ void do_Mem(Core& core, unsigned int data_memory[N]
 #endif
                 break;
             case RISCV_ST:
-                switch(core.extoMem.funct3)
-                {
-                case RISCV_ST_STW:
-                    core.datasize = 3;
-                    break;
-                case RISCV_ST_STH:
-                    core.datasize = 1;
-                    break;
-                case RISCV_ST_STB:
-                    core.datasize = 0;
-                    break;
-                }
+                core.datasize = core.extoMem.funct3.slc<2>(0);
+                core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
                 core.daddress = core.memtoWB.result % (4*N);
-                core.signenable = false;
                 core.dcacheenable = true;
                 core.writeenable = true;
                 core.writevalue = core.extoMem.datac;
