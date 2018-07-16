@@ -143,15 +143,58 @@ void Ft(Core& core, unsigned int ins_memory[N]
         simul(cycles += MEMORY_READ_LATENCY);
         core.ftoDC.pc = core.pc;
         core.ftoDC.realInstruction = true;
+        core.ftoDC.nextpc = next_pc;
         //debug("i @%06x (%06x)   %08x    S:3\n", core.pc.to_int(), core.pc.to_int()/4, ins_memory[core.pc/4]);
+
+        switch(core.ctrl.prev_opCode[1])
+        {
+        case RISCV_BR:  // check if branch was taken
+            if(core.ctrl.branch)
+                core.pc = core.ctrl.jump_pc;
+            else
+                core.pc = next_pc;
+            break;
+        case RISCV_JAL:
+            core.pc = core.ctrl.jump_pc;
+            break;
+        case RISCV_JALR:
+            core.pc = core.ctrl.jump_pc;
+            break;
+        default:
+            core.pc = next_pc;
+            break;
+        }
     }
     else      // we cannot overwrite because it would not execute the frozen instruction
     {
         core.ftoDC.instruction = core.ftoDC.instruction;
         core.ftoDC.pc = core.ftoDC.pc;
         core.ftoDC.realInstruction = true;
-        debug("Fetch frozen, what to do?");
+
+        switch(core.ctrl.prev_opCode[1])
+        {
+        case RISCV_BR:  // check if branch was taken
+            if(core.ctrl.branch)
+                core.pc = core.ctrl.jump_pc;
+            else
+                core.pc = core.pc;
+            break;
+        case RISCV_JAL:
+            core.pc = core.ctrl.jump_pc;
+            break;
+        case RISCV_JALR:
+            core.pc = core.ctrl.jump_pc;
+            break;
+        default:
+            core.pc = core.pc;
+            break;
+        }
+
+        debug("Fetch frozen\n");
     }
+
+
+
     simul(if(core.ftoDC.pc)
     {
         coredebug("Ft   @%06x   %08x\n", core.ftoDC.pc.to_int(), core.ftoDC.instruction.to_int());
@@ -160,7 +203,6 @@ void Ft(Core& core, unsigned int ins_memory[N]
     {
         coredebug("Ft   \n");
     })
-    core.pc = control ? jump_pc : next_pc;
 #endif
 }
 
@@ -199,9 +241,66 @@ void DC(Core& core)
     state[2] = core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
             || core.ctrl.prev_rds[1] == rs2) && core.ctrl.prev_pc != pc;
 
-    switch(state)
+    if(core.ctrl.prev_opCode[1] == RISCV_BR && core.ctrl.branch)
+    {       // a branch was taken
+        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
+        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
+        core.ctrl.lock = 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+    }
+    else if(core.ctrl.lock)
+    {       // a branch or a jump was taken
+        /*fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
+        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());*/
+        core.ctrl.lock -= 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+    }
+    else if(core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
+            || core.ctrl.prev_rds[1] == rs2) && core.ctrl.prev_pc != pc)
     {
-    case 0:        // do normal switch
+        /// duplicate instruction to remove freeze fetch
+        /// and the dependency from dc to ft
+        /// but how to handle it?
+
+        /*fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
+        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());*/
+        core.freeze_fetch = 1;
+        opCode = RISCV_OPI;
+        funct3 = RISCV_OPI_ADDI;
+        funct7 = funct7;
+        rs1 = 0;
+        rs2 = 0;
+        rd = 0;
+        pc = 0;
+        instruction = 0x13;
+        realInstruction = false;
+
+        lhs = 0;
+        rhs = 0;
+    }
+    else        // do normal switch
     {
         // share immediate for all type of instruction
         // this should simplify the hardware (or not apparently, althouh we test less bits)
@@ -492,103 +591,7 @@ void DC(Core& core)
         core.freeze_fetch = 0;
         realInstruction = core.ftoDC.realInstruction;
     }
-        break;
-    case 1:        // a branch was taken
-        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
-        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
-        core.ctrl.lock = 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        realInstruction = false;
 
-        lhs = 0;
-        rhs = 0;
-        break;
-    case 2:        // a jump was taken
-        /*fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
-        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());*/
-        core.ctrl.lock -= 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        realInstruction = false;
-
-        lhs = 0;
-        rhs = 0;
-        break;
-    case 3:        // jump but a branch was taken, take the branch, lock DC stage
-        /*fprintf(stderr, "Instruction @%06x is nopped because a branch/jump was taken\n", pc.to_int());
-        debug("Instruction @%06x is nopped because a branch/jump was taken\n", pc.to_int());*/
-        core.ctrl.lock = 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        realInstruction = false;
-
-        lhs = 0;
-        rhs = 0;
-        break;
-    case 4:        // LD a4, OP a4 , stall 1 cycle
-        /*fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
-        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());*/
-        core.freeze_fetch = 1;
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        realInstruction = false;
-
-        lhs = 0;
-        rhs = 0;
-        break;
-    case 5:        // RAW dependency + branch taken, take the branch, ignore the RAW
-        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
-        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
-        opCode = RISCV_OPI;
-        funct3 = RISCV_OPI_ADDI;
-        funct7 = funct7;
-        rs1 = 0;
-        rs2 = 0;
-        rd = 0;
-        pc = 0;
-        instruction = 0x13;
-        realInstruction = false;
-
-        lhs = 0;
-        rhs = 0;
-        break;
-    case 6:        // RAW dependency + jump taken, e.g. ld a0, jalr a0
-        fprintf(stderr, "@%06x  RAW + jump\n", pc.to_int());
-        assert(false && "RAW + jump");
-        break;
-    case 7:        // RAW dependency + branch or jump taken
-        fprintf(stderr, "@%06x  RAW + branch or jump ?\n", pc.to_int());
-        assert(false && "RAW + branch or jump");
-        break;
-    default:
-        assert(false);
-        break;
-    }
 
     core.ctrl.prev_opCode[0] = opCode;
     core.ctrl.prev_pc = pc;
@@ -932,6 +935,10 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.memtoWB.instruction = 0;
             core.memtoWB.realInstruction = false;
 #else
+            core.memtoWB.realInstruction = core.extoMem.realInstruction;
+            core.memtoWB.pc = core.extoMem.pc;
+            core.memtoWB.instruction = core.extoMem.instruction;
+            core.memtoWB.rd = core.extoMem.rd;
             //debug("%5d  ", cycles);
             core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
                                    #ifndef __SYNTHESIS__
@@ -955,6 +962,10 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.memtoWB.instruction = 0;
             core.memtoWB.realInstruction = false;
 #else
+            core.memtoWB.realInstruction = core.extoMem.realInstruction;
+            core.memtoWB.pc = core.extoMem.pc;
+            core.memtoWB.instruction = core.extoMem.instruction;
+            core.memtoWB.rd = core.extoMem.rd;
             //debug("%5d  ", cycles);
             memorySet(data_memory, core.extoMem.result, core.extoMem.datac, core.datasize
                   #ifndef __SYNTHESIS__
