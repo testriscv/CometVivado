@@ -22,13 +22,12 @@ struct DCtoEx
     ac_int<7, false> funct7;    // funct7 = instruction[31:25]
     ac_int<3, false> funct3;    // funct3 = instruction[14:12]
     ac_int<5, false> rs1;       // rs1    = instruction[19:15]
-    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
+ // ac_int<5, false> rs2;       // rs2    = instruction[24:20]
     ac_int<5, false> rd;        // rd     = instruction[11:7]
 
-    bool enableWB;
     bool realInstruction;
 
-    ac_int<32, true> lhs;   // left hand side : operand 1
+    ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac;
 
@@ -37,32 +36,19 @@ struct DCtoEx
     ac_int<32, true> memValue; //Second data, from register file or immediate value
 };
 
-struct DCctrl
-{
-    ac_int<5, false> prev_rds[2];
-    ac_int<5, false> prev_opCode[2];
-    ac_int<32, false> prev_pc;
-    ac_int<2, false> lock;      // used to lock dc stage after JAL & JALR
-    ac_int<2, false> branch;    // used to potentially lock dc stage BR 
-};
-
 struct ExtoMem
 {
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
 
+    ac_int<32, true> result;    // result of the EX stage
+    ac_int<5, false> rd;        // destination register
+    ac_int<5, false> opCode;    // LD or ST (can be reduced to 2 bits)
+    ac_int<3, false> funct3;    // datasize and sign extension bit
     bool realInstruction;
 
-    ac_int<32, true> result; //Result of the EX stage
-    ac_int<32, true> datad;
-    ac_int<32, true> datac; //Data to be stored in memory (if needed)
-    ac_int<5, false> dest; //Register to be written at WB stage
-    bool WBena; //Is a WB is needed ?
-    ac_int<5, false> opCode; //OpCode of the operation
-    ac_int<32, true> memValue; //Second data, from register file or immediate value
-    ac_int<5, false> rs1;
-    ac_int<7, false> funct3;
-    ac_int<2, false> sys_status;
+    ac_int<32, true> datac;     // data to be stored in memory (if needed)
+    ac_int<32, true> memValue;  // rename as result bis
 };
 
 struct MemtoWB
@@ -70,17 +56,12 @@ struct MemtoWB
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
 
-    ac_int<32, false> lastpc;
-    bool realInstruction;
+    ac_int<32, true> result;    // Result to be written back
+    ac_int<5, false> rd;        // destination register
+    bool realInstruction;       // increment minstret ?
 
-    ac_int<32, true> result; //Result to be written back
     ac_int<32, false> rescsr;   // Result for CSR instruction
     ac_int<12, false> CSRid;    // CSR to be written back
-    ac_int<5, false> dest; //Register to be written at WB stage
-    bool WBena; //Is a WB is needed ?
-    ac_int<5, false> opCode;
-    ac_int<2, false> sys_status;
-    ac_int<5, false> rs1;
     bool csrwb;
 };
 
@@ -106,6 +87,20 @@ struct CSR
     ac_int<32, false> mip;
 };
 
+struct CoreCtrl
+{
+    ac_int<5, false> prev_rds[3];
+    ac_int<5, false> prev_opCode[3];
+    ac_int<32, false> prev_pc;
+    ac_int<2, false> lock; //lockdc     // used to lock dc stage after JAL & JALR
+
+    // used to break dependencies, because using extoMem or memtoWB
+    // implies a dependency from stage ex or mem to dc (i.e. they
+    // are not completely independent)...
+    bool branch;
+    ac_int<32, true> jump_pc;
+};
+
 struct Core
 {
     FtoDC ftoDC;
@@ -114,20 +109,14 @@ struct Core
     MemtoWB memtoWB;
     CSR csrs;
 
-    DCctrl dcctrl;
+    CoreCtrl ctrl;
 
     ac_int<32, true> REG[32];
 
-    bool early_exit;
     bool freeze_fetch;
     bool cachelock;
     ac_int<32, false> pc;
     bool init;
-
-    // used to break dependencies, because using extoMem or memtoWB
-    // implies a dependency from stage ex or mem to dc (i.e. they
-    // are not completely independent)...
-    ac_int<32, true> exresult[3];
 
     /// Instruction cache
     ICacheControl ictrl;
