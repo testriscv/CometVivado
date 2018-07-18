@@ -104,6 +104,7 @@ struct CoreCtrl
     // used to break dependencies, because using extoMem or memtoWB
     // implies a dependency from stage ex or mem to dc (i.e. they
     // are not completely independent)...
+    ac_int<32, true> prev_res[3];
     bool branch[3];
     ac_int<32, true> jump_pc[2];
 };
