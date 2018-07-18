@@ -584,7 +584,6 @@ void DC(Core& core)
                     assert(false && "Unknown CSR id\n");
                 }
                 fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
-                core.dctoEx.memValue = immediate;
                 //lhs will contain core.REG[rs1]
             }
             simul(else assert(false));
@@ -859,10 +858,11 @@ void Ex(Core& core
         #ifdef __SYNTHESIS__
             core.extoMem.result = core.dctoEx.rhs;      // written back to rd
         #endif
-            core.extoMem.memValue = core.dctoEx.memValue;
         break;
     EXDEFAULT();
     }
+
+    core.ctrl.prev_res[0] = core.extoMem.result;
 
     simul(if(core.dctoEx.pc)
     {
@@ -1223,22 +1223,14 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
    #endif
           );
 
-        if(core.csrs.minstret > 2660)
-        {
-            debug("%02x %02x %02x   %d %d %d    %08x    %08x\n", core.ctrl.prev_opCode[2].to_int()*4+3,
-            core.ctrl.prev_opCode[1].to_int()*4+3, core.ctrl.prev_opCode[0].to_int()*4+3,
-            core.ctrl.branch[2], core.ctrl.branch[1], core.ctrl.branch[0],
-            core.ctrl.jump_pc[1].to_int(), core.ctrl.jump_pc[0].to_int());
-        }
-
-        // if we had a branch, zeros everything ?
+        // if we had a branch, zeros everything
         if(core.ctrl.branch[1])
         {
             core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
-            core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;
+            core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;  // prevent useless dependencies
             core.ctrl.branch[2] = 1;
-            core.ctrl.branch[1] = core.ctrl.branch[0] = 0;  //?
-            core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0] = 0; //?
+            core.ctrl.branch[1] = core.ctrl.branch[0] = 0;      // prevent taking wrong branch
+            //core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0] = 0;
         }
         else
         {
@@ -1248,16 +1240,8 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
             core.ctrl.prev_rds[1] = core.ctrl.prev_rds[0];
             core.ctrl.branch[2] = core.ctrl.branch[1];
             core.ctrl.branch[1] = core.ctrl.branch[0];
-            core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
         }
-
-        if(core.csrs.minstret > 2660)
-        {
-            debug("%02x %02x %02x   %d %d %d    %08x    %08x\n", core.ctrl.prev_opCode[2].to_int()*4+3,
-            core.ctrl.prev_opCode[1].to_int()*4+3, core.ctrl.prev_opCode[0].to_int()*4+3,
-            core.ctrl.branch[2], core.ctrl.branch[1], core.ctrl.branch[0],
-            core.ctrl.jump_pc[1].to_int(), core.ctrl.jump_pc[0].to_int());
-        }
+        core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
     }
 
 
