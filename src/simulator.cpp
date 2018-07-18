@@ -248,12 +248,27 @@ void Simulator::std(ac_int<32, false> addr, ac_int<32, true> value)
 
 ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
 {
+#ifndef nocache     // if data is in the cache, we must read in the cache directly
+    int i = getSet(addr);
+    for(int j(0); j < Associativity; ++j)
+    {
+        if(dctrl->tag[i][j] == getTag(addr))
+        {
+            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+            formatread(addr, 0, 0, mem);
+            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+            return mem;
+        }
+    }
+#endif
+    // read main memory if it wasn't in cache
     ac_int<8, true> result;
     ac_int<32, false> read = dm[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
-    //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), memory[addr >> 2]);
+    //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), dm[addr >> 2]);
     return result;
+
 }
 
 

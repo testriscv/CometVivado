@@ -6,22 +6,23 @@
 
 struct FtoDC
 {
-    ac_int<32, false> pc;
-
+    ac_int<32, false> pc;           // used for JAL, AUIPC & BR
     ac_int<32, false> instruction;  // Instruction to execute
-    bool realInstruction;
+    bool realInstruction;           // Increment for minstret
     ac_int<32, false> nextpc;       // Next pc to store for JAL & JALR
 };
 
 struct DCtoEx
 {
-    ac_int<32, false> pc;
+    ac_int<32, false> pc;       // used for branch
+#ifndef __SYNTHESIS__
     ac_int<32, false> instruction;
+#endif
 
     ac_int<5, false> opCode;    // opCode = instruction[6:2]
     ac_int<7, false> funct7;    // funct7 = instruction[31:25]
     ac_int<3, false> funct3;    // funct3 = instruction[14:12]
-    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
+ // ac_int<5, false> rs1;       // rs1    = instruction[19:15]
  // ac_int<5, false> rs2;       // rs2    = instruction[24:20]
     ac_int<5, false> rd;        // rd     = instruction[11:7]
 
@@ -29,17 +30,22 @@ struct DCtoEx
 
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
-    ac_int<32, true> datac;
+    ac_int<32, true> datac; // ST, BR, JAL/R,
 
-    ac_int<32, true> datad; //Third data used only for store instruction and corresponding to rb
+#ifndef __SYNTHESIS__
+    // syscall only
+    ac_int<32, true> datad;
     ac_int<32, true> datae;
     ac_int<32, true> memValue; //Second data, from register file or immediate value
+#endif
 };
 
 struct ExtoMem
 {
+#ifndef __SYNTHESIS__
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
+#endif
 
     ac_int<32, true> result;    // result of the EX stage
     ac_int<5, false> rd;        // destination register
@@ -53,8 +59,10 @@ struct ExtoMem
 
 struct MemtoWB
 {
+#ifndef __SYNTHESIS__
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
+#endif
 
     ac_int<32, true> result;    // Result to be written back
     ac_int<5, false> rd;        // destination register
@@ -91,14 +99,13 @@ struct CoreCtrl
 {
     ac_int<5, false> prev_rds[3];
     ac_int<5, false> prev_opCode[3];
-    ac_int<32, false> prev_pc;
     ac_int<2, false> lock; //lockdc     // used to lock dc stage after JAL & JALR
 
     // used to break dependencies, because using extoMem or memtoWB
     // implies a dependency from stage ex or mem to dc (i.e. they
     // are not completely independent)...
-    bool branch;
-    ac_int<32, true> jump_pc;
+    bool branch[3];
+    ac_int<32, true> jump_pc[2];
 };
 
 struct Core
