@@ -32,6 +32,13 @@ struct DCtoEx
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac; // ST, BR, JAL/R,
 
+    bool forward_lhs;
+    bool forward_rhs;
+    bool forward_datac;
+    bool forward_mem_lhs;
+    bool forward_mem_rhs;
+    bool forward_mem_datac;
+
 #ifndef __SYNTHESIS__
     // syscall only
     ac_int<32, true> datad;

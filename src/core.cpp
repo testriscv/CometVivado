@@ -93,8 +93,6 @@ void Ft(Core& core, unsigned int ins_memory[N]
                 core.pc = next_pc;
                 break;
             }
-
-            debug("%06x\n", core.pc.to_int());
         }
         else
         {
@@ -126,6 +124,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
     }
 
     core.iaddress = core.pc;
+    debug("%06x\n", core.iaddress.to_int());
 
 
     simul(if(core.ftoDC.pc)
@@ -228,10 +227,20 @@ void DC(Core& core)
 
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
-    bool realInstruction = true;
+    bool realInstruction = true;   
 
-    ac_int<32, true> REG_rs1 = core.REG[rs1];
-    ac_int<32, true> REG_rs2 = core.REG[rs2];
+    bool forward_rs1 = false;
+    bool forward_rs2 = false;
+    bool forward_datac = false;
+    bool forward_ex_or_mem_rs1 = false;
+    bool forward_ex_or_mem_rs2 = false;
+    bool forward_ex_or_mem_datac = false;
+
+    // 1 is ex, 2 is mem
+    forward_rs1 = (rs1 != 0) && (core.ctrl.prev_rds[1] == rs1 || core.ctrl.prev_rds[2] == rs1);
+    forward_rs2 = (rs2 != 0) && (core.ctrl.prev_rds[1] == rs2 || core.ctrl.prev_rds[2] == rs2);
+    forward_ex_or_mem_rs1 = core.ctrl.prev_rds[1] == rs1;
+    forward_ex_or_mem_rs2 = core.ctrl.prev_rds[1] == rs2;
 
     core.freeze_fetch = 0;
 
@@ -255,6 +264,8 @@ void DC(Core& core)
         simul(pc = 0;
         instruction = 0x13;)
         realInstruction = false;
+        forward_rs1 = false;
+        forward_rs2 = false;
 
         lhs = 0;
         rhs = 0;
@@ -273,6 +284,8 @@ void DC(Core& core)
         simul(pc = 0;
         instruction = 0x13;)
         realInstruction = false;
+        forward_rs1 = false;
+        forward_rs2 = false;
 
         lhs = 0;
         rhs = 0;
@@ -296,6 +309,8 @@ void DC(Core& core)
         simul(pc = 0;
         instruction = 0x13;)
         realInstruction = false;
+        forward_rs1 = false;
+        forward_rs2 = false;
 
         lhs = 0;
         rhs = 0;
@@ -308,30 +323,10 @@ void DC(Core& core)
         // double cast as signed int before equality for sign extension
         ac_int<32, false> immediate = (ac_int<32, true>)(((ac_int<32, true>)instruction).slc<1>(31));
 
-        bool forward_rs1 = false;
-        bool forward_rs2 = false;
-        bool forward_ex_or_mem_rs1 = false;
-        bool forward_ex_or_mem_rs2 = false;
-        // 0 and 1 is ex, 2 is mem
-        forward_rs1 = (rs1 != 0) && (core.ctrl.prev_rds[1] == rs1 || core.ctrl.prev_rds[2] == rs1);
-        forward_rs2 = (rs2 != 0) && (core.ctrl.prev_rds[1] == rs2 || core.ctrl.prev_rds[2] == rs2);
-        forward_ex_or_mem_rs1 = core.ctrl.prev_rds[1] == rs1;
-        forward_ex_or_mem_rs2 = core.ctrl.prev_rds[1] == rs2;
+        lhs = core.REG[rs1];
+        rhs = core.REG[rs2];
 
-        lhs = forward_rs1 ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
-        rhs = forward_rs2 ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
         realInstruction = true;
-
-        /*if(forward_rs1)
-        {
-            debug("@%06x %08x %lld rs1 (%d) forward : %08x %s\n", pc.to_int(), instruction.to_int()
-                     , core.csrs.mcycle.to_int64(), rs1.to_int(), lhs.to_int(), forward_ex_or_mem_rs1?"from ex":"from mem");
-        }
-        if(forward_rs2)
-        {
-            debug("@%06x %08x %lld rs2 (%d) forward : %08x %s\n", pc.to_int(), instruction.to_int()
-                     , core.csrs.mcycle.to_int64(), rs2.to_int(), rhs.to_int(), forward_ex_or_mem_rs2?"from ex":"from mem");
-        }*/
 
         switch(opCode)
         {
@@ -348,9 +343,12 @@ void DC(Core& core)
             immediate.set_slc(5, instruction.slc<6>(25));
             immediate.set_slc(0, instruction.slc<5>(7));
 
+            forward_datac = forward_rs2;
+            forward_ex_or_mem_datac = forward_ex_or_mem_rs2;
             core.dctoEx.datac = rhs;
 
             rhs = immediate;
+            forward_rs2 = false;
             rd = 0;
             break;
         // B-type instruction
@@ -376,6 +374,7 @@ void DC(Core& core)
             immediate.set_slc(12, instruction.slc<8>(12));
             lhs = pc;
             rhs = immediate;
+            forward_rs2 = false;
             core.dctoEx.datac = core.ftoDC.nextpc;
 
             // lock DC for 3 cycles, until we get the real next instruction
@@ -391,12 +390,16 @@ void DC(Core& core)
             immediate.set_slc(0, (ac_int<12, true>)0);
             immediate.set_slc(12, instruction.slc<19>(12));
             lhs = immediate;
+            forward_rs1 = false;
+            forward_rs2 = false;
             break;
         case RISCV_AUIPC:
             immediate.set_slc(0, (ac_int<12, true>)0);
             immediate.set_slc(12, instruction.slc<19>(12));
             lhs = pc;
             rhs = immediate;
+            forward_rs1 = false;
+            forward_rs2 = false;
             break;
         // I-type instruction
         // use rs1 funct3 rd opCode from R-type
@@ -404,20 +407,24 @@ void DC(Core& core)
         case RISCV_LD:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
+            forward_rs2 = false;
 
             break;
         case RISCV_OPI:
             immediate.set_slc(0, instruction.slc<11>(20));
 
+            // useless condition ?
             if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
                 rhs = rs2;
             else
                 rhs = immediate;
 
+            forward_rs2 = false;
             break;
         case RISCV_JALR:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
+            forward_rs2 = false;
             core.dctoEx.datac = core.ftoDC.nextpc;
 
             // lock DC for 3 cycles, until we get the real next instruction
@@ -429,6 +436,7 @@ void DC(Core& core)
         case RISCV_MISC_MEM:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
+            forward_rs2 = false;
             break;
         default:
             fprintf(stderr, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
@@ -444,16 +452,13 @@ void DC(Core& core)
                 rs1 = 17;
                 rs2 = 10;
 
-                REG_rs1 = core.REG[rs1];
-                REG_rs2 = core.REG[rs2];
-
                 forward_rs1 = core.ctrl.prev_rds[1] == rs1 || core.ctrl.prev_rds[2] == rs1;
                 forward_rs2 = core.ctrl.prev_rds[1] == rs2 || core.ctrl.prev_rds[2] == rs2;
                 forward_ex_or_mem_rs1 = core.ctrl.prev_rds[1] == rs1;
                 forward_ex_or_mem_rs2 = core.ctrl.prev_rds[1] == rs2;
 
-                lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : REG_rs1;
-                rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : REG_rs2;
+                lhs = (forward_rs1 && rs1 != 0) ? (forward_ex_or_mem_rs1 ? core.extoMem.result : core.memtoWB.result) : core.REG[rs1];
+                rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : core.REG[rs2];
                 realInstruction = true;
 
                 core.dctoEx.datac = core.ctrl.prev_rds[1] == 11 ? core.extoMem.result : (core.ctrl.prev_rds[2] == 11 ? core.memtoWB.result : core.REG[11]);
@@ -593,6 +598,21 @@ void DC(Core& core)
         realInstruction = core.ftoDC.realInstruction;
     }
 
+    if(forward_rs1)
+    {
+        debug("@%06x %08x %lld rs1 (%d) forward %s\n", pc.to_int(), instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), rs1.to_int(), forward_ex_or_mem_rs1?"from ex":"from mem");
+    }
+    if(forward_rs2)
+    {
+        debug("@%06x %08x %lld rs2 (%d) forward %s\n", pc.to_int(), instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), rs2.to_int(), forward_ex_or_mem_rs2?"from ex":"from mem");
+    }
+    if(forward_datac)
+    {
+        debug("@%06x %08x %lld datac (%d) forward %s\n", pc.to_int(), instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), rs2.to_int(), forward_ex_or_mem_datac?"from ex":"from mem");
+    }
 
     core.ctrl.prev_opCode[0] = opCode;
     core.ctrl.prev_rds[0] = rd;
@@ -607,6 +627,13 @@ void DC(Core& core)
 
     core.dctoEx.lhs = lhs;
     core.dctoEx.rhs = rhs;
+
+    core.dctoEx.forward_lhs = forward_rs1;
+    core.dctoEx.forward_rhs = forward_rs2;
+    core.dctoEx.forward_datac = forward_datac;
+    core.dctoEx.forward_mem_lhs = forward_ex_or_mem_rs1;
+    core.dctoEx.forward_mem_rhs = forward_ex_or_mem_rs2;
+    core.dctoEx.forward_mem_datac = forward_ex_or_mem_datac;
 
 
     simul(if(pc)
@@ -629,46 +656,93 @@ void Ex(Core& core
     core.extoMem.instruction = core.dctoEx.instruction;)
     core.extoMem.opCode = core.dctoEx.opCode;
     core.extoMem.rd = core.dctoEx.rd;
-    core.extoMem.datac = core.dctoEx.datac;
+
     core.extoMem.realInstruction = core.dctoEx.realInstruction;
     core.extoMem.funct3 = core.dctoEx.funct3;
     core.ctrl.branch[0] = false;
+
+    ac_int<32, true> lhs = 0;
+    ac_int<32, true> rhs = 0;
+
+    if(core.dctoEx.forward_lhs)
+        if(core.dctoEx.forward_mem_lhs)
+            lhs = core.ctrl.prev_res[1];
+        else
+            lhs = core.ctrl.prev_res[2];
+    else
+        lhs = core.dctoEx.lhs;
+
+    if(core.dctoEx.forward_rhs)
+        if(core.dctoEx.forward_mem_rhs)
+            rhs = core.ctrl.prev_res[1];
+        else
+            rhs = core.ctrl.prev_res[2];
+    else
+        rhs = core.dctoEx.rhs;
+
+    if(core.dctoEx.forward_datac)   // ST instruction only
+    {
+        if(core.dctoEx.forward_mem_datac)
+            core.extoMem.datac = core.ctrl.prev_res[1];
+        else
+            core.extoMem.datac = core.ctrl.prev_res[2];
+        assert(core.dctoEx.opCode == RISCV_ST);
+    }
+    else
+        core.extoMem.datac = core.dctoEx.datac;;
+
+    if(core.dctoEx.forward_lhs)
+    {
+        debug("@%06x %08x %lld lhs forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), lhs.to_int(), core.dctoEx.forward_mem_lhs?"from mem":"from WB");
+    }
+    if(core.dctoEx.forward_rhs)
+    {
+        debug("@%06x %08x %lld rhs forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), rhs.to_int(), core.dctoEx.forward_mem_rhs?"from mem":"from WB");
+    }
+    if(core.dctoEx.forward_datac)
+    {
+        debug("@%06x %08x %lld datac forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
+                 , core.csrs.mcycle.to_int64(), core.extoMem.datac.to_int(), core.dctoEx.forward_mem_datac?"from mem":"from WB");
+    }
+
     switch (core.dctoEx.opCode)
     {
     case RISCV_LUI:
-        core.extoMem.result = core.dctoEx.lhs;
+        core.extoMem.result = lhs;
         break;
     case RISCV_AUIPC:
-        core.extoMem.result = core.dctoEx.lhs + core.dctoEx.rhs;
+        core.extoMem.result = lhs + rhs;
         break;
     case RISCV_JAL:
-        core.ctrl.jump_pc[0] = core.dctoEx.lhs + core.dctoEx.rhs;
+        core.ctrl.jump_pc[0] = lhs + rhs;
         core.extoMem.result = core.dctoEx.datac;   // pc + 4
         break;
     case RISCV_JALR:
-        core.ctrl.jump_pc[0] = (core.dctoEx.lhs + core.dctoEx.rhs) & 0xfffffffe;   // lsb must be zeroed (cf spec)
+        core.ctrl.jump_pc[0] = (lhs + rhs) & 0xfffffffe;   // lsb must be zeroed (cf spec)
         core.extoMem.result = core.dctoEx.datac;   // pc + 4
         break;
     case RISCV_BR:
         switch(core.dctoEx.funct3)
         {
         case RISCV_BR_BEQ:
-            core.extoMem.result = core.dctoEx.lhs == core.dctoEx.rhs;
+            core.extoMem.result = lhs == rhs;
             break;
         case RISCV_BR_BNE:
-            core.extoMem.result = core.dctoEx.lhs != core.dctoEx.rhs;
+            core.extoMem.result = lhs != rhs;
             break;
         case RISCV_BR_BLT:
-            core.extoMem.result = core.dctoEx.lhs < core.dctoEx.rhs;
+            core.extoMem.result = lhs < rhs;
             break;
         case RISCV_BR_BGE:
-            core.extoMem.result = core.dctoEx.lhs >= core.dctoEx.rhs;
+            core.extoMem.result = lhs >= rhs;
             break;
         case RISCV_BR_BLTU:
-            core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs < (ac_int<32, false>)core.dctoEx.rhs;
+            core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
             break;
         case RISCV_BR_BGEU:
-            core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs >= (ac_int<32, false>)core.dctoEx.rhs;
+            core.extoMem.result = (ac_int<32, false>)lhs >= (ac_int<32, false>)rhs;
             break;
         EXDEFAULT();
         }
@@ -676,40 +750,40 @@ void Ex(Core& core
         core.ctrl.jump_pc[0] = core.dctoEx.pc + core.dctoEx.datac; // cannot be done by fetch...
         break;
     case RISCV_LD:
-        core.extoMem.result = core.dctoEx.lhs + core.dctoEx.rhs;
+        core.extoMem.result = lhs + rhs;
         break;
     case RISCV_ST:
-        core.extoMem.result = core.dctoEx.lhs + core.dctoEx.rhs;
+        core.extoMem.result = lhs + rhs;
         break;
     case RISCV_OPI:
         switch(core.dctoEx.funct3)
         {
         case RISCV_OPI_ADDI:
-            core.extoMem.result = core.dctoEx.lhs + core.dctoEx.rhs;
+            core.extoMem.result = lhs + rhs;
             break;
         case RISCV_OPI_SLTI:
-            core.extoMem.result = core.dctoEx.lhs < core.dctoEx.rhs;
+            core.extoMem.result = lhs < rhs;
             break;
         case RISCV_OPI_SLTIU:
-            core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs < (ac_int<32, false>)core.dctoEx.rhs;
+            core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
             break;
         case RISCV_OPI_XORI:
-            core.extoMem.result = core.dctoEx.lhs ^ core.dctoEx.rhs;
+            core.extoMem.result = lhs ^ rhs;
             break;
         case RISCV_OPI_ORI:
-            core.extoMem.result = core.dctoEx.lhs | core.dctoEx.rhs;
+            core.extoMem.result = lhs | rhs;
             break;
         case RISCV_OPI_ANDI:
-            core.extoMem.result = core.dctoEx.lhs & core.dctoEx.rhs;
+            core.extoMem.result = lhs & rhs;
             break;
         case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
-            core.extoMem.result = core.dctoEx.lhs << (ac_int<5, false>)core.dctoEx.rhs;
+            core.extoMem.result = lhs << (ac_int<5, false>)rhs;
             break;
         case RISCV_OPI_SRI:
             if (core.dctoEx.funct7.slc<1>(5))    //SRAI
-                core.extoMem.result = core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
+                core.extoMem.result = lhs >> (ac_int<5, false>)rhs;
             else                            //SRLI
-                core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
+                core.extoMem.result = (ac_int<32, false>)lhs >> (ac_int<5, false>)rhs;
             break;
         EXDEFAULT();
         }
@@ -717,8 +791,8 @@ void Ex(Core& core
     case RISCV_OP:
         if(core.dctoEx.funct7.slc<1>(0))     // M Extension
         {
-            ac_int<33, true> mul_reg_a = core.dctoEx.lhs;
-            ac_int<33, true> mul_reg_b = core.dctoEx.rhs;
+            ac_int<33, true> mul_reg_a = lhs;
+            ac_int<33, true> mul_reg_b = rhs;
             ac_int<66, true> longResult = 0;
             switch (core.dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
             {
@@ -785,33 +859,33 @@ void Ex(Core& core
             {
             case RISCV_OP_ADD:
                 if (core.dctoEx.funct7.slc<1>(5))    // SUB
-                    core.extoMem.result = core.dctoEx.lhs - core.dctoEx.rhs;
+                    core.extoMem.result = lhs - rhs;
                 else                            // ADD
-                    core.extoMem.result = core.dctoEx.lhs + core.dctoEx.rhs;
+                    core.extoMem.result = lhs + rhs;
                 break;
             case RISCV_OP_SLL:
-                core.extoMem.result = core.dctoEx.lhs << (ac_int<5, false>)core.dctoEx.rhs;
+                core.extoMem.result = lhs << (ac_int<5, false>)rhs;
                 break;
             case RISCV_OP_SLT:
-                core.extoMem.result = core.dctoEx.lhs < core.dctoEx.rhs;
+                core.extoMem.result = lhs < rhs;
                 break;
             case RISCV_OP_SLTU:
-                core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs < (ac_int<32, false>)core.dctoEx.rhs;
+                core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
                 break;
             case RISCV_OP_XOR:
-                core.extoMem.result = core.dctoEx.lhs ^ core.dctoEx.rhs;
+                core.extoMem.result = lhs ^ rhs;
                 break;
             case RISCV_OP_SR:
                 if(core.dctoEx.funct7.slc<1>(5))     // SRA
-                    core.extoMem.result = core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
+                    core.extoMem.result = lhs >> (ac_int<5, false>)rhs;
                 else                            // SRL
-                    core.extoMem.result = (ac_int<32, false>)core.dctoEx.lhs >> (ac_int<5, false>)core.dctoEx.rhs;
+                    core.extoMem.result = (ac_int<32, false>)lhs >> (ac_int<5, false>)rhs;
                 break;
             case RISCV_OP_OR:
-                core.extoMem.result = core.dctoEx.lhs | core.dctoEx.rhs;
+                core.extoMem.result = lhs | rhs;
                 break;
             case RISCV_OP_AND:
-                core.extoMem.result =  core.dctoEx.lhs & core.dctoEx.rhs;
+                core.extoMem.result = lhs & rhs;
                 break;
             EXDEFAULT();
             }
@@ -824,39 +898,39 @@ void Ex(Core& core
         { // case 0: mret instruction, core.dctoEx.memValue should be 0x302
         case RISCV_SYSTEM_ENV:
         #ifndef __SYNTHESIS__
-            core.extoMem.result = sim->solveSyscall(core.dctoEx.lhs, core.dctoEx.rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
+            core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
             fprintf(stderr, "Syscall @%06x\n", core.dctoEx.pc.to_int());
         #endif
             break;
             // lhs is from rs1, rhs is from csr
         case RISCV_SYSTEM_CSRRW:
-            core.extoMem.datac = core.dctoEx.lhs;       // written back to csr
+            core.extoMem.datac = lhs;       // written back to csr
             //fprintf(stderr, "CSRRW @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         case RISCV_SYSTEM_CSRRS:
-            core.extoMem.datac = core.dctoEx.lhs | core.dctoEx.rhs;
+            core.extoMem.datac = lhs | rhs;
             //fprintf(stderr, "CSRRS @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         case RISCV_SYSTEM_CSRRC:
-            core.extoMem.datac = ((ac_int<32, false>)~core.dctoEx.lhs) & core.dctoEx.rhs;
+            core.extoMem.datac = ((ac_int<32, false>)~lhs) & rhs;
             //fprintf(stderr, "CSRRC @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         case RISCV_SYSTEM_CSRRWI:
-            core.extoMem.datac = core.dctoEx.lhs;
+            core.extoMem.datac = lhs;
             //fprintf(stderr, "CSRRWI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         case RISCV_SYSTEM_CSRRSI:
-            core.extoMem.datac = core.dctoEx.lhs | core.dctoEx.rhs;
+            core.extoMem.datac = lhs | rhs;
             //fprintf(stderr, "CSRRSI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         case RISCV_SYSTEM_CSRRCI:
-            core.extoMem.datac = ((ac_int<32, false>)~core.dctoEx.lhs) & core.dctoEx.rhs;
+            core.extoMem.datac = ((ac_int<32, false>)~lhs) & rhs;
             //fprintf(stderr, "CSRRCI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
             break;
         EXDEFAULT();
         }
         #ifdef __SYNTHESIS__
-            core.extoMem.result = core.dctoEx.rhs;      // written back to rd
+            core.extoMem.result = rhs;      // written back to rd
         #endif
         break;
     EXDEFAULT();
@@ -900,6 +974,19 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
+        }
+
+        if(core.ctrl.branch[2])
+        {
+            debug("I    @%06x\n", core.extoMem.pc.to_int());
+            simul(core.memtoWB.pc = 0;
+            core.memtoWB.instruction = 0;
+            core.extoMem.pc = 0;
+            core.extoMem.instruction = 0;)
+
+            core.memtoWB.rd = 0;
+            core.memtoWB.realInstruction = false;
+            assert(false);
         }
     }
     else if(core.ctrl.branch[2])
@@ -1193,6 +1280,9 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     simul(uint64_t oldcycles = core.csrs.mcycle);
     core.csrs.mcycle += 1;
 
+    if(core.csrs.minstret > 2825)
+        debug(" ");
+
     doWB(core);
     simul(coredebug("%d ", core.csrs.mcycle.to_int64());
     for(int i=0; i<32; i++)
@@ -1223,6 +1313,14 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
    #endif
           );
 
+        if(core.ctrl.prev_opCode[2] == RISCV_LD)
+            core.ctrl.prev_res[2] = core.memtoWB.result;    // store the loaded value, not the address
+            // this works because we know that we can't have lw a5, x   addi a0, a5, 1
+            // there's always a nop between load and next use of value
+        else
+            core.ctrl.prev_res[2] = core.ctrl.prev_res[1];
+        core.ctrl.prev_res[1] = core.ctrl.prev_res[0];
+
         // if we had a branch, zeros everything
         if(core.ctrl.branch[1])
         {
@@ -1242,8 +1340,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
             core.ctrl.branch[1] = core.ctrl.branch[0];
         }
         core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
-        core.ctrl.prev_res[2] = core.ctrl.prev_res[1];
-        core.ctrl.prev_res[1] = core.ctrl.prev_res[0];
+
     }
 
 
