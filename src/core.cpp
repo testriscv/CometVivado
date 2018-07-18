@@ -921,7 +921,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.datasize = core.extoMem.funct3.slc<2>(0);
             core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
-            core.daddress = core.extoMem.result % (4*N);
+            core.daddress = core.extoMem.result;// % (4*N);
             core.dcacheenable = true;
             core.writeenable = false;
             core.cachelock = true;
@@ -958,7 +958,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
                   fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
                           core.datasize.to_int(), core.extoMem.datac);)
 #ifndef nocache
-            core.daddress = core.extoMem.result % (4*N);
+            core.daddress = core.extoMem.result;// % (4*N);
             core.dcacheenable = true;
             core.writeenable = true;
             core.writevalue = core.extoMem.datac;
@@ -1242,6 +1242,8 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
             core.ctrl.branch[1] = core.ctrl.branch[0];
         }
         core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
+        core.ctrl.prev_res[2] = core.ctrl.prev_res[1];
+        core.ctrl.prev_res[1] = core.ctrl.prev_res[0];
     }
 
 
