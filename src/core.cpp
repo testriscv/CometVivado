@@ -7,9 +7,8 @@
 #include "simulator.h"
 
 #define EXDEFAULT() default: \
-    fprintf(stderr, "Error : Unknown operation in Ex stage : @%06x	%08x\n", core.extoMem.pc.to_int(), core.extoMem.instruction.to_int()); \
-    debug("Error : Unknown operation in Ex stage : @%06x	%08x\n", core.extoMem.pc.to_int(), core.extoMem.instruction.to_int()); \
-    assert(false && "Unknown operation in Ex stage");
+    dbgassert(false, "Error : Unknown operation in Ex stage : @%06x	%08x\n", core.extoMem.pc.to_int(), core.extoMem.instruction.to_int()); \
+    break;
 
 #else
 
@@ -126,8 +125,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
     core.iaddress = core.pc;
     debug("%06x\n", core.iaddress.to_int());
 
-
-    simul(if(core.ftoDC.pc)
+    simul(if(core.ftoDC.realInstruction)
     {
         coredebug("Ft   @%06x   %08x\n", core.ftoDC.pc.to_int(), core.ftoDC.instruction.to_int());
     }
@@ -143,21 +141,20 @@ void Ft(Core& core, unsigned int ins_memory[N]
         core.ftoDC.pc = core.pc;
         core.ftoDC.realInstruction = true;
         core.ftoDC.nextpc = next_pc;
-        //debug("i @%06x (%06x)   %08x    S:3\n", core.pc.to_int(), core.pc.to_int()/4, ins_memory[core.pc/4]);
 
-        switch(core.ctrl.prev_opCode[1])
+        switch(core.ctrl.prev_opCode[2])
         {
         case RISCV_BR:  // check if branch was taken
-            if(core.ctrl.branch)
-                core.pc = core.ctrl.jump_pc;
+            if(core.ctrl.branch[1])
+                core.pc = core.ctrl.jump_pc[1];
             else
                 core.pc = next_pc;
             break;
         case RISCV_JAL:
-            core.pc = core.ctrl.jump_pc;
+            core.pc = core.ctrl.jump_pc[1];
             break;
         case RISCV_JALR:
-            core.pc = core.ctrl.jump_pc;
+            core.pc = core.ctrl.jump_pc[1];
             break;
         default:
             core.pc = next_pc;
@@ -170,19 +167,19 @@ void Ft(Core& core, unsigned int ins_memory[N]
         core.ftoDC.pc = core.ftoDC.pc;
         core.ftoDC.realInstruction = true;
 
-        switch(core.ctrl.prev_opCode[1])
+        switch(core.ctrl.prev_opCode[2])
         {
         case RISCV_BR:  // check if branch was taken
-            if(core.ctrl.branch)
-                core.pc = core.ctrl.jump_pc;
+            if(core.ctrl.branch[1])
+                core.pc = core.ctrl.jump_pc[1];
             else
                 core.pc = core.pc;
             break;
         case RISCV_JAL:
-            core.pc = core.ctrl.jump_pc;
+            core.pc = core.ctrl.jump_pc[1];
             break;
         case RISCV_JALR:
-            core.pc = core.ctrl.jump_pc;
+            core.pc = core.ctrl.jump_pc[1];
             break;
         default:
             core.pc = core.pc;
@@ -192,8 +189,6 @@ void Ft(Core& core, unsigned int ins_memory[N]
         debug("Fetch frozen\n");
     }
 
-
-
     simul(if(core.ftoDC.pc)
     {
         coredebug("Ft   @%06x   %08x\n", core.ftoDC.pc.to_int(), core.ftoDC.instruction.to_int());
@@ -202,6 +197,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
     {
         coredebug("Ft   \n");
     })
+    debug("i @%06x   %08x\n", core.pc.to_int(), ins_memory[core.pc/4]);
 #endif
 }
 
@@ -218,12 +214,8 @@ void DC(Core& core)
     ac_int<5, false> rd = instruction.slc<5>(7);
     ac_int<5, false> opCode = instruction.slc<5>(2);    // reduced to 5 bits because 1:0 is always 11
 
-    simul(if(instruction.slc<2>(0) != 3)
-    {
-        fprintf(stderr, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
+    dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
               pc.to_int(), instruction.to_int());
-        assert(instruction.slc<2>(0) == 3 && "Instruction lower bits are not 0b11, illegal instruction");
-    })
 
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
@@ -236,7 +228,7 @@ void DC(Core& core)
     bool forward_ex_or_mem_rs2 = false;
     bool forward_ex_or_mem_datac = false;
 
-    // 1 is ex, 2 is mem
+    // prev_rds[1] is ex, prev_rds[2] is mem
     forward_rs1 = (rs1 != 0) && (core.ctrl.prev_rds[1] == rs1 || core.ctrl.prev_rds[2] == rs1);
     forward_rs2 = (rs2 != 0) && (core.ctrl.prev_rds[1] == rs2 || core.ctrl.prev_rds[2] == rs2);
     forward_ex_or_mem_rs1 = core.ctrl.prev_rds[1] == rs1;
@@ -252,8 +244,6 @@ void DC(Core& core)
 
     if(core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1])
     {       // a branch was taken
-        /*fprintf(stderr, "Instruction @%06x is nopped because a branch was taken\n", pc.to_int());
-        debug("Instruction @%06x is nopped because a branch was taken\n", pc.to_int());*/
         core.ctrl.lock = 1;
         opCode = RISCV_OPI;
         funct3 = RISCV_OPI_ADDI;
@@ -272,8 +262,6 @@ void DC(Core& core)
     }
     else if(core.ctrl.lock)
     {       // a branch or a jump was taken
-        /*fprintf(stderr, "Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());
-        debug("Instruction @%06x is nopped because DC stage is locked\n", pc.to_int());*/
         core.ctrl.lock -= 1;
         opCode = RISCV_OPI;
         funct3 = RISCV_OPI_ADDI;
@@ -297,8 +285,6 @@ void DC(Core& core)
         /// and the dependency from dc to ft
         /// but how to handle it?
 
-        /*fprintf(stderr, "Instruction @%06x is nopped because RAW dependency\n", pc.to_int());
-        debug("Instruction @%06x is nopped because RAW dependency\n", pc.to_int());*/
         core.freeze_fetch = 1;
         opCode = RISCV_OPI;
         funct3 = RISCV_OPI_ADDI;
@@ -380,9 +366,6 @@ void DC(Core& core)
 
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
-
-            /*fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
-            debug("Jump @%06x, locking decode stage\n", pc.to_int());*/
             break;
         // U-type instruction
         // use rd opCode from R-type
@@ -430,9 +413,6 @@ void DC(Core& core)
 
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
-
-            /*fprintf(stderr, "Jump @%06x, locking decode stage\n", pc.to_int());
-            debug("Jump @%06x, locking decode stage\n", pc.to_int());*/
             break;
         case RISCV_MISC_MEM:
             immediate.set_slc(0, instruction.slc<11>(20));
@@ -440,8 +420,7 @@ void DC(Core& core)
             forward_rs2 = false;
             break;
         default:
-            fprintf(stderr, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
-            assert(false && "Unknown operation in DC stage");
+            dbgassert(false, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
             break;
 
         case RISCV_SYSTEM:
@@ -476,8 +455,8 @@ void DC(Core& core)
                     lhs = rs1;
                 // handle the case for rd = 0 for CSRRW
                 // handle WIRI/WARL/etc.
-                fprintf(stderr, "%03x :     %x  %x  %x  %x\n", immediate, immediate.slc<2>(10), immediate.slc<2>(8),
-                        immediate.slc<1>(6), immediate.slc<3>(0));
+                fprintf(stderr, "%03x :     %x  %x  %x  %x\n", (int)immediate, (int)immediate.slc<2>(10), (int)immediate.slc<2>(8),
+                        (int)immediate.slc<1>(6), (int)immediate.slc<3>(0));
                 if(immediate.slc<2>(8) == 3)
                 {
                     if(immediate.slc<2>(10) == 0)
@@ -508,8 +487,7 @@ void DC(Core& core)
                                 rhs = core.csrs.mcounteren;
                                 break;
                             default:
-                                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                                assert(false && "Unknown CSR id\n");
+                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
                                 break;
                             }
                         }
@@ -533,8 +511,7 @@ void DC(Core& core)
                                 rhs = core.csrs.mip;
                                 break;
                             default:
-                                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                                assert(false && "Unknown CSR id\n");
+                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
                                 break;
                             }
                         }
@@ -580,14 +557,12 @@ void DC(Core& core)
                     }
                     else
                     {
-                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                        assert(false && "Unknown CSR id\n");
+                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
                     }
                 }
                 else
                 {
-                    fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
-                    assert(false && "Unknown CSR id\n");
+                    dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
                 }
                 fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
                 //lhs will contain core.REG[rs1]
@@ -597,22 +572,6 @@ void DC(Core& core)
         }
         core.freeze_fetch = 0;
         realInstruction = core.ftoDC.realInstruction;
-    }
-
-    if(forward_rs1)
-    {
-        debug("@%06x %08x %lld rs1 (%d) forward %s\n", pc.to_int(), instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), rs1.to_int(), forward_ex_or_mem_rs1?"from ex":"from mem");
-    }
-    if(forward_rs2)
-    {
-        debug("@%06x %08x %lld rs2 (%d) forward %s\n", pc.to_int(), instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), rs2.to_int(), forward_ex_or_mem_rs2?"from ex":"from mem");
-    }
-    if(forward_datac)
-    {
-        debug("@%06x %08x %lld datac (%d) forward %s\n", pc.to_int(), instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), rs2.to_int(), forward_ex_or_mem_datac?"from ex":"from mem");
     }
 
     core.ctrl.prev_opCode[0] = opCode;
@@ -682,31 +641,12 @@ void Ex(Core& core
         rhs = core.dctoEx.rhs;
 
     if(core.dctoEx.forward_datac)   // ST instruction only
-    {
         if(core.dctoEx.forward_mem_datac)
             core.extoMem.datac = core.ctrl.prev_res[1];
         else
             core.extoMem.datac = core.ctrl.prev_res[2];
-        assert(core.dctoEx.opCode == RISCV_ST);
-    }
     else
         core.extoMem.datac = core.dctoEx.datac;;
-
-    if(core.dctoEx.forward_lhs)
-    {
-        debug("@%06x %08x %lld lhs forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), lhs.to_int(), core.dctoEx.forward_mem_lhs?"from mem":"from WB");
-    }
-    if(core.dctoEx.forward_rhs)
-    {
-        debug("@%06x %08x %lld rhs forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), rhs.to_int(), core.dctoEx.forward_mem_rhs?"from mem":"from WB");
-    }
-    if(core.dctoEx.forward_datac)
-    {
-        debug("@%06x %08x %lld datac forward %08x %s\n", core.dctoEx.pc.to_int(), core.dctoEx.instruction.to_int()
-                 , core.csrs.mcycle.to_int64(), core.extoMem.datac.to_int(), core.dctoEx.forward_mem_datac?"from mem":"from WB");
-    }
 
     switch (core.dctoEx.opCode)
     {
@@ -830,7 +770,6 @@ void Ex(Core& core
                     longResult = mul_reg_a / mul_reg_b;
                 else    // divide by 0 => set all bits to 1
                     longResult = -1;
-                //fprintf(stderr, "DIV @%06x : %08x / %08x = %08x\n", core.dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
             case RISCV_OP_M_REM:
             case RISCV_OP_M_REMU:
@@ -838,7 +777,6 @@ void Ex(Core& core
                     longResult = mul_reg_a % mul_reg_b;
                 else    // modulo 0 => result is first operand
                     longResult = mul_reg_a;
-                //fprintf(stderr, "REM @%06x : %08x %% %08x = %08x\n", core.dctoEx.pc.to_int(), mul_reg_a.to_int(), mul_reg_b.to_int(), longResult.to_int());
                 break;
             EXDEFAULT();
             }
@@ -953,7 +891,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             #ifndef __SYNTHESIS__
                 , ac_int<64, false>& cycles
             #endif
-            )          // data & acknowledgment from cache
+            )
 {
     if(core.cachelock)
     {
@@ -975,19 +913,6 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
-        }
-
-        if(core.ctrl.branch[2])
-        {
-            debug("I    @%06x\n", core.extoMem.pc.to_int());
-            simul(core.memtoWB.pc = 0;
-            core.memtoWB.instruction = 0;
-            core.extoMem.pc = 0;
-            core.extoMem.instruction = 0;)
-
-            core.memtoWB.rd = 0;
-            core.memtoWB.realInstruction = false;
-            assert(false);
         }
     }
     else if(core.ctrl.branch[2])
@@ -1134,8 +1059,7 @@ void doWB(Core& core)
                         core.csrs.mcounteren = core.memtoWB.rescsr;
                         break;
                     default:
-                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-                        assert(false && "Unknown CSR id\n");
+                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
                         break;
                     }
                 }
@@ -1159,8 +1083,7 @@ void doWB(Core& core)
                         core.csrs.mip = core.memtoWB.rescsr;
                         break;
                     default:
-                        fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-                        assert(false && "Unknown CSR id\n");
+                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
                         break;
                     }
                 }
@@ -1188,19 +1111,16 @@ void doWB(Core& core)
             }
             else if(core.memtoWB.CSRid.slc<2>(10) == 3)
             {
-                fprintf(stderr, "Read only CSR %03x", core.memtoWB.CSRid);
-                assert(false && "Read only CSR\n");
+                dbgassert(false, "Read only CSR %03x", core.memtoWB.CSRid);
             }
             else
             {
-                fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-                assert(false && "Unknown CSR id\n");
+                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
             }
         }
         else
         {
-            fprintf(stderr, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-            assert(false && "Unknown CSR id\n");
+            dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
         }
     }
 
@@ -1208,7 +1128,7 @@ void doWB(Core& core)
     simul(
     if(core.memtoWB.realInstruction)
     {
-        coredebug("\nWB   @%06x   %08x   (%d)\n", core.memtoWB.pc.to_int(), core.memtoWB.instruction.to_int(), core.csrs.minstret.to_int64());
+        coredebug("\nWB   @%06x   %08x   (%lld)\n", core.memtoWB.pc.to_int(), core.memtoWB.instruction.to_int(), core.csrs.minstret.to_int64());
     }
     else
     {
@@ -1224,6 +1144,8 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
     core.ftoDC.instruction = simul(core.dctoEx.instruction =
     core.extoMem.instruction = core.memtoWB.instruction =) 0x13;
+
+    core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
     core.dctoEx.opCode = core.extoMem.opCode = RISCV_OPI;
 
     core.REG[2] = STACK_INIT;
@@ -1280,9 +1202,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
     simul(uint64_t oldcycles = core.csrs.mcycle);
     core.csrs.mcycle += 1;
-
-    if(core.csrs.minstret > 2825)
-        debug(" ");
 
     doWB(core);
     simul(coredebug("%d ", core.csrs.mcycle.to_int64());
@@ -1341,7 +1260,6 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
             core.ctrl.branch[1] = core.ctrl.branch[0];
         }
         core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
-
     }
 
 
