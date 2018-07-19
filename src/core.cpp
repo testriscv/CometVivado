@@ -374,6 +374,7 @@ void DC(Core& core)
             immediate.set_slc(12, instruction.slc<8>(12));
             lhs = pc;
             rhs = immediate;
+            forward_rs1 = false;
             forward_rs2 = false;
             core.dctoEx.datac = core.ftoDC.nextpc;
 
