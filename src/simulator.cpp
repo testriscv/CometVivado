@@ -720,8 +720,7 @@ ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
 
     if(reg[2] < heapAddress)
     {
-        fprintf(stderr, "Stack and heap overlaps !!\n");
-        assert(reg[2] > heapAddress && "Stack and heap overlaps !!\n");
+        dbgassert(reg[2] > heapAddress, "Stack and heap overlaps !!\n");
     }
     return result;
 }

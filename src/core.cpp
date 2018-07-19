@@ -320,7 +320,8 @@ void DC(Core& core)
         case RISCV_OP:
             break;
         case RISCV_ATOMIC:
-            assert(false && "Atomic operation not implemented yet");
+            dbgassert(opCode != RISCV_ATOMIC, "Atomic operation not implemented yet @%06x   %08x\n",
+                      pc.to_int(), instruction.to_int());
             break;
         // S-type instruction
         // use rs2 rs1 funct3 opCode from R-type
@@ -397,13 +398,10 @@ void DC(Core& core)
         case RISCV_OPI:
             immediate.set_slc(0, instruction.slc<11>(20));
 
-            // useless condition ?
-            if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
-                rhs = rs2;
-            else
-                rhs = immediate;
-
+            // no need to test for SLLI or SRAI because only 5 bits are used in EX stage
+            rhs = immediate;
             forward_rs2 = false;
+
             break;
         case RISCV_JALR:
             immediate.set_slc(0, instruction.slc<11>(20));
@@ -567,7 +565,8 @@ void DC(Core& core)
                 fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
                 //lhs will contain core.REG[rs1]
             }
-            simul(else assert(false));
+            simul(else dbgassert(false, "Unknown operation @%06x    %08x\n",
+                                        pc.to_int(), instruction.to_int()));
             break;
         }
         core.freeze_fetch = 0;
@@ -1293,7 +1292,8 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
 
     // riscv specification v2.2 p11
-    assert((core.pc.to_int() & 3) == 0 && "An instruction address misaligned exception is generated on a taken branch or unconditional jump if the target address is not four-byte aligned.");
+    dbgassert((core.pc.to_int() & 3) == 0, "Misaligned instruction @%06x\n",
+               core.pc.to_int());
 
     simul(
     #ifndef nocache

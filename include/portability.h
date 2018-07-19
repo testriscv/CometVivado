@@ -52,7 +52,7 @@
 #define dbgassert(cond, msg, ...) do { \
     if(!(cond)) {  \
         dbglog(msg, __VA_ARGS__); \
-        assert(false && cond); \
+        assert(cond); \
     } \
 } while(0)
 #else

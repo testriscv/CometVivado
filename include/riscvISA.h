@@ -48,7 +48,7 @@
 #define RISCV_OPI_ORI           0x6
 #define RISCV_OPI_ANDI          0x7
 #define RISCV_OPI_SLLI          0x1
-#define RISCV_OPI_SRI           0x5
+#define RISCV_OPI_SRI           0x5     // SRLI & SRAI
 #define RISCV_OPI_SRI_SRAI      0x20
 #define RISCV_OPI_SRI_SRLI      0x0
 #define RISCV_OP_ADD            0x0
