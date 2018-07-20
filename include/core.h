@@ -61,7 +61,6 @@ struct ExtoMem
     bool realInstruction;
 
     ac_int<32, true> datac;     // data to be stored in memory (if needed)
-    ac_int<32, true> memValue;  // rename as result bis
 };
 
 struct MemtoWB
@@ -106,7 +105,11 @@ struct CoreCtrl
 {
     ac_int<5, false> prev_rds[3];
     ac_int<5, false> prev_opCode[3];
-    ac_int<2, false> lock; //lockdc     // used to lock dc stage after JAL & JALR
+    ac_int<2, false> lock;          // used to lock dc stage after JAL & JALR
+
+    bool freeze_fetch;              // used for LD dependencies
+    bool cachelock;                 // stall Ft, DC & Ex when cache is working
+    bool init;                      // is core initialized?
 
     // used to break dependencies, because using extoMem or memtoWB
     // implies a dependency from stage ex or mem to dc (i.e. they
@@ -127,11 +130,7 @@ struct Core
     CoreCtrl ctrl;
 
     ac_int<32, true> REG[32];
-
-    bool freeze_fetch;
-    bool cachelock;
     ac_int<32, false> pc;
-    bool init;
 
     /// Instruction cache
     ICacheControl ictrl;

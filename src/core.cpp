@@ -61,7 +61,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
 {
     ac_int<32, false> next_pc = core.pc + 4;
 #ifndef nocache
-    if(core.freeze_fetch)
+    if(core.ctrl.freeze_fetch)
     {
         // LD dependency, do nothing
         debug("Fetch frozen\n");
@@ -134,7 +134,7 @@ void Ft(Core& core, unsigned int ins_memory[N]
         coredebug("Ft   \n");
     })
 #else
-    if(!core.freeze_fetch)
+    if(!core.ctrl.freeze_fetch)
     {
         core.ftoDC.instruction = ins_memory[core.pc/4];
         simul(cycles += MEMORY_READ_LATENCY);
@@ -234,13 +234,7 @@ void DC(Core& core)
     forward_ex_or_mem_rs1 = core.ctrl.prev_rds[1] == rs1;
     forward_ex_or_mem_rs2 = core.ctrl.prev_rds[1] == rs2;
 
-    core.freeze_fetch = 0;
-
-    ac_int<3, false> state = 0;
-    state[0] = core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1];
-    state[1] = (bool)core.ctrl.lock;
-    state[2] = core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
-            || core.ctrl.prev_rds[1] == rs2);
+    core.ctrl.freeze_fetch = 0;
 
     if(core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1])
     {       // a branch was taken
@@ -285,7 +279,7 @@ void DC(Core& core)
         /// and the dependency from dc to ft
         /// but how to handle it?
 
-        core.freeze_fetch = 1;
+        core.ctrl.freeze_fetch = 1;
         opCode = RISCV_OPI;
         funct3 = RISCV_OPI_ADDI;
         funct7 = funct7;
@@ -398,8 +392,14 @@ void DC(Core& core)
         case RISCV_OPI:
             immediate.set_slc(0, instruction.slc<11>(20));
 
+            // condition is useless, but catapult generates negative slack with the other one...
+            if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
+                rhs = rs2;
+            else
+                rhs = immediate;
+
             // no need to test for SLLI or SRAI because only 5 bits are used in EX stage
-            rhs = immediate;
+            // rhs = immediate;
             forward_rs2 = false;
 
             break;
@@ -569,7 +569,7 @@ void DC(Core& core)
                                         pc.to_int(), instruction.to_int()));
             break;
         }
-        core.freeze_fetch = 0;
+        core.ctrl.freeze_fetch = 0;
         realInstruction = core.ftoDC.realInstruction;
     }
 
@@ -892,7 +892,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             #endif
             )
 {
-    if(core.cachelock)
+    if(core.ctrl.cachelock)
     {
         if(core.datavalid)
         {
@@ -902,7 +902,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
             if(!core.writeenable)
                 core.memtoWB.result = core.readvalue;
-            core.cachelock = false;
+            core.ctrl.cachelock = false;
             core.dcacheenable = false;
             core.writeenable = false;
         }
@@ -936,7 +936,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.daddress = core.extoMem.result;// % (4*N);
             core.dcacheenable = true;
             core.writeenable = false;
-            core.cachelock = true;
+            core.ctrl.cachelock = true;
 
             simul(core.memtoWB.pc = 0;
             core.memtoWB.instruction = 0;)
@@ -958,7 +958,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             {
                 fprintf(stderr, "end here? %lld   @%06x   @%06x R%d\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
                           core.datasize.to_int());
-                core.cachelock = false;
+                core.ctrl.cachelock = false;
                 core.memtoWB.result = 1;
             })
             break;
@@ -974,7 +974,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.dcacheenable = true;
             core.writeenable = true;
             core.writevalue = core.extoMem.datac;
-            core.cachelock = true;
+            core.ctrl.cachelock = true;
 
             simul(core.memtoWB.pc = 0;
             core.memtoWB.instruction = 0;)
@@ -1138,7 +1138,7 @@ void doWB(Core& core)
 
 void coreinit(Core& core, ac_int<32, false> startpc)
 {
-    core.init = true;
+    core.ctrl.init = true;
     core.pc = startpc % (4*N);   // startpc - 4 ?
 
     core.ftoDC.instruction = simul(core.dctoEx.instruction =
@@ -1192,7 +1192,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 #endif
 #endif  // __SYNTHESIS__
 
-    if(!core.init)
+    if(!core.ctrl.init)
     {
         coreinit(core, startpc);
 
@@ -1218,7 +1218,7 @@ void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
        #endif
            );
 
-    if(!core.cachelock)
+    if(!core.ctrl.cachelock)
     {
         Ex(core
    #ifndef __SYNTHESIS__
