@@ -147,9 +147,9 @@ directive set /doStep/core/core.dctrl.valid -WORD_WIDTH {associativity}
 directive set /doStep/core/core.dctrl.policy -RESOURCE core.dctrl.tag:rsc
 
 go architect
-//cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
-//cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0
-//cycle add /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
 go schedule
 go extract
 project save {cachesize}x32cachecore.ccs
