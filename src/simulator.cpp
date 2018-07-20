@@ -310,7 +310,7 @@ ac_int<32, true> Simulator::ldd(ac_int<32, false> addr)
 
 
 
-ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, ac_int<2, false> &sys_status)
+ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &sys_status)
 {
     ac_int<32, true> result = 0;
     switch (syscallId)
@@ -365,123 +365,123 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         break;
     case SYS_exit_group:
         fprintf(stderr, "Syscall : SYS_exit_group\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getpid:
         fprintf(stderr, "Syscall : SYS_getpid\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_kill:
         fprintf(stderr, "Syscall : SYS_kill\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_link:
         fprintf(stderr, "Syscall : SYS_link\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_mkdir:
         fprintf(stderr, "Syscall : SYS_mkdir\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_chdir:
         fprintf(stderr, "Syscall : SYS_chdir\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getcwd:
         fprintf(stderr, "Syscall : SYS_getcwd\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_lstat:
         fprintf(stderr, "Syscall : SYS_lstat\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_fstatat:
         fprintf(stderr, "Syscall : SYS_fstatat\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_access:
         fprintf(stderr, "Syscall : SYS_access\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_faccessat:
         fprintf(stderr, "Syscall : SYS_faccessat\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_pread:
         fprintf(stderr, "Syscall : SYS_pread\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_pwrite:
         fprintf(stderr, "Syscall : SYS_pwrite\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_uname:
         fprintf(stderr, "Syscall : SYS_uname\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getuid:
         fprintf(stderr, "Syscall : SYS_getuid\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_geteuid:
         fprintf(stderr, "Syscall : SYS_geteuid\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getgid:
         fprintf(stderr, "Syscall : SYS_getgid\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getegid:
         fprintf(stderr, "Syscall : SYS_getegid\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_mmap:
         fprintf(stderr, "Syscall : SYS_mmap\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_munmap:
         fprintf(stderr, "Syscall : SYS_munmap\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_mremap:
         fprintf(stderr, "Syscall : SYS_mremap\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_time:
         fprintf(stderr, "Syscall : SYS_time\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getmainvars:
         fprintf(stderr, "Syscall : SYS_getmainvars\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_rt_sigaction:
         fprintf(stderr, "Syscall : SYS_rt_sigaction\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_writev:
         fprintf(stderr, "Syscall : SYS_writev\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_times:
         fprintf(stderr, "Syscall : SYS_times\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_fcntl:
         fprintf(stderr, "Syscall : SYS_fcntl\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_getdents:
         fprintf(stderr, "Syscall : SYS_getdents\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     case SYS_dup:
         fprintf(stderr, "Syscall : SYS_dup\n");
-        sys_status = 2;
+        sys_status = 1;
         break;
     default:
         fprintf(stderr, "Syscall : Unknown system call, %d\n", syscallId.to_int());
-        sys_status = 2;
+        sys_status = 1;
         break;
     }
 
@@ -720,8 +720,7 @@ ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
 
     if(reg[2] < heapAddress)
     {
-        fprintf(stderr, "Stack and heap overlaps !!\n");
-        assert(reg[2] > heapAddress && "Stack and heap overlaps !!\n");
+        dbgassert(reg[2] > heapAddress, "Stack and heap overlaps !!\n");
     }
     return result;
 }

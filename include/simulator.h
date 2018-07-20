@@ -67,7 +67,7 @@ public:
     //********************************************************
     //System calls
 
-    ac_int<32, true> solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, ac_int<2, false>& sys_status);
+    ac_int<32, true> solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool& sys_status);
 
     ac_int<32, false> doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
     ac_int<32, false> doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);

@@ -9,15 +9,18 @@ void formatread(ac_int<32, false> address, ac_int<2, false> datasize, bool sign,
         break;
     case 1:
         read >>= 8;
-        assert(datasize == 0 && "address misalignment");
+        dbgassert(datasize == 0, "address misalignment @%06x, datasize (%d) is not zero\n",
+                  address.to_int(), datasize.to_int());
         break;
     case 2:
         read >>= 16;
-        assert(datasize <= 1 && "address misalignment");
+        dbgassert(datasize <= 1, "address misalignment @%06x, datasize (%d) is not <= 1\n",
+                  address.to_int(), datasize.to_int());
         break;
     case 3:
         read >>= 24;
-        assert(datasize == 0 && "address misalignment");
+        dbgassert(datasize == 0, "address misalignment @%06x, datasize (%d) is not zero\n",
+                  address.to_int(), datasize.to_int());
         break;
     }
     if(datasize == 0)
@@ -55,18 +58,21 @@ void formatwrite(ac_int<32, false> address, ac_int<2, false> datasize, ac_int<32
         break;
     case 1:
         mem.set_slc(8, write.slc<8>(0));
-        assert(datasize == 0 && "address misalignment");
+        dbgassert(datasize == 0, "address misalignment @%06x, datasize (%d) is not zero\n",
+                  address.to_int(), datasize.to_int());
         break;
     case 2:
         if(datasize)
             mem.set_slc(16, write.slc<16>(0));
         else
             mem.set_slc(16, write.slc<8>(0));
-        assert(datasize <= 1 && "address misalignment");
+        dbgassert(datasize <= 1, "address misalignment @%06x, datasize (%d) is not <= 1\n",
+                  address.to_int(), datasize.to_int());
         break;
     case 3:
         mem.set_slc(24, write.slc<8>(0));
-        assert(datasize == 0 && "address misalignment");
+        dbgassert(datasize == 0, "address misalignment @%06x, datasize (%d) is not zero\n",
+                  address.to_int(), datasize.to_int());
         break;
     }
 }

@@ -127,29 +127,29 @@ go assembly
 directive set /doStep/core/core.REG:rsc -MAP_TO_MODULE {{[Register]}}
 directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
 directive set /doStep/core -CLOCK_OVERHEAD 0.0
-directive set /doStep/core/idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/idata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/ictrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/ictrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/ictrl.valid -RESOURCE ictrl.tag:rsc
-directive set /doStep/core/ictrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/ictrl.policy -RESOURCE ictrl.tag:rsc
-directive set /doStep/core/ddata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/ddata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/dctrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/dctrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/dctrl.dirty -RESOURCE dctrl.tag:rsc
-directive set /doStep/core/dctrl.dirty -WORD_WIDTH {associativity}
-directive set /doStep/core/dctrl.valid -RESOURCE dctrl.tag:rsc
-directive set /doStep/core/dctrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/dctrl.policy -RESOURCE dctrl.tag:rsc
+directive set /doStep/core/core.idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/core.idata:rsc -INTERLEAVE {associativity}
+directive set /doStep/core/core.ictrl.tag:rsc -PACKING_MODE sidebyside
+directive set /doStep/core/core.ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/core.ictrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/core.ictrl.valid -RESOURCE core.ictrl.tag:rsc
+directive set /doStep/core/core.ictrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/core.ictrl.policy -RESOURCE core.ictrl.tag:rsc
+directive set /doStep/core/core.ddata:rsc -INTERLEAVE {associativity}
+directive set /doStep/core/core.ddata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/core.dctrl.tag:rsc -PACKING_MODE sidebyside
+directive set /doStep/core/core.dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/core.dctrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/core.dctrl.dirty -RESOURCE core.dctrl.tag:rsc
+directive set /doStep/core/core.dctrl.dirty -WORD_WIDTH {associativity}
+directive set /doStep/core/core.dctrl.valid -RESOURCE core.dctrl.tag:rsc
+directive set /doStep/core/core.dctrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/core.dctrl.policy -RESOURCE core.dctrl.tag:rsc
 
 go architect
-cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(ictrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(dctrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/loaddset:read_mem(dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0
+cycle add /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
 go schedule
 go extract
 project save {cachesize}x32cachecore.ccs

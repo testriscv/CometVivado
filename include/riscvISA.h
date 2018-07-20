@@ -8,17 +8,22 @@
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
 #include <string.h>
-#define RISCV_LUI               0x37
-#define RISCV_AUIPC             0x17
-#define RISCV_JAL               0x6f
-#define RISCV_JALR              0x67
-#define RISCV_BR                0x63
-#define RISCV_LD                0x3
-#define RISCV_ST                0x23
-#define RISCV_OPI               0x13
-#define RISCV_OP                0x33
-#define RISCV_OPIW              0x1b
-#define RISCV_OPW               0x3b
+
+// Major opcodes
+#define RISCV_LUI               0x0D    //0x37
+#define RISCV_AUIPC             0x05    //0x17
+#define RISCV_JAL               0x1B    //0x6F
+#define RISCV_JALR              0x19    //0x67
+#define RISCV_BR                0x18    //0x63
+#define RISCV_LD                0x00    //0x03
+#define RISCV_ST                0x08    //0x23
+#define RISCV_OPI               0x04    //0x13
+#define RISCV_OP                0x0C    //0x33
+#define RISCV_MISC_MEM          0x03    //0x0F
+#define RISCV_OPIW              0x06    //0x1B
+#define RISCV_OPW               0x0E    //0x3B
+
+// funct3 or funct7
 #define RISCV_BR_BEQ            0x0
 #define RISCV_BR_BNE            0x1
 #define RISCV_BR_BLT            0x4
@@ -43,7 +48,7 @@
 #define RISCV_OPI_ORI           0x6
 #define RISCV_OPI_ANDI          0x7
 #define RISCV_OPI_SLLI          0x1
-#define RISCV_OPI_SRI           0x5
+#define RISCV_OPI_SRI           0x5     // SRLI & SRAI
 #define RISCV_OPI_SRI_SRAI      0x20
 #define RISCV_OPI_SRI_SRLI      0x0
 #define RISCV_OP_ADD            0x0
@@ -58,7 +63,6 @@
 #define RISCV_OP_ADD_SUB        0x20
 #define RISCV_OP_SR_SRL         0x0
 #define RISCV_OP_SR_SRA         0x20
-#define RISCV_SYSTEM            0x73
 #define RISCV_OPIW_ADDIW        0x0
 #define RISCV_OPIW_SLLIW        0x1
 #define RISCV_OPIW_SRW          0x5
@@ -79,7 +83,7 @@
  ******************************************************************************************************
  * This offers system capability                                                                      *
  ******************************************************************************************************/
-#define RISCV_MISC_MEM          0xf
+#define RISCV_SYSTEM            0x1C    //0x73
 #define RISCV_SYSTEM_ENV        0x0
 #define RISCV_SYSTEM_ENV_ECALL  0x0
 #define RISCV_SYSTEM_ENV_EBREAK 0x1
@@ -181,7 +185,7 @@
 * Then funct7[6:2] is used to determine which of the eleven operation to use.
 * Added operations are LR, SC, AMOSWAP, AMOADD, AMOXOR, AMOAND, AMOOR, AMOMIN, AMOMAX, AMOMINU, AMOMAXU
 *****************************************************************************************************/
-#define RISCV_ATOMIC            0x2F
+#define RISCV_ATOMIC            0x0B    //0x2F
 #define RISCV_ATOMIC_LR         0x2
 #define RISCV_ATOMIC_SC         0x3
 #define RISCV_ATOMIC_SWAP       0x1

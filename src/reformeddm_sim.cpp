@@ -1,4 +1,3 @@
-/* vim: set ts=4 ai nu: */
 #include "mc_scverify.h"
 #include "elfFile.h"
 #include <fcntl.h>
