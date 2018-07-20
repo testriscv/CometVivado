@@ -3,6 +3,12 @@
 
 #define STRINGIFY(a) #a
 
+#ifdef __SYNTHESIS__
+#define __HLS__
+#elif CCS_DUT_RTL || CCS_DUT_SYSC   // modelsim defines
+#define __HLS__
+#endif
+
 #ifdef __VIVADO__
 #include <ap_int.h>
 #define CORE_UINT(param)    ap_uint<param>
@@ -27,14 +33,14 @@
 #define HLS_DESIGN          _Pragma(STRINGIFY(hls_design))
 #endif
 
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
 #include <cstdio>
 #include <stdint.h>
 
 #ifndef nodebug
-#define debug(...)      printf(__VA_ARGS__)     // generic debug, can be deactivated
+#define gdebug(...)      printf(__VA_ARGS__)     // generic debug, can be deactivated
 #else
-#define debug(...)
+#define gdebug(...)
 #endif
 #define simul(...)      __VA_ARGS__
 
@@ -61,7 +67,7 @@
 #endif
 
 #else
-#define debug(...)
+#define gdebug(...)
 #define simul(...)
 #undef assert
 #define assert(a)

@@ -2,7 +2,7 @@
 #include "riscvISA.h"
 #include "core.h"
 #include "cache.h"
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
 #include "simulator.h"
 
 #define EXDEFAULT() default: \
@@ -24,7 +24,7 @@ const ac_int<32, false> CSR::marchid = 0;
 const ac_int<32, false> CSR::mimpid = 0;
 
 void memorySet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
-            #ifndef __SYNTHESIS__
+            #ifndef __HLS__
                , ac_int<64, false>& cycles
             #endif
                )
@@ -40,7 +40,7 @@ void memorySet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int
 }
 
 ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<2, false> op, bool sign
-                       #ifndef __SYNTHESIS__
+                       #ifndef __HLS__
                            , ac_int<64, false>& cycles
                        #endif
                            )
@@ -56,7 +56,7 @@ ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> add
 }
 
 void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
-    #ifndef __SYNTHESIS__
+    #ifndef __HLS__
         , ac_int<64, false>& cycles
     #endif
         )
@@ -66,7 +66,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
     if(core.ctrl.freeze_fetch)
     {
         // LD dependency, do nothing
-        debug("Fetch frozen\n");
+        gdebug("Fetch frozen\n");
     }
     else
     {
@@ -125,7 +125,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
     }
 
     core.iaddress = core.pc;
-    debug("%06x\n", core.iaddress.to_int());
+    gdebug("%06x\n", core.iaddress.to_int());
 
     simul(if(core.ftoDC.realInstruction)
     {
@@ -188,7 +188,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
             break;
         }
 
-        debug("Fetch frozen\n");
+        gdebug("Fetch frozen\n");
     }
 
     simul(if(core.ftoDC.pc)
@@ -199,7 +199,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
     {
         coredebug("Ft   \n");
     })
-    debug("i @%06x   %08x\n", core.pc.to_int(), ins_memory[core.pc/4]);
+    gdebug("i @%06x   %08x\n", core.pc.to_int(), ins_memory[core.pc/4]);
 #endif
 }
 
@@ -428,7 +428,7 @@ void DC(Core& core)
             immediate.set_slc(0, instruction.slc<11>(20));
             if(funct3 == RISCV_SYSTEM_ENV)
             {
-            #ifndef __SYNTHESIS__
+            #ifndef __HLS__
                 rd = 10;
                 rs1 = 17;
                 rs2 = 10;
@@ -609,7 +609,7 @@ void DC(Core& core)
 }
 
 void Ex(Core& core
-    #ifndef __SYNTHESIS__
+    #ifndef __HLS__
         , bool& exit, Simulator* sim
     #endif
         )
@@ -746,7 +746,7 @@ void Ex(Core& core
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
                 break;
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             case RISCV_OP_M_DIVU:
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
@@ -757,7 +757,7 @@ void Ex(Core& core
                 break;
         #endif
             }
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             switch(core.dctoEx.funct3)
             {
             case RISCV_OP_M_MUL:
@@ -838,7 +838,7 @@ void Ex(Core& core
         switch(core.dctoEx.funct3)
         { // case 0: mret instruction, core.dctoEx.memValue should be 0x302
         case RISCV_SYSTEM_ENV:
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
             fprintf(stderr, "Syscall @%06x\n", core.dctoEx.pc.to_int());
         #endif
@@ -870,7 +870,7 @@ void Ex(Core& core
             break;
         EXDEFAULT();
         }
-        #ifdef __SYNTHESIS__
+        #ifdef __HLS__
             core.extoMem.result = rhs;      // written back to rd
         #endif
         break;
@@ -890,7 +890,7 @@ void Ex(Core& core
 }
 
 void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
-            #ifndef __SYNTHESIS__
+            #ifndef __HLS__
                 , ac_int<64, false>& cycles
             #endif
             )
@@ -919,7 +919,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
     }
     else if(core.ctrl.branch[2])
     {
-        debug("I    @%06x\n", core.extoMem.pc.to_int());
+        gdebug("I    @%06x\n", core.extoMem.pc.to_int());
         simul(core.memtoWB.pc = 0;
         core.memtoWB.instruction = 0;
         core.extoMem.pc = 0;
@@ -950,9 +950,9 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.pc = core.extoMem.pc;
             core.memtoWB.instruction = core.extoMem.instruction;
             core.memtoWB.rd = core.extoMem.rd;
-            //debug("%5d  ", cycles);
+            //gdebug("%5d  ", cycles);
             core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
-                                   #ifndef __SYNTHESIS__
+                                   #ifndef __HLS__
                                        , cycles
                                    #endif
                                        );
@@ -988,9 +988,9 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             simul(core.memtoWB.pc = core.extoMem.pc;
             core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
-            //debug("%5d  ", cycles);
+            //gdebug("%5d  ", cycles);
             memorySet(data_memory, core.extoMem.result, core.extoMem.datac, core.datasize
-                  #ifndef __SYNTHESIS__
+                  #ifndef __HLS__
                       , cycles
                   #endif
                       );
@@ -1160,14 +1160,14 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim = 0
         #endif
             )
 {
     static Core core = {0};
 
-#ifdef __SYNTHESIS__
+#ifdef __HLS__
     static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.idata, Sets*Associativity*Blocksize);
     (void)idummy;
     static bool itaginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)core.ictrl.tag, Sets*Associativity);
@@ -1194,7 +1194,7 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
 #endif
-#endif  // __SYNTHESIS__
+#endif  // __HLS__
 
     if(!core.ctrl.init)
     {
@@ -1217,7 +1217,7 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     coredebug("\n");
 
     do_Mem(core , dm
-       #ifndef __SYNTHESIS__
+       #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
@@ -1225,13 +1225,13 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     if(!core.ctrl.cachelock)
     {
         Ex(core
-   #ifndef __SYNTHESIS__
+   #ifndef __HLS__
            , exit, sim
    #endif
            );
         DC<hartid>(core);
         Ft(core, ins_memory
-   #ifndef __SYNTHESIS__
+   #ifndef __HLS__
           , core.csrs.mcycle
    #endif
           );
@@ -1272,12 +1272,12 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     // but cache up has a slightly better critical path
     dcache(core.dctrl, dm, core.ddata, core.daddress, core.datasize, core.signenable, core.dcacheenable,
            core.writeenable, core.writevalue, core.readvalue, core.datavalid
-       #ifndef __SYNTHESIS__
+       #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
     icache(core.ictrl, ins_memory, core.idata, core.iaddress, core.cachepc, core.instruction, core.insvalid
-       #ifndef __SYNTHESIS__
+       #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
@@ -1315,13 +1315,13 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
 }
 
 void doStep(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif
             )
 {
     doCore<0>(startpc, ins_memory, dm, exit
-          #ifndef __SYNTHESIS__
+          #ifndef __HLS__
               , c, numins, sim
           #endif
               );

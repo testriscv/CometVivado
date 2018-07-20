@@ -203,7 +203,7 @@ void update_policy(DCacheControl& dctrl)
 void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address,                                                               // from cpu
            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                             // to cpu
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
            )
@@ -211,7 +211,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
     if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(address))  // different way but same set keeps same control, except for data......
     {
         ictrl.state = IState::StoreControl;
-        debug("address %06x storecontrol\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
+        gdebug("address %06x storecontrol\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
     }
 
     switch(ictrl.state)
@@ -277,7 +277,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
         #pragma hls_unroll yes
         if(ictrl.ctrlLoaded)        // this prevent storing false control when we jump to another jump instruction
         {
-            debug("StoreControl for %d %d  %06x to %06x\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(),
+            gdebug("StoreControl for %d %d  %06x to %06x\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(),
                         (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift),
                         ((ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift))+Blocksize*4-1);
             #pragma hls_unroll yes
@@ -288,12 +288,12 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
             #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
                 ictrl.policy[ictrl.currentset] = ictrl.setctrl.policy;
             #endif
-                debug("tag : %6x      valid : %s\n", (ictrl.setctrl.tag[i].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift), ictrl.setctrl.valid[i]?"true":"false");
+                gdebug("tag : %6x      valid : %s\n", (ictrl.setctrl.tag[i].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift), ictrl.setctrl.valid[i]?"true":"false");
             }
         }
         else
         {
-            debug("StoreControl but control not loaded\n");
+            gdebug("StoreControl but control not loaded\n");
         }
 
         ictrl.state = IState::Idle;
@@ -346,7 +346,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
 void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
            int& read, bool& datavalid                                                       // to cpu
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
            )
@@ -412,7 +412,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int dat
             else    // not found or invalid
             {
                 select(dctrl);
-                debug("cdm  @%06x   not found or invalid   ", address.to_int());
+                gdebug("cdm  @%06x   not found or invalid   ", address.to_int());
                 if(dctrl.setctrl.dirty[dctrl.currentway] && dctrl.setctrl.valid[dctrl.currentway])
                 {
                     dctrl.state = DState::FirstWriteBack;
@@ -518,7 +518,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int dat
         {
             dctrl.state = DState::StoreControl;
             dctrl.setctrl.dirty[dctrl.currentway] = false;
-            //debug("end of writeback\n");
+            //gdebug("end of writeback\n");
         }
 
         datavalid = false;
@@ -542,7 +542,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int dat
             dctrl.state = DState::StoreControl;
             dctrl.setctrl.valid[dctrl.currentway] = true;
             update_policy(dctrl);
-            //debug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            //gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
         }
 
         datavalid = false;

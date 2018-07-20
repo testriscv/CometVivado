@@ -183,14 +183,14 @@ struct DCacheControl
 void icache(ICacheControl& ctrl, unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> iaddress,                                                              // from cpu
            ac_int<32, false> &cachepc, int& instruction, bool& insvalid                             // to cpu
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
            );
 void dcache(DCacheControl& ctrl, unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
            int& read, bool& datavalid                                                       // to cpu
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
            );

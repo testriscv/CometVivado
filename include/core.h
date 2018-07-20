@@ -15,7 +15,7 @@ struct FtoDC
 struct DCtoEx
 {
     ac_int<32, false> pc;       // used for branch
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
     ac_int<32, false> instruction;
 #endif
 
@@ -39,7 +39,7 @@ struct DCtoEx
     bool forward_mem_rhs;
     bool forward_mem_datac;
 
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
     // syscall only
     ac_int<32, true> datad;
     ac_int<32, true> datae;
@@ -49,7 +49,7 @@ struct DCtoEx
 
 struct ExtoMem
 {
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
 #endif
@@ -65,7 +65,7 @@ struct ExtoMem
 
 struct MemtoWB
 {
-#ifndef __SYNTHESIS__
+#ifndef __HLS__
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
 #endif
@@ -154,7 +154,7 @@ struct Core
 };
 
 void doStep(ac_int<32, false> pc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool &exit
-        #ifndef __SYNTHESIS__
+        #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* syscall
         #endif
             );

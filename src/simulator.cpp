@@ -133,7 +133,7 @@ void Simulator::fillMemory()
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
     {
         ins_memory[(it->first/4) % DRAM_SIZE].set_slc(((it->first)%4)*8,it->second);
-        //debug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % DRAM_SIZE, ((it->first)%4)*8, it->second);
+        //gdebug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % DRAM_SIZE, ((it->first)%4)*8, it->second);
     }
 
     //fill data memory
