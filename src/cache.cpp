@@ -41,9 +41,9 @@ bool find(DCacheControl& dctrl, ac_int<32, false> address)
 void select(ICacheControl& ictrl)
 {
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     ictrl.currentway = ictrl.setctrl.policy++;
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     #if Associativity == 2
         ictrl.currentway = !ictrl.setctrl.policy;
     #elif Associativity == 4
@@ -64,9 +64,9 @@ void select(ICacheControl& ictrl)
             ictrl.currentway = 0;
         }
     #else
-        #error "LRU with N >= 8 ways associativity is not implemented"
+        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
     #endif
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     ictrl.currentway = ictrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // ictrl.policy & (Associativity - 1)
     ictrl.policy = (ictrl.policy.slc<1>(31) ^ ictrl.policy.slc<1>(21) ^ ictrl.policy.slc<1>(1) ^ ictrl.policy.slc<1>(0)) | (ictrl.policy << 1);
   #else   // None
@@ -78,9 +78,9 @@ void select(ICacheControl& ictrl)
 void select(DCacheControl& dctrl)
 {
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     dctrl.currentway = dctrl.setctrl.policy++;
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     #if Associativity == 2
         dctrl.currentway = !dctrl.setctrl.policy;
     #elif Associativity == 4
@@ -101,9 +101,9 @@ void select(DCacheControl& dctrl)
             dctrl.currentway = 0;
         }
     #else
-        #error "LRU with N >= 8 ways associativity is not implemented"
+        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
     #endif
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     dctrl.currentway = dctrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // dctrl.policy & (Associativity - 1)
     dctrl.policy = (dctrl.policy.slc<1>(31) ^ dctrl.policy.slc<1>(21) ^ dctrl.policy.slc<1>(1) ^ dctrl.policy.slc<1>(0)) | (dctrl.policy << 1);
   #else   // None
@@ -115,9 +115,9 @@ void select(DCacheControl& dctrl)
 void update_policy(ICacheControl& ictrl)
 {
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     // no promotion
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     #if Associativity == 2
         ictrl.setctrl.policy = ictrl.currentway;
     #elif Associativity == 4
@@ -146,9 +146,9 @@ void update_policy(ICacheControl& ictrl)
             break;
         }
     #else
-        #error "LRU with N >= 8 ways associativity is not implemented"
+        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
     #endif
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     // no promotion
   #else   // None
 
@@ -159,9 +159,9 @@ void update_policy(ICacheControl& ictrl)
 void update_policy(DCacheControl& dctrl)
 {
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     // no promotion
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     #if Associativity == 2
         dctrl.setctrl.policy = dctrl.currentway;
     #elif Associativity == 4
@@ -190,9 +190,9 @@ void update_policy(DCacheControl& dctrl)
             break;
         }
     #else
-        #error "LRU with N >= 8 ways associativity is not implemented"
+        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
     #endif
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     // no promotion
   #else   // None
 
@@ -200,7 +200,7 @@ void update_policy(DCacheControl& dctrl)
 #endif
 }
 
-void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
+void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address,                                                               // from cpu
            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                             // to cpu
 #ifndef __SYNTHESIS__
@@ -228,7 +228,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][
                 {
                     ictrl.setctrl.tag[i] = ictrl.tag[ictrl.currentset][i];
                     ictrl.setctrl.valid[i] = ictrl.valid[ictrl.currentset][i];
-                #if Associativity > 1 && (Policy == FIFO || Policy == LRU)
+                #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
                     ictrl.setctrl.policy = ictrl.policy[ictrl.currentset];
                 #endif
                 }
@@ -285,7 +285,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][
             {
                 ictrl.tag[ictrl.currentset][i] = ictrl.setctrl.tag[i];
                 ictrl.valid[ictrl.currentset][i] = ictrl.setctrl.valid[i];
-            #if Associativity > 1 && (Policy == FIFO || Policy == LRU)
+            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
                 ictrl.policy[ictrl.currentset] = ictrl.setctrl.policy;
             #endif
                 debug("tag : %6x      valid : %s\n", (ictrl.setctrl.tag[i].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift), ictrl.setctrl.valid[i]?"true":"false");
@@ -343,7 +343,7 @@ void icache(ICacheControl& ictrl, unsigned int imem[N], unsigned int data[Sets][
 
 }
 
-void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
+void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
            int& read, bool& datavalid                                                       // to cpu
 #ifndef __SYNTHESIS__
@@ -381,7 +381,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
                 dctrl.setctrl.tag[i] = dctrl.tag[dctrl.currentset][i];
                 dctrl.setctrl.dirty[i] = dctrl.dirty[dctrl.currentset][i];
                 dctrl.setctrl.valid[i] = dctrl.valid[dctrl.currentset][i];
-            #if Associativity > 1 && (Policy == FIFO || Policy == LRU)
+            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
                 dctrl.setctrl.policy = dctrl.policy[dctrl.currentset];
             #endif
             }
@@ -466,7 +466,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
             dctrl.tag[dctrl.currentset][i] = dctrl.setctrl.tag[i];
             dctrl.dirty[dctrl.currentset][i] = dctrl.setctrl.dirty[i];
             dctrl.valid[dctrl.currentset][i] = dctrl.setctrl.valid[i];
-        #if Associativity > 1 && (Policy == FIFO || Policy == LRU)
+        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             dctrl.policy[dctrl.currentset] = dctrl.setctrl.policy;
         #endif
         }
@@ -481,7 +481,7 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[N], unsigned int data[Sets][
             dctrl.tag[dctrl.currentset][i] = dctrl.setctrl.tag[i];
             dctrl.dirty[dctrl.currentset][i] = dctrl.setctrl.dirty[i];
             dctrl.valid[dctrl.currentset][i] = dctrl.setctrl.valid[i];
-        #if Associativity > 1 && (Policy == FIFO || Policy == LRU)
+        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             dctrl.policy[dctrl.currentset] = dctrl.setctrl.policy;
         #endif
         }

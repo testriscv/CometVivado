@@ -23,13 +23,13 @@ const ac_int<32, false> CSR::marchid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
 
-void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
+void memorySet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
             #ifndef __SYNTHESIS__
                , ac_int<64, false>& cycles
             #endif
                )
 {
-    ac_int<32, false> wrapped_address = address % (4*N);
+    ac_int<32, false> wrapped_address = address % (4*DRAM_SIZE);
     ac_int<32, false> location = wrapped_address >> 2;
     ac_int<32, false> memory_val = memory[location];
     simul(cycles += MEMORY_READ_LATENCY);
@@ -39,13 +39,13 @@ void memorySet(unsigned int memory[N], ac_int<32, false> address, ac_int<32, tru
     memory[location] = memory_val;
 }
 
-ac_int<32, true> memoryGet(unsigned int memory[N], ac_int<32, false> address, ac_int<2, false> op, bool sign
+ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<2, false> op, bool sign
                        #ifndef __SYNTHESIS__
                            , ac_int<64, false>& cycles
                        #endif
                            )
 {
-    ac_int<32, false> wrapped_address = address % (4*N);
+    ac_int<32, false> wrapped_address = address % (4*DRAM_SIZE);
     ac_int<32, false> location = wrapped_address >> 2;
     ac_int<32, false> mem_read = memory[location];
     simul(cycles += MEMORY_READ_LATENCY);
@@ -55,7 +55,7 @@ ac_int<32, true> memoryGet(unsigned int memory[N], ac_int<32, false> address, ac
     return mem_read;
 }
 
-void Ft(Core& core, unsigned int ins_memory[N]
+void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
     #ifndef __SYNTHESIS__
         , ac_int<64, false>& cycles
     #endif
@@ -889,7 +889,7 @@ void Ex(Core& core
     })
 }
 
-void do_Mem(Core& core, unsigned int data_memory[N]
+void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             #ifndef __SYNTHESIS__
                 , ac_int<64, false>& cycles
             #endif
@@ -936,7 +936,7 @@ void do_Mem(Core& core, unsigned int data_memory[N]
             core.datasize = core.extoMem.funct3.slc<2>(0);
             core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
-            core.daddress = core.extoMem.result;// % (4*N);
+            core.daddress = core.extoMem.result;// % (4*DRAM_SIZE);
             core.dcacheenable = true;
             core.writeenable = false;
             core.ctrl.cachelock = true;
@@ -971,9 +971,9 @@ void do_Mem(Core& core, unsigned int data_memory[N]
 
             simul(if(core.extoMem.result >= 0x11000 && core.extoMem.result < 0x11040)
                   fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
-                          core.datasize.to_int(), core.extoMem.datac);)
+                          core.datasize.to_int(), core.extoMem.datac.to_int());)
 #ifndef nocache
-            core.daddress = core.extoMem.result;// % (4*N);
+            core.daddress = core.extoMem.result;// % (4*DRAM_SIZE);
             core.dcacheenable = true;
             core.writeenable = true;
             core.writevalue = core.extoMem.datac;
@@ -1142,7 +1142,7 @@ void doWB(Core& core)
 void coreinit(Core& core, ac_int<32, false> startpc)
 {
     core.ctrl.init = true;
-    core.pc = startpc % (4*N);   // startpc - 4 ?
+    core.pc = startpc % (4*DRAM_SIZE);   // startpc - 4 ?
 
     core.ftoDC.instruction = simul(core.dctoEx.instruction =
     core.extoMem.instruction = core.memtoWB.instruction =) 0x13;
@@ -1152,14 +1152,14 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
     core.REG[2] = STACK_INIT;
 
-#if Policy == RANDOM
+#if Policy == RP_RANDOM
     core.dctrl.policy = 0xF2D4B698;
     core.ictrl.policy = 0xF2D4B698;
 #endif
 }
 
 template<unsigned int hartid>
-void doCore(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
+void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim = 0
         #endif
@@ -1183,12 +1183,12 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
     (void)dirinit;
     static bool valinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.valid, Sets*Associativity);
     (void)valinit;
-#if Policy == FIFO
+#if Policy == RP_FIFO
     static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.dctrl.policy, Sets);
     (void)dpolinit;
     static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
-#elif Policy == LRU
+#elif Policy == RP_LRU
     static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.dctrl.policy, Sets);
     (void)dpolinit;
     static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
@@ -1314,7 +1314,7 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int 
 
 }
 
-void doStep(ac_int<32, false> startpc, unsigned int ins_memory[N], unsigned int dm[N], bool& exit
+void doStep(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
         #ifndef __SYNTHESIS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif

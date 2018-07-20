@@ -10,9 +10,9 @@
 
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
 {
-    ins_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
-    data_memory = (ac_int<32, true> *)malloc(N * sizeof(ac_int<32, true>));
-    for(int i(0); i < N; i++)
+    ins_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
+    data_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
+    for(int i(0); i < DRAM_SIZE; i++)
     {
         ins_memory[i] = 0;
         data_memory[i] = 0;
@@ -118,12 +118,12 @@ void Simulator::fillMemory()
     //Check whether data memory and instruction memory from program will actually fit in processor.
     //cout << ins_memorymap.size()<<endl;
 
-    if(ins_memorymap.size() / 4 > N)
+    if(ins_memorymap.size() / 4 > DRAM_SIZE)
     {
         printf("Error! Instruction memory size exceeded");
         exit(-1);
     }
-    if(data_memorymap.size() / 4 > N)
+    if(data_memorymap.size() / 4 > DRAM_SIZE)
     {
         printf("Error! Data memory size exceeded");
         exit(-1);
@@ -132,15 +132,15 @@ void Simulator::fillMemory()
     //fill instruction memory
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
     {
-        ins_memory[(it->first/4) % N].set_slc(((it->first)%4)*8,it->second);
-        //debug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % N, ((it->first)%4)*8, it->second);
+        ins_memory[(it->first/4) % DRAM_SIZE].set_slc(((it->first)%4)*8,it->second);
+        //debug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % DRAM_SIZE, ((it->first)%4)*8, it->second);
     }
 
     //fill data memory
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = data_memorymap.begin(); it!=data_memorymap.end(); ++it)
     {
-        //data_memory.set_byte((it->first/4)%N,it->second,it->first%4);
-        data_memory[(it->first/4)%N].set_slc(((it->first%N)%4)*8,it->second);
+        //data_memory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
+        data_memory[(it->first/4)%DRAM_SIZE].set_slc(((it->first%DRAM_SIZE)%4)*8,it->second);
     }
 }
 

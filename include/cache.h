@@ -3,13 +3,13 @@
 
 #include "portability.h"
 
-#define NONE                        0
-#define FIFO                        1
-#define LRU                         2
-#define RANDOM                      3
+#define RP_NONE                     0
+#define RP_FIFO                     1
+#define RP_LRU                      2
+#define RP_RANDOM                   3
 
 #ifndef Policy
-#define Policy                      LRU
+#define Policy                      RP_LRU
 #endif
 
 #ifndef Size
@@ -91,11 +91,11 @@ struct ISetControl
     ac_int<32-tagshift, false> tag[Associativity];
     bool valid[Associativity];
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     ac_int<ac::log2_ceil<Associativity>::val, false> policy;
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy;
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     //ac_int<ac::log2_ceil<Associativity>::val, false> policy;
   #else   // None
     //ac_int<1, false> policy;
@@ -118,11 +118,11 @@ struct ICacheControl
     //ac_int<1, false> policy[Sets];
 #else
     ac_int<ac::log2_ceil<Associativity>::val, false> currentway;
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     ac_int<ac::log2_ceil<Associativity>::val, false> policy[Sets];
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy[Sets];
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     ac_int<32, false> policy;   //32 bits for the whole cache
   #else   // None alias direct mapped
     //ac_int<1, false> policy[Sets];
@@ -139,11 +139,11 @@ struct DSetControl
     bool dirty[Associativity];
     bool valid[Associativity];
 #if Associativity > 1
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     ac_int<ac::log2_ceil<Associativity>::val, false> policy;
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy;
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     //ac_int<ac::log2_ceil<Associativity>::val, false> policy;
   #else   // None
     //ac_int<1, false> policy;
@@ -166,11 +166,11 @@ struct DCacheControl
     //ac_int<1, false> policy[Sets];
 #else
     ac_int<ac::log2_ceil<Associativity>::val, false> currentway;
-  #if Policy == FIFO
+  #if Policy == RP_FIFO
     ac_int<ac::log2_ceil<Associativity>::val, false> policy[Sets];
-  #elif Policy == LRU
+  #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy[Sets];
-  #elif Policy == RANDOM
+  #elif Policy == RP_RANDOM
     ac_int<32, false> policy;   //32 bits for the whole cache
   #else   // None alias direct mapped
     //ac_int<1, false> policy[Sets];
@@ -180,14 +180,14 @@ struct DCacheControl
     DSetControl setctrl;
 };
 
-void icache(ICacheControl& ctrl, unsigned int imem[N], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
+void icache(ICacheControl& ctrl, unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> iaddress,                                                              // from cpu
            ac_int<32, false> &cachepc, int& instruction, bool& insvalid                             // to cpu
 #ifndef __SYNTHESIS__
            , ac_int<64, false>& cycles
 #endif
            );
-void dcache(DCacheControl& ctrl, unsigned int dmem[N], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
+void dcache(DCacheControl& ctrl, unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
            int& read, bool& datavalid                                                       // to cpu
 #ifndef __SYNTHESIS__

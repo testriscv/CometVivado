@@ -77,9 +77,9 @@ CCS_MAIN(int argc, char** argv)
 
     Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
 
-    unsigned int* dm = new unsigned int[N];
-    unsigned int* im = new unsigned int[N];
-    for(int i = 0; i < N; i++)
+    unsigned int* dm = new unsigned int[DRAM_SIZE];
+    unsigned int* im = new unsigned int[DRAM_SIZE];
+    for(int i = 0; i < DRAM_SIZE; i++)
     {
         dm[i] = sim.getDataMemory()[i];
         im[i] = sim.getInstructionMemory()[i];
@@ -89,13 +89,13 @@ CCS_MAIN(int argc, char** argv)
     sim.setIM(im);
 
     coredebug("instruction memory :\n");
-    for(int i = 0; i < N; i++)
+    for(int i = 0; i < DRAM_SIZE; i++)
     {
         if(im[i])
             coredebug("%06x : %08x (%d)\n", 4*i, im[i], im[i]);
     }
     coredebug("data memory :\n");
-    for(int i = 0; i < N; i++)
+    for(int i = 0; i < DRAM_SIZE; i++)
     {
         for(int j(0); j < 4; ++j)
         {
@@ -123,7 +123,7 @@ CCS_MAIN(int argc, char** argv)
     fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
 
     coredebug("memory : \n");
-    for(int i = 0; i < N; i++)
+    for(int i = 0; i < DRAM_SIZE; i++)
     {
         for(int j(0); j < 4; ++j)
         {

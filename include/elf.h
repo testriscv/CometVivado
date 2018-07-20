@@ -2463,9 +2463,9 @@ enum
 #define R_AARCH64_MOVW_UABS_G2	267	/* Dir. MOVZ imm. from bits 47:32.  */
 #define R_AARCH64_MOVW_UABS_G2_NC 268	/* Likewise for MOVK; no check.  */
 #define R_AARCH64_MOVW_UABS_G3	269	/* Dir. MOV{K,Z} imm. from 63:48.  */
-#define R_AARCH64_MOVW_SABS_G0	270	/* Dir. MOV{N,Z} imm. from 15:0.  */
-#define R_AARCH64_MOVW_SABS_G1	271	/* Dir. MOV{N,Z} imm. from 31:16.  */
-#define R_AARCH64_MOVW_SABS_G2	272	/* Dir. MOV{N,Z} imm. from 47:32.  */
+#define R_AARCH64_MOVW_SABS_G0	270	/* Dir. MOV{DRAM_SIZE,Z} imm. from 15:0.  */
+#define R_AARCH64_MOVW_SABS_G1	271	/* Dir. MOV{DRAM_SIZE,Z} imm. from 31:16.  */
+#define R_AARCH64_MOVW_SABS_G2	272	/* Dir. MOV{DRAM_SIZE,Z} imm. from 47:32.  */
 #define R_AARCH64_LD_PREL_LO19	273	/* PC-rel. LD imm. from bits 20:2.  */
 #define R_AARCH64_ADR_PREL_LO21	274	/* PC-rel. ADR imm. from bits 20:0.  */
 #define R_AARCH64_ADR_PREL_PG_HI21 275	/* Page-rel. ADRP imm. from 32:12.  */
@@ -2479,21 +2479,21 @@ enum
 #define R_AARCH64_LDST16_ABS_LO12_NC 284 /* Dir. ADD imm. from bits 11:1.  */
 #define R_AARCH64_LDST32_ABS_LO12_NC 285 /* Likewise for bits 11:2.  */
 #define R_AARCH64_LDST64_ABS_LO12_NC 286 /* Likewise for bits 11:3.  */
-#define R_AARCH64_MOVW_PREL_G0	287	/* PC-rel. MOV{N,Z} imm. from 15:0.  */
+#define R_AARCH64_MOVW_PREL_G0	287	/* PC-rel. MOV{DRAM_SIZE,Z} imm. from 15:0.  */
 #define R_AARCH64_MOVW_PREL_G0_NC 288	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_PREL_G1	289	/* PC-rel. MOV{N,Z} imm. from 31:16. */
+#define R_AARCH64_MOVW_PREL_G1	289	/* PC-rel. MOV{DRAM_SIZE,Z} imm. from 31:16. */
 #define R_AARCH64_MOVW_PREL_G1_NC 290	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_PREL_G2	291	/* PC-rel. MOV{N,Z} imm. from 47:32. */
+#define R_AARCH64_MOVW_PREL_G2	291	/* PC-rel. MOV{DRAM_SIZE,Z} imm. from 47:32. */
 #define R_AARCH64_MOVW_PREL_G2_NC 292	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_PREL_G3	293	/* PC-rel. MOV{N,Z} imm. from 63:48. */
+#define R_AARCH64_MOVW_PREL_G3	293	/* PC-rel. MOV{DRAM_SIZE,Z} imm. from 63:48. */
 #define R_AARCH64_LDST128_ABS_LO12_NC 299 /* Dir. ADD imm. from bits 11:4.  */
-#define R_AARCH64_MOVW_GOTOFF_G0 300	/* GOT-rel. off. MOV{N,Z} imm. 15:0. */
+#define R_AARCH64_MOVW_GOTOFF_G0 300	/* GOT-rel. off. MOV{DRAM_SIZE,Z} imm. 15:0. */
 #define R_AARCH64_MOVW_GOTOFF_G0_NC 301	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_GOTOFF_G1 302	/* GOT-rel. o. MOV{N,Z} imm. 31:16.  */
+#define R_AARCH64_MOVW_GOTOFF_G1 302	/* GOT-rel. o. MOV{DRAM_SIZE,Z} imm. 31:16.  */
 #define R_AARCH64_MOVW_GOTOFF_G1_NC 303	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_GOTOFF_G2 304	/* GOT-rel. o. MOV{N,Z} imm. 47:32.  */
+#define R_AARCH64_MOVW_GOTOFF_G2 304	/* GOT-rel. o. MOV{DRAM_SIZE,Z} imm. 47:32.  */
 #define R_AARCH64_MOVW_GOTOFF_G2_NC 305	/* Likewise for MOVK; no check.  */
-#define R_AARCH64_MOVW_GOTOFF_G3 306	/* GOT-rel. o. MOV{N,Z} imm. 63:48.  */
+#define R_AARCH64_MOVW_GOTOFF_G3 306	/* GOT-rel. o. MOV{DRAM_SIZE,Z} imm. 63:48.  */
 #define R_AARCH64_GOTREL64	307	/* GOT-relative 64-bit.  */
 #define R_AARCH64_GOTREL32	308	/* GOT-relative 32-bit.  */
 #define R_AARCH64_GOT_LD_PREL19	309	/* PC-rel. GOT off. load imm. 20:2.  */
@@ -2504,7 +2504,7 @@ enum
 #define R_AARCH64_TLSGD_ADR_PREL21 512	/* PC-relative ADR imm. 20:0.  */
 #define R_AARCH64_TLSGD_ADR_PAGE21 513	/* page-rel. ADRP imm. 32:12.  */
 #define R_AARCH64_TLSGD_ADD_LO12_NC 514	/* direct ADD imm. from 11:0.  */
-#define R_AARCH64_TLSGD_MOVW_G1	515	/* GOT-rel. MOV{N,Z} 31:16.  */
+#define R_AARCH64_TLSGD_MOVW_G1	515	/* GOT-rel. MOV{DRAM_SIZE,Z} 31:16.  */
 #define R_AARCH64_TLSGD_MOVW_G0_NC 516	/* GOT-rel. MOVK imm. 15:0.  */
 #define R_AARCH64_TLSLD_ADR_PREL21 517	/* Like 512; local dynamic model.  */
 #define R_AARCH64_TLSLD_ADR_PAGE21 518	/* Like 513; local dynamic model.  */
@@ -2512,10 +2512,10 @@ enum
 #define R_AARCH64_TLSLD_MOVW_G1	520	/* Like 515; local dynamic model.  */
 #define R_AARCH64_TLSLD_MOVW_G0_NC 521	/* Like 516; local dynamic model.  */
 #define R_AARCH64_TLSLD_LD_PREL19 522	/* TLS PC-rel. load imm. 20:2.  */
-#define R_AARCH64_TLSLD_MOVW_DTPREL_G2 523 /* TLS DTP-rel. MOV{N,Z} 47:32.  */
-#define R_AARCH64_TLSLD_MOVW_DTPREL_G1 524 /* TLS DTP-rel. MOV{N,Z} 31:16.  */
+#define R_AARCH64_TLSLD_MOVW_DTPREL_G2 523 /* TLS DTP-rel. MOV{DRAM_SIZE,Z} 47:32.  */
+#define R_AARCH64_TLSLD_MOVW_DTPREL_G1 524 /* TLS DTP-rel. MOV{DRAM_SIZE,Z} 31:16.  */
 #define R_AARCH64_TLSLD_MOVW_DTPREL_G1_NC 525 /* Likewise; MOVK; no check.  */
-#define R_AARCH64_TLSLD_MOVW_DTPREL_G0 526 /* TLS DTP-rel. MOV{N,Z} 15:0.  */
+#define R_AARCH64_TLSLD_MOVW_DTPREL_G0 526 /* TLS DTP-rel. MOV{DRAM_SIZE,Z} 15:0.  */
 #define R_AARCH64_TLSLD_MOVW_DTPREL_G0_NC 527 /* Likewise; MOVK; no check.  */
 #define R_AARCH64_TLSLD_ADD_DTPREL_HI12 528 /* DTP-rel. ADD imm. from 23:12. */
 #define R_AARCH64_TLSLD_ADD_DTPREL_LO12 529 /* DTP-rel. ADD imm. from 11:0.  */
@@ -2528,15 +2528,15 @@ enum
 #define R_AARCH64_TLSLD_LDST32_DTPREL_LO12_NC 536 /* Likewise; no check.  */
 #define R_AARCH64_TLSLD_LDST64_DTPREL_LO12 537 /* DTP-rel. LD/ST imm. 11:3.  */
 #define R_AARCH64_TLSLD_LDST64_DTPREL_LO12_NC 538 /* Likewise; no check.  */
-#define R_AARCH64_TLSIE_MOVW_GOTTPREL_G1 539 /* GOT-rel. MOV{N,Z} 31:16.  */
+#define R_AARCH64_TLSIE_MOVW_GOTTPREL_G1 539 /* GOT-rel. MOV{DRAM_SIZE,Z} 31:16.  */
 #define R_AARCH64_TLSIE_MOVW_GOTTPREL_G0_NC 540 /* GOT-rel. MOVK 15:0.  */
 #define R_AARCH64_TLSIE_ADR_GOTTPREL_PAGE21 541 /* Page-rel. ADRP 32:12.  */
 #define R_AARCH64_TLSIE_LD64_GOTTPREL_LO12_NC 542 /* Direct LD off. 11:3.  */
 #define R_AARCH64_TLSIE_LD_GOTTPREL_PREL19 543 /* PC-rel. load imm. 20:2.  */
-#define R_AARCH64_TLSLE_MOVW_TPREL_G2 544 /* TLS TP-rel. MOV{N,Z} 47:32.  */
-#define R_AARCH64_TLSLE_MOVW_TPREL_G1 545 /* TLS TP-rel. MOV{N,Z} 31:16.  */
+#define R_AARCH64_TLSLE_MOVW_TPREL_G2 544 /* TLS TP-rel. MOV{DRAM_SIZE,Z} 47:32.  */
+#define R_AARCH64_TLSLE_MOVW_TPREL_G1 545 /* TLS TP-rel. MOV{DRAM_SIZE,Z} 31:16.  */
 #define R_AARCH64_TLSLE_MOVW_TPREL_G1_NC 546 /* Likewise; MOVK; no check.  */
-#define R_AARCH64_TLSLE_MOVW_TPREL_G0 547 /* TLS TP-rel. MOV{N,Z} 15:0.  */
+#define R_AARCH64_TLSLE_MOVW_TPREL_G0 547 /* TLS TP-rel. MOV{DRAM_SIZE,Z} 15:0.  */
 #define R_AARCH64_TLSLE_MOVW_TPREL_G0_NC 548 /* Likewise; MOVK; no check.  */
 #define R_AARCH64_TLSLE_ADD_TPREL_HI12 549 /* TP-rel. ADD imm. 23:12.  */
 #define R_AARCH64_TLSLE_ADD_TPREL_LO12 550 /* TP-rel. ADD imm. 11:0.  */
@@ -2554,7 +2554,7 @@ enum
 #define R_AARCH64_TLSDESC_ADR_PAGE21 562 /* Page-rel. ADRP imm. 32:12.  */
 #define R_AARCH64_TLSDESC_LD64_LO12 563	/* Direct LD off. from 11:3.  */
 #define R_AARCH64_TLSDESC_ADD_LO12 564	/* Direct ADD imm. from 11:0.  */
-#define R_AARCH64_TLSDESC_OFF_G1 565	/* GOT-rel. MOV{N,Z} imm. 31:16.  */
+#define R_AARCH64_TLSDESC_OFF_G1 565	/* GOT-rel. MOV{DRAM_SIZE,Z} imm. 31:16.  */
 #define R_AARCH64_TLSDESC_OFF_G0_NC 566	/* GOT-rel. MOVK imm. 15:0; no ck.  */
 #define R_AARCH64_TLSDESC_LDR	567	/* Relax LDR.  */
 #define R_AARCH64_TLSDESC_ADD	568	/* Relax ADD.  */
