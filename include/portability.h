@@ -51,19 +51,19 @@
 #endif
 
 #ifdef __DEBUG__
-#define dbglog(msg, ...) do { \
-    fprintf(stderr, msg, __VA_ARGS__); \
-    debug(msg, __VA_ARGS__); \
+#define dbglog(...) do { \
+    fprintf(stderr, __VA_ARGS__); \
+    debug(__VA_ARGS__); \
 } while(0)
-#define dbgassert(cond, msg, ...) do { \
+#define dbgassert(cond, ...) do { \
     if(!(cond)) {  \
-        dbglog(msg, __VA_ARGS__); \
+        dbglog(__VA_ARGS__); \
         assert(cond); \
     } \
 } while(0)
 #else
-#define dbglog(msg, ...)
-#define dbgassert(cond, msg, ...)
+#define dbglog(...)
+#define dbgassert(cond, ...)
 #endif
 
 #else
@@ -72,8 +72,8 @@
 #undef assert
 #define assert(a)
 #define coredebug(...)
-#define dbgassert(cond, msg, ...)
-#define dbglog(msg, ...)
+#define dbgassert(cond, ...)
+#define dbglog(...)
 #endif
 
 #define DRAM_WIDTH  32

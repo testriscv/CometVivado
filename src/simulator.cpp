@@ -27,14 +27,14 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
 
     ElfFile elfFile(binaryFile);
     int counter = 0;
-    for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
+    for(unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
     {
         ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
         if(oneSection->address != 0 && strncmp(oneSection->getName().c_str(), ".text", 5))
         {
             //If the address is not null we place its content into memory
             unsigned char* sectionContent = oneSection->getSectionCode();
-            for (unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
+            for(unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
             {
                 counter++;
                 setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
@@ -45,7 +45,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         if(!strncmp(oneSection->getName().c_str(), ".text", 5))
         {
             unsigned char* sectionContent = oneSection->getSectionCode();
-            for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
+            for(unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
             {
                 setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
             }
@@ -53,14 +53,24 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         }
     }
 
-    for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++)
+    for(int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++)
     {
         ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
         const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
-        if (strcmp(name, "_start") == 0)
+        if(strcmp(name, "_start") == 0)
         {
             fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
             setPC(symbol->offset);
+        }
+
+        if(strcmp(name, "tohost") == 0)
+        {
+            dbglog("tohost @%06x\n", symbol->offset);
+        }
+
+        if(strcmp(name, "fromhost") == 0)
+        {
+            dbglog("fromhost @%06x\n", symbol->offset);
         }
     }
 
@@ -718,10 +728,8 @@ ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    if(reg[2] < heapAddress)
-    {
-        dbgassert(reg[2] > heapAddress, "Stack and heap overlaps !!\n");
-    }
+    dbgassert(reg[2] > heapAddress, "Stack and heap overlaps %08x!!\n", value.to_int());
+    
     return result;
 }
 

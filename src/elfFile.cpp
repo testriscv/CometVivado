@@ -1,5 +1,3 @@
-
-#include "elfFile.h"
 #include <cstdio>
 #include <stdlib.h>
 #include <vector>
@@ -9,6 +7,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+
+#include "elfFile.h"
 
 #define DEBUG 0
 

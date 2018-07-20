@@ -5,11 +5,10 @@
 #ifndef __ELFFILE
 #define __ELFFILE
 
-
-
-#include "elf.h"
 #include <vector>
 #include <string>
+
+#include "elf.h"
 
 class ElfSection;
 class ElfRelocation;
