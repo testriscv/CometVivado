@@ -55,8 +55,8 @@ CCS_MAIN(int argc, char** argv)
         benchargv = new char*[benchargc];
 
     if(binaryFile == 0)
-#if CCS_DUT_SYSC || CCS_DUT_RTL
-        binaryFile = "../benchmarks/build/matmul_int_4.riscv";
+#ifdef __HLS__
+        binaryFile = "../benchmarks/build/matmul.riscv";
 #else
         binaryFile = "benchmarks/build/matmul_int_4.riscv";
 #endif
@@ -112,7 +112,7 @@ CCS_MAIN(int argc, char** argv)
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), im, dm, exit
-                  #ifndef CCS_DUT_RTL
+                  #ifndef __HLS__
                       , cycles, numins, &sim
                   #endif
                   ));

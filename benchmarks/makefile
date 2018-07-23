@@ -20,7 +20,8 @@ all: $(dependancies)
 	$(foreach size, $(qsize), $(foreach type, $(TYPES), build/qsort_$(type)_$(size) > res/qsort_$(type)_$(size);))
 	$(foreach size, $(msize), $(foreach type, $(TYPES), riscv32-unknown-elf-objdump -D build/matmul_$(type)_$(size).riscv > build/matmul_$(type)_$(size).txt;))
 	$(foreach size, $(qsize), $(foreach type, $(TYPES), riscv32-unknown-elf-objdump -D build/qsort_$(type)_$(size).riscv > build/qsort_$(type)_$(size).txt;))
-	 
+	$(CCX) -I $(INCLUDE) src/matmul.c $(FLAGS) -D__HLS__ -o $(OUT_DIR)/matmul.riscv -Wl,-Ttext,4
+	riscv32-unknown-elf-objdump -D build/matmul.riscv > build/matmul.txt	
 
 clean:
 	$(foreach benchmark, $(benchmarks), rm build/$(benchmark)*;)

@@ -20,7 +20,8 @@ int main(void)
             result[(i<<SHIFT) + j] = sum;
         }
     }
-    
+
+#ifndef __HLS__    
 #define STR1(x) #x
 #define STR(x) STR1(x)
     for(i = 0; i < SIZE; ++i)
@@ -36,6 +37,7 @@ int main(void)
         }
         printf("\n");
     }
+#endif
 
     return 0;
 }

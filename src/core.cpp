@@ -204,7 +204,11 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
 }
 
 template<unsigned int hartid>
-void DC(Core& core)
+void DC(Core& core
+    #ifdef __HLS__
+        , bool& exit
+    #endif
+        )
 {
     ac_int<32, false> pc = core.ftoDC.pc;
     ac_int<32, false> instruction = core.ftoDC.instruction;
@@ -448,6 +452,7 @@ void DC(Core& core)
             #else
                 // ignore ecall in synthesis because it makes no sense
                 // we should jump at some address specified by a csr
+                exit = true;
             #endif
             }
             else simul(if(funct3 != 0x4))
@@ -579,8 +584,8 @@ void DC(Core& core)
     core.ctrl.prev_opCode[0] = opCode;
     core.ctrl.prev_rds[0] = rd;
 
-    simul(core.dctoEx.pc = pc;
-    core.dctoEx.instruction = instruction;)
+    core.dctoEx.pc = pc;
+    simul(core.dctoEx.instruction = instruction;)
     core.dctoEx.opCode = opCode;
     core.dctoEx.funct3 = funct3;
     core.dctoEx.funct7 = funct7;
@@ -839,8 +844,8 @@ void Ex(Core& core
         { // case 0: mret instruction, core.dctoEx.memValue should be 0x302
         case RISCV_SYSTEM_ENV:
         #ifndef __HLS__
+            dbglog("Syscall @%06x (%lld)\n", core.dctoEx.pc.to_int(), core.csrs.mcycle.to_int64());
             core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
-            fprintf(stderr, "Syscall @%06x\n", core.dctoEx.pc.to_int());
         #endif
             break;
             // lhs is from rs1, rhs is from csr
@@ -1161,7 +1166,7 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
         #ifndef __HLS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim = 0
+            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif
             )
 {
@@ -1200,10 +1205,10 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     {
         coreinit(core, startpc);
 
-        simul(if(sim) sim->setCore(core.REG, &core.dctrl, core.ddata));
+        simul(if(sim) sim->setCore(core.REG, &core.dctrl, core.ddata);)
     }
 
-    simul(uint64_t oldcycles = core.csrs.mcycle);
+    simul(uint64_t oldcycles = core.csrs.mcycle;)
     core.csrs.mcycle += 1;
 
     doWB(core);
@@ -1213,8 +1218,7 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
         if(core.REG[i])
             coredebug("%d:%08x ", i, (int)core.REG[i]);
     }
-    )
-    coredebug("\n");
+    coredebug("\n");)
 
     do_Mem(core , dm
        #ifndef __HLS__
@@ -1225,11 +1229,15 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     if(!core.ctrl.cachelock)
     {
         Ex(core
-   #ifndef __HLS__
+    #ifndef __HLS__
            , exit, sim
-   #endif
+    #endif
            );
-        DC<hartid>(core);
+        DC<hartid>(core
+    #ifdef __HLS__
+                   , exit
+    #endif
+                   );
         Ft(core, ins_memory
    #ifndef __HLS__
           , core.csrs.mcycle

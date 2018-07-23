@@ -37,14 +37,14 @@
 #include <cstdio>
 #include <stdint.h>
 
-#ifndef nodebug
+#ifdef __DEBUG__
 #define gdebug(...)      printf(__VA_ARGS__)     // generic debug, can be deactivated
 #else
 #define gdebug(...)
 #endif
 #define simul(...)      __VA_ARGS__
 
-#if 1
+#ifdef __DEBUG__
 #define coredebug(...)  printf(__VA_ARGS__)     // mandatory debug
 #else
 #define coredebug(...)
@@ -53,7 +53,7 @@
 #ifdef __DEBUG__
 #define dbglog(...) do { \
     fprintf(stderr, __VA_ARGS__); \
-    debug(__VA_ARGS__); \
+    printf(__VA_ARGS__); \
 } while(0)
 #define dbgassert(cond, ...) do { \
     if(!(cond)) {  \
@@ -77,7 +77,11 @@
 #endif
 
 #define DRAM_WIDTH  32
+#ifndef __HLS__
 #define DRAM_SIZE   (1 << 20)       // 1 048 576
+#else
+#define DRAM_SIZE   16384
+#endif
 
 #define STACK_INIT  (4*DRAM_SIZE-0x1000)
 

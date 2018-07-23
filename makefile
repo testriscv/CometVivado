@@ -17,8 +17,11 @@ all: $(S_FILES) $(I_HEADER)
 catapult: $(S_FILES) $(I_HEADER)
 	g++ -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__
 
+debugcatapult: $(S_FILES) $(I_HEADER)
+	g++ -g -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__ -D__DEBUG__
+
 text: $(S_FILES) $(I_HEADER)
-	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) > comet.cpp
+	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__DEBUG__ > comet.cpp
 
 textcatapult: $(S_FILES) $(I_HEADER)
 	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__ > comet.cpp
@@ -30,7 +33,7 @@ vivado.sim: $(S_FILES) $(I_HEADER)
 	g++ -o vivado.sim $(INC_PARAMS) $(S_FILES) $(VARS_VIV)
 
 clean:
-	rm -rf *.o comet.sim vivado.sim 
+	rm -rf *.o comet.sim vivado.sim comet.cpp 
 
 .PHONY: all catapult clean debug text textcatapult
 
