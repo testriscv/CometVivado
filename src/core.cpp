@@ -219,10 +219,11 @@ void DC(Core& core
     ac_int<5, false> rs1 = instruction.slc<5>(15);
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<5, false> rd = instruction.slc<5>(7);
-    ac_int<5, false> opCode = instruction.slc<5>(2);    // reduced to 5 bits because 1:0 is always 11
+    ac_int<5, false> opCode = instruction.slc<7>(0);    // reduced to 5 bits because 1:0 is always 11
 
     dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
               pc.to_int(), instruction.to_int());
+    AC_ASSERT(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction\n");
 
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
