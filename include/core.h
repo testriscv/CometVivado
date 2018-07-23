@@ -19,7 +19,7 @@ struct DCtoEx
     ac_int<32, false> instruction;
 #endif
 
-    ac_int<5, false> opCode;    // opCode = instruction[6:2]
+    ac_int<7, false> opCode;    // opCode = instruction[6:0]
     ac_int<7, false> funct7;    // funct7 = instruction[31:25]
     ac_int<3, false> funct3;    // funct3 = instruction[14:12]
  // ac_int<5, false> rs1;       // rs1    = instruction[19:15]
@@ -56,7 +56,7 @@ struct ExtoMem
 
     ac_int<32, true> result;    // result of the EX stage
     ac_int<5, false> rd;        // destination register
-    ac_int<5, false> opCode;    // LD or ST (can be reduced to 2 bits)
+    ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
     ac_int<3, false> funct3;    // datasize and sign extension bit
     bool realInstruction;
 
@@ -104,7 +104,7 @@ struct CSR
 struct CoreCtrl
 {
     ac_int<5, false> prev_rds[3];
-    ac_int<5, false> prev_opCode[3];
+    ac_int<7, false> prev_opCode[3];
     ac_int<2, false> lock;          // used to lock dc stage after JAL & JALR
 
     bool freeze_fetch;              // used for LD dependencies
