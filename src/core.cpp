@@ -451,7 +451,8 @@ void DC(Core& core
                 rhs = (forward_rs2 && rs2 != 0) ? (forward_ex_or_mem_rs2 ? core.extoMem.result : core.memtoWB.result) : core.REG[rs2];
                 realInstruction = true;
 
-                core.dctoEx.datac = core.ctrl.prev_rds[1] == 11 ? core.extoMem.result : (core.ctrl.prev_rds[2] == 11 ? core.memtoWB.result : core.REG[11]);
+                datac = core.ctrl.prev_rds[1] == 11 ? core.extoMem.result : (core.ctrl.prev_rds[2] == 11 ? core.memtoWB.result : core.REG[11]);
+                forward_datac = false;
                 core.dctoEx.datad = core.ctrl.prev_rds[1] == 12 ? core.extoMem.result : (core.ctrl.prev_rds[2] == 12 ? core.memtoWB.result : core.REG[12]);
                 core.dctoEx.datae = core.ctrl.prev_rds[1] == 13 ? core.extoMem.result : (core.ctrl.prev_rds[2] == 13 ? core.memtoWB.result : core.REG[13]);
             #else
