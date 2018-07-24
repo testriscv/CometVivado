@@ -122,14 +122,14 @@ CCS_MAIN(int argc, char** argv)
     printf("Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
     fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
 
-    coredebug("memory : \n");
+    printf("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
     {
         for(int j(0); j < 4; ++j)
         {
             if(dm[i] & (0xFF << (8*j)))
             {
-                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }

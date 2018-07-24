@@ -33,10 +33,10 @@ void memorySet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int
     ac_int<32, false> location = wrapped_address >> 2;
     ac_int<32, false> memory_val = memory[location];
     simul(cycles += MEMORY_READ_LATENCY);
-    formatwrite(address, op, memory_val, value);
+    //formatwrite(address, op, memory_val, value);
     // data                                     size-1        @address         what was there before  what we want to write  what is actually written
     coredebug("dW%d  @%06x   %08x   %08x   %08x\n", op.to_int(), wrapped_address.to_int(), memory[location], value.to_int(), memory_val.to_int());
-    memory[location] = memory_val;
+    memory[location] = value;
 }
 
 ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<2, false> op, bool sign
@@ -227,6 +227,7 @@ void DC(Core& core
 
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
+    ac_int<32, true> datac = 0;
     bool realInstruction = true;   
 
     bool forward_rs1 = false;
@@ -261,6 +262,7 @@ void DC(Core& core
 
         lhs = 0;
         rhs = 0;
+        datac = 0;
     }
     else if(core.ctrl.lock)
     {       // a branch or a jump was taken
@@ -279,6 +281,7 @@ void DC(Core& core
 
         lhs = 0;
         rhs = 0;
+        datac = 0;
     }
     else if(core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
             || core.ctrl.prev_rds[1] == rs2))
@@ -302,6 +305,7 @@ void DC(Core& core
 
         lhs = 0;
         rhs = 0;
+        datac = 0;
     }
     else        // do normal switch
     {
@@ -334,7 +338,7 @@ void DC(Core& core
 
             forward_datac = forward_rs2;
             forward_ex_or_mem_datac = forward_ex_or_mem_rs2;
-            core.dctoEx.datac = rhs;
+            datac = rhs;
 
             rhs = immediate;
             forward_rs2 = false;
@@ -349,7 +353,7 @@ void DC(Core& core
             immediate.set_slc(5, instruction.slc<6>(25));
             immediate.set_slc(11, instruction.slc<1>(7));
 
-            core.dctoEx.datac = immediate;
+            datac = immediate;
             rd = 0;
             break;
         // J-type instruction
@@ -365,7 +369,7 @@ void DC(Core& core
             rhs = immediate;
             forward_rs1 = false;
             forward_rs2 = false;
-            core.dctoEx.datac = core.ftoDC.nextpc;
+            datac = core.ftoDC.nextpc;
 
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
@@ -415,7 +419,7 @@ void DC(Core& core
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
             forward_rs2 = false;
-            core.dctoEx.datac = core.ftoDC.nextpc;
+            datac = core.ftoDC.nextpc;
 
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
@@ -595,6 +599,7 @@ void DC(Core& core
 
     core.dctoEx.lhs = lhs;
     core.dctoEx.rhs = rhs;
+    core.dctoEx.datac = datac;
 
     core.dctoEx.forward_lhs = forward_rs1;
     core.dctoEx.forward_rhs = forward_rs2;
@@ -953,8 +958,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.realInstruction = false;
 #else
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;
+            simul(core.memtoWB.pc = core.extoMem.pc;
+            core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
             //gdebug("%5d  ", cycles);
             core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
