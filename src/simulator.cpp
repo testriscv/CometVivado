@@ -9,6 +9,7 @@
 #include "simulator.h"
 
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
+    : reg(0), dctrl(0), ddata(0)
 {
     ins_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
     data_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
@@ -176,6 +177,20 @@ void Simulator::setDM(unsigned int *d)
 void Simulator::setIM(unsigned int *i)
 {
     im = i;
+}
+
+void Simulator::writeBack()
+{
+#ifndef nocache
+    unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(ddata));
+
+    //cache write back for simulation
+    for(unsigned int i  = 0; i < Sets; ++i)
+        for(unsigned int j = 0; j < Associativity; ++j)
+            if(dctrl->dirty[i][j] && dctrl->valid[i][j])
+                for(unsigned int k = 0; k < Blocksize; ++k)
+                    dm[(dctrl->tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+#endif
 }
 
 void Simulator::setCore(ac_int<32, true> *r, DCacheControl* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])

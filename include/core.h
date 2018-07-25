@@ -134,7 +134,7 @@ struct Core
 
     /// Instruction cache
     ICacheControl ictrl;
-    unsigned int idata[Sets][Blocksize][Associativity];
+    //unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
     ac_int<32, false> iaddress;
     ac_int<32, false> cachepc;
     int instruction;
@@ -142,7 +142,7 @@ struct Core
 
     /// Data cache
     DCacheControl dctrl;
-    unsigned int ddata[Sets][Blocksize][Associativity];
+    //unsigned int ddata[Sets][Blocksize][Associativity];   // made external for modelsim
     ac_int<32, false> daddress;
     ac_int<2, false> datasize;
     bool signenable;
@@ -153,7 +153,11 @@ struct Core
     bool datavalid;
 };
 
-void doStep(ac_int<32, false> pc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool &exit
+extern Core core;// = {0};
+
+void doStep(ac_int<32, false> pc, bool &exit,
+            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* syscall
         #endif

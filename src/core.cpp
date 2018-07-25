@@ -16,6 +16,8 @@
 
 #endif
 
+Core core;
+
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mvendorid = 0;
 //template<unsigned int hartid>
@@ -55,7 +57,7 @@ ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> add
     return mem_read;
 }
 
-void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
+void Ft(Core& core, unsigned int im[DRAM_SIZE]
     #ifndef __HLS__
         , ac_int<64, false>& cycles
     #endif
@@ -138,7 +140,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
 #else
     if(!core.ctrl.freeze_fetch)
     {
-        core.ftoDC.instruction = ins_memory[core.pc/4];
+        core.ftoDC.instruction = im[core.pc/4];
         simul(cycles += MEMORY_READ_LATENCY);
         core.ftoDC.pc = core.pc;
         core.ftoDC.realInstruction = true;
@@ -199,7 +201,7 @@ void Ft(Core& core, unsigned int ins_memory[DRAM_SIZE]
     {
         coredebug("Ft   \n");
     })
-    gdebug("i @%06x   %08x\n", core.pc.to_int(), ins_memory[core.pc/4]);
+    gdebug("i @%06x   %08x\n", core.pc.to_int(), im[core.pc/4]);
 #endif
 }
 
@@ -223,7 +225,6 @@ void DC(Core& core
 
     dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
               pc.to_int(), instruction.to_int());
-    AC_ASSERT(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction\n");
 
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
@@ -244,6 +245,9 @@ void DC(Core& core
     forward_ex_or_mem_rs2 = core.ctrl.prev_rds[1] == rs2;
 
     core.ctrl.freeze_fetch = 0;
+#ifdef __HLS__
+    exit = false;
+#endif
 
     if(core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1])
     {       // a branch was taken
@@ -1171,27 +1175,27 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 }
 
 template<unsigned int hartid>
-void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
+void doCore(ac_int<32, false> startpc, bool &exit,
+            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif
             )
 {
-    static Core core = {0};
-
-#ifdef __HLS__
+/*#ifdef __HLS__
     static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.idata, Sets*Associativity*Blocksize);
     (void)idummy;
-    static bool itaginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)core.ictrl.tag, Sets*Associativity);
+    static bool itaginit = ac::init_array<AC_VAL_0>((ac_int<32-tagshift, false>*)core.ictrl.tag, Sets*Associativity);
     (void)itaginit;
     static bool ivalinit = ac::init_array<AC_VAL_0>((bool*)core.ictrl.valid, Sets*Associativity);
     (void)ivalinit;
 
     static bool dummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.ddata, Sets*Associativity*Blocksize);
     (void)dummy;
-    static bool taginit = ac::init_array<AC_VAL_DC>((ac_int<32-tagshift, false>*)core.dctrl.tag, Sets*Associativity);
+    static bool taginit = ac::init_array<AC_VAL_0>((ac_int<32-tagshift, false>*)core.dctrl.tag, Sets*Associativity);
     (void)taginit;
-    static bool dirinit = ac::init_array<AC_VAL_DC>((bool*)core.dctrl.dirty, Sets*Associativity);
+    static bool dirinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.dirty, Sets*Associativity);
     (void)dirinit;
     static bool valinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.valid, Sets*Associativity);
     (void)valinit;
@@ -1201,18 +1205,16 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
 #elif Policy == RP_LRU
-    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.dctrl.policy, Sets);
+    static bool dpolinit = ac::init_array<AC_VAL_0>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.dctrl.policy, Sets);
     (void)dpolinit;
-    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
+    static bool ipolinit = ac::init_array<AC_VAL_0>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
     (void)ipolinit;
 #endif
-#endif  // __HLS__
+#endif  // __HLS__*/
 
     if(!core.ctrl.init)
     {
         coreinit(core, startpc);
-
-        simul(if(sim) sim->setCore(core.REG, &core.dctrl, core.ddata);)
     }
 
     simul(uint64_t oldcycles = core.csrs.mcycle;)
@@ -1245,7 +1247,7 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
                    , exit
     #endif
                    );
-        Ft(core, ins_memory
+        Ft(core, im
    #ifndef __HLS__
           , core.csrs.mcycle
    #endif
@@ -1266,7 +1268,6 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
             core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;  // prevent useless dependencies
             core.ctrl.branch[2] = 1;
             core.ctrl.branch[1] = core.ctrl.branch[0] = 0;      // prevent taking wrong branch
-            //core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0] = 0;
         }
         else
         {
@@ -1285,13 +1286,13 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     // cache should maybe be all the way up or down
     // cache down generates less hardware and is less cycle costly(20%?)
     // but cache up has a slightly better critical path
-    dcache(core.dctrl, dm, core.ddata, core.daddress, core.datasize, core.signenable, core.dcacheenable,
+    dcache(core.dctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
            core.writeenable, core.writevalue, core.readvalue, core.datavalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
-    icache(core.ictrl, ins_memory, core.idata, core.iaddress, core.cachepc, core.instruction, core.insvalid
+    icache(core.ictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
@@ -1314,28 +1315,18 @@ void doCore(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsig
     dbgassert((core.pc.to_int() & 3) == 0, "Misaligned instruction @%06x\n",
                core.pc.to_int());
 
-    simul(
-    #ifndef nocache
-        //cache write back for simulation
-        if(exit)
-            for(unsigned int i  = 0; i < Sets; ++i)
-                for(unsigned int j = 0; j < Associativity; ++j)
-                    if(core.dctrl.dirty[i][j] && core.dctrl.valid[i][j])
-                        for(unsigned int k = 0; k < Blocksize; ++k)
-                            dm[(core.dctrl.tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = core.ddata[i][k][j];
-    #endif
-    )
-
-
 }
 
-void doStep(ac_int<32, false> startpc, unsigned int ins_memory[DRAM_SIZE], unsigned int dm[DRAM_SIZE], bool& exit
+void doStep(ac_int<32, false> startpc, bool &exit,
+            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
             , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
         #endif
             )
 {
-    doCore<0>(startpc, ins_memory, dm, exit
+    doCore<0>(startpc, exit, im, dm,
+              cim, cdm
           #ifndef __HLS__
               , c, numins, sim
           #endif

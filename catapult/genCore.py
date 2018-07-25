@@ -56,10 +56,10 @@ PINMAPS {{
 }}"""
 
 header = """logfile close
-logfile open {cachesize}x32cachecore.log
-project set -incr_directory {cachesize}x32cachecore
+logfile open {name}.log
+project set -incr_directory {name}
 solution new -state initial
-solution options set /Input/CompilerFlags {{-D __CATAPULT__=1}}
+solution options set /Input/CompilerFlags {{-D __CATAPULT__=1 {nocache} -DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize}}}
 solution options set /Input/SearchPath ../include
 solution options set ComponentLibs/SearchPath ../memories -append
 flow package require /SCVerify
@@ -108,49 +108,58 @@ directive set -COMPGRADE fast
 directive set -DESIGN_HIERARCHY doStep
 """
 
-cacheparameters = """solution file set ../src/core.cpp -args {{-DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize}}}
-//solution file set ../src/cache.cpp -args {{-DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize}}}
-"""
+# ~ cacheparameters = """solution file set ../src/core.cpp -args {{{nocache}}}
+# ~ """
 
 libraries = """go analyze
 solution library remove *
 solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
-solution library add ST_singleport_16777216x32
-solution library add ST_singleport_{datasize}x{datawidth}
-solution library add ST_singleport_{sets}x{ctrlwidth}
+solution library add ST_singleport_4096x128
+solution library add ST_singleport_16384x32
+solution library add ST_singleport_8192x32
 go libraries
-"""
-
-genCore = """directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
+directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly
-directive set /doStep/core/doCore<0U>:core.REG:rsc -MAP_TO_MODULE {{[Register]}}
+directive set /doStep/core/core.REG:rsc -MAP_TO_MODULE {{[Register]}}
 directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
 directive set /doStep/core -CLOCK_OVERHEAD 0.0
-directive set /doStep/core/doCore<0U>:core.idata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/doCore<0U>:core.idata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/doCore<0U>:core.ictrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/doCore<0U>:core.ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/doCore<0U>:core.ictrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/doCore<0U>:core.ictrl.valid -RESOURCE doCore<0U>:core.ictrl.tag:rsc
-directive set /doStep/core/doCore<0U>:core.ictrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/doCore<0U>:core.ictrl.policy -RESOURCE doCore<0U>:core.ictrl.tag:rsc
-directive set /doStep/core/doCore<0U>:core.ddata:rsc -INTERLEAVE {associativity}
-directive set /doStep/core/doCore<0U>:core.ddata:rsc -MAP_TO_MODULE ST_singleport_{datasize}x{datawidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/doCore<0U>:core.dctrl.tag:rsc -PACKING_MODE sidebyside
-directive set /doStep/core/doCore<0U>:core.dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_{sets}x{ctrlwidth}.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/core/doCore<0U>:core.dctrl.tag -WORD_WIDTH {tagbits} 
-directive set /doStep/core/doCore<0U>:core.dctrl.dirty -RESOURCE doCore<0U>:core.dctrl.tag:rsc
-directive set /doStep/core/doCore<0U>:core.dctrl.dirty -WORD_WIDTH {associativity}
-directive set /doStep/core/doCore<0U>:core.dctrl.valid -RESOURCE doCore<0U>:core.dctrl.tag:rsc
-directive set /doStep/core/doCore<0U>:core.dctrl.valid -WORD_WIDTH {associativity}
-directive set /doStep/core/doCore<0U>:core.dctrl.policy -RESOURCE doCore<0U>:core.dctrl.tag:rsc
-go architect
-cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(doCore<0U>:core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(doCore<0U>:core.ictrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(doCore<0U>:core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(doCore<0U>:core.dctrl.tag:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/loaddset:read_mem(doCore<0U>:core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(doCore<0U>:core.ictrl.tag:rsc.@) -equal 0
+"""
+
+genCore = """go architect
 go schedule
 go extract
 project save {cachesize}x32cachecore.ccs
+"""
+
+genCache = """//directive set /doStep/core/core.idata:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+//directive set /doStep/core/core.idata:rsc -INTERLEAVE {associativity}
+directive set /doStep/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/cim:rsc -INTERLEAVE {associativity}
+directive set /doStep/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/cdm:rsc -INTERLEAVE {associativity}
+directive set /doStep/core/core.ictrl.tag:rsc -PACKING_MODE sidebyside
+//directive set /doStep/core/core.ictrl.tag:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /doStep/core/core.ictrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/core.ictrl.valid -RESOURCE core.ictrl.tag:rsc
+directive set /doStep/core/core.ictrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/core.ictrl.policy -RESOURCE core.ictrl.tag:rsc
+//directive set /doStep/core/core.ddata:rsc -INTERLEAVE {associativity}
+//directive set /doStep/core/core.ddata:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /doStep/core/core.dctrl.tag:rsc -PACKING_MODE sidebyside
+//directive set /doStep/core/core.dctrl.tag:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /doStep/core/core.dctrl.tag -WORD_WIDTH {tagbits} 
+directive set /doStep/core/core.dctrl.dirty -RESOURCE core.dctrl.tag:rsc
+directive set /doStep/core/core.dctrl.dirty -WORD_WIDTH {associativity}
+directive set /doStep/core/core.dctrl.valid -RESOURCE core.dctrl.tag:rsc
+directive set /doStep/core/core.dctrl.valid -WORD_WIDTH {associativity}
+directive set /doStep/core/core.dctrl.policy -RESOURCE core.dctrl.tag:rsc
+go architect
+//cycle add /doStep/core/core:rlp/main/icache:case-0:if#1:read_mem(core.idata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+//cycle add /doStep/core/core:rlp/main/dcache:case-0:if:if:if:read_mem(core.ddata:rsc(0)(0).@) -from /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -equal 0
+//cycle add /doStep/core/core:rlp/main/loaddset:read_mem(core.dctrl.tag:rsc.@) -from /doStep/core/core:rlp/main/loadiset:read_mem(core.ictrl.tag:rsc.@) -equal 0
+go schedule
+go extract
+project save {name}.ccs
 """
 
 exploreCore = """dofile func.tcl
@@ -212,12 +221,15 @@ def doMem(memsize, bitwidth, name=None):
 			f.write(mem)
 		subprocess.check_call(["./catapult.sh", "-product lb -shell -f ../memories/generateCacheMemories.tcl"])
 	
-def doCore(cachesize, associativity, blocksize, explore=False):
+def doCore(doCache, cachesize, associativity, blocksize, explore=False, name=""):
+	nocache = "" if doCache else "-Dnocache"
 	sets = int(cachesize/(blocksize)/associativity)
 	tagbits = int(32 - log2(blocksize/4) - log2(sets) - 2)
 	bits = int(associativity*(tagbits+1+1)+associativity*(associativity-1)/2)
+	if name == "":
+		name = str(cachesize)+"x32cachecore"
 
-	print("Generating cached core with cachesize ", cachesize, " bytes and associativity ", associativity, " and block size of ", blocksize, " bytes.")
+	print("Generating", name, "with cachesize ", cachesize, " bytes and associativity ", associativity, " and block size of ", blocksize, " bytes.")
 	print("Tagbits {}\nBitwidth of control {}({})\nSets {}".format(tagbits, bits, nextpowerof2(bits), sets))
 	bitwidth = nextpowerof2(bits)
 	sets = nextpowerof2(sets)
@@ -225,8 +237,9 @@ def doCore(cachesize, associativity, blocksize, explore=False):
 	tagbits = 4*tagbits
 
 	doMem(2**24, 32, "main")
-	doMem(sets, bitwidth, "control")
-	doMem(int(8*cachesize/32), 32, "data")
+	if doCache:
+		doMem(sets, bitwidth, "control")
+		doMem(int(8*cachesize/32), 32, "data")
 	bitwidth = 32
 
 	#core
@@ -237,7 +250,11 @@ def doCore(cachesize, associativity, blocksize, explore=False):
 	ctrlwidth = nextpowerof2(bits)
 	period = 1.5
 	halfperiod = period/2
-	core = (header + cacheparameters + libraries + genCore).format(**locals())
+	
+	if doCache:
+		core = (header + libraries + genCache).format(**locals())
+	else:
+		core = (header + libraries + genCore).format(**locals())
 	
 	if explore:
 		core += exploreCore
@@ -252,6 +269,7 @@ def doCore(cachesize, associativity, blocksize, explore=False):
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
+	parser.add_argument("name", help="name of the project to be generated", default="", nargs='?')
 	parser.add_argument("-s", "--shell", help="Launch catapult in shell", action="store_true")
 	parser.add_argument("-n", "--no-cache", help="Synthesize without cache", action="store_true")
 	parser.add_argument("-c", "--cache-size", help="Cache size in bytes", type=int)
@@ -261,6 +279,7 @@ if __name__ == "__main__":
 	parser.add_argument("-e", "--explore", help="Do some exploration in the solution space", action="store_true")
 
 	args = parser.parse_args()
+	nocache = args.no_cache
 	try:
 		cachesize = args.cache_size
 		assert is_powerof2(cachesize), "cachesize is not a power of 2"
@@ -301,5 +320,5 @@ if __name__ == "__main__":
 	# ~ with open("output.log", "w") as output:
 		# ~ subprocess.check_call(["./testbench.sim"], stdout=output)
 
-	doCore(cachesize, associativity, blocksize, args.explore)
+	doCore(not nocache, cachesize, associativity, blocksize, args.explore, args.name)
 	

@@ -56,7 +56,7 @@ CCS_MAIN(int argc, char** argv)
 
     if(binaryFile == 0)
 #ifdef __HLS__
-        binaryFile = "../benchmarks/build/matmul.riscv";
+        binaryFile = "matmul.riscv";
 #else
         binaryFile = "benchmarks/build/matmul_int_4.riscv";
 #endif
@@ -86,7 +86,15 @@ CCS_MAIN(int argc, char** argv)
     }
 
     sim.setDM(dm);
-    sim.setIM(im);
+    sim.setIM(im);   
+
+    unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
+    unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
+
+    sim.setCore(core.REG, &core.dctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
+
+    /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
+    unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
 
     coredebug("instruction memory :\n");
     for(int i = 0; i < DRAM_SIZE; i++)
@@ -111,7 +119,9 @@ CCS_MAIN(int argc, char** argv)
     bool exit = false;
     while(!exit)
     {
-        CCS_DESIGN(doStep(sim.getPC(), im, dm, exit
+        CCS_DESIGN(doStep(sim.getPC(), exit,
+                          im, dm,
+                          (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm))
                   #ifndef __HLS__
                       , cycles, numins, &sim
                   #endif
@@ -122,6 +132,9 @@ CCS_MAIN(int argc, char** argv)
     printf("Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
     fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
 
+    sim.writeBack();
+
+#ifdef __HLS__
     printf("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
     {
@@ -133,11 +146,26 @@ CCS_MAIN(int argc, char** argv)
             }
         }
     }
+#else
+    coredebug("memory : \n");
+    for(int i = 0; i < DRAM_SIZE; i++)
+    {
+        for(int j(0); j < 4; ++j)
+        {
+            if(dm[i] & (0xFF << (8*j)))
+            {
+                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+            }
+        }
+    }
+#endif
 
     for(int i = 0; i < benchargc; ++i)
         delete[] benchargv[i];
     delete[] benchargv;
     delete[] dm;
     delete[] im;
+    delete[] cim;
+    delete[] cdm;
     CCS_RETURN(0);
 }
