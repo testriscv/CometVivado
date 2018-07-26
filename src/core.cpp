@@ -630,8 +630,8 @@ void Ex(Core& core
     #endif
         )
 {
-    simul(core.extoMem.pc = core.dctoEx.pc;
-    core.extoMem.instruction = core.dctoEx.instruction;)
+    core.extoMem.pc = core.dctoEx.pc;
+    simul(core.extoMem.instruction = core.dctoEx.instruction;)
     core.extoMem.opCode = core.dctoEx.opCode;
     core.extoMem.rd = core.dctoEx.rd;
 
@@ -915,8 +915,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
     {
         if(core.datavalid)
         {
-            simul(core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;)
+            core.memtoWB.pc = core.extoMem.pc;
+            simul(core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
             if(!core.writeenable)
@@ -927,8 +927,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
         }
         else
         {
-            simul(core.memtoWB.pc = 0;
-            core.memtoWB.instruction = 0;)
+            core.memtoWB.pc = 0;
+            simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
         }
@@ -936,10 +936,10 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
     else if(core.ctrl.branch[2])
     {
         gdebug("I    @%06x\n", core.extoMem.pc.to_int());
-        simul(core.memtoWB.pc = 0;
-        core.memtoWB.instruction = 0;
+        core.memtoWB.pc = 0;
         core.extoMem.pc = 0;
-        core.extoMem.instruction = 0;)
+        simul(core.memtoWB.instruction = 0;
+              core.extoMem.instruction = 0;)
 
         core.memtoWB.rd = 0;
         core.memtoWB.realInstruction = false;
@@ -957,8 +957,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.writeenable = false;
             core.ctrl.cachelock = true;
 
-            simul(core.memtoWB.pc = 0;
-            core.memtoWB.instruction = 0;)
+            core.memtoWB.pc = 0;
+            simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 #else
@@ -995,8 +995,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.writevalue = core.extoMem.datac;
             core.ctrl.cachelock = true;
 
-            simul(core.memtoWB.pc = 0;
-            core.memtoWB.instruction = 0;)
+            core.memtoWB.pc = 0;
+            simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 #else
@@ -1013,8 +1013,8 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
 #endif
             break;
         default:
-            simul(core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;)
+            core.memtoWB.pc = core.extoMem.pc;
+            simul(core.memtoWB.instruction = core.extoMem.instruction;)
 
             core.memtoWB.result = core.extoMem.result;
             //core.memtoWB.CSRid = core.extoMem.memValue;
@@ -1179,7 +1179,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
+            , Simulator* sim
         #endif
             )
 {
@@ -1306,8 +1306,6 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     {
         core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
     }
-    c = core.csrs.mcycle;
-    numins = core.csrs.minstret;
     )
 
 
@@ -1321,14 +1319,14 @@ void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* sim
+            , Simulator* sim
         #endif
             )
 {
     doCore<0>(startpc, exit, im, dm,
               cim, cdm
           #ifndef __HLS__
-              , c, numins, sim
+              , sim
           #endif
               );
 }

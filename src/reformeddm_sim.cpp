@@ -20,9 +20,10 @@ using namespace std;
 
 CCS_MAIN(int argc, char** argv)
 {
-    printf("Parameters : Size   Blocksize   Associativity   Sets   Policy\n");
-    printf("Parameters : %5d   %8d   %13d   %4d   %6d\n", Size, 4*Blocksize, Associativity, Sets, Policy);
+    printf("Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
+    printf("Parameters : %5d   %8d   %13d   %4d   %6d   %13d    %13d\n", Size, 4*Blocksize, Associativity, Sets, Policy, ICacheControlWidth, DCacheControlWidth);
 
+    //return 0;
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
@@ -115,7 +116,6 @@ CCS_MAIN(int argc, char** argv)
     }
     coredebug("end of preambule\n");
 
-    ac_int<64, false> cycles = 0, numins = 0;
     bool exit = false;
     while(!exit)
     {
@@ -123,14 +123,23 @@ CCS_MAIN(int argc, char** argv)
                           im, dm,
                           (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm))
                   #ifndef __HLS__
-                      , cycles, numins, &sim
+                      , &sim
                   #endif
                   ));
-        if(cycles > (uint64_t)5e8)
-            break;
+#ifdef __HLS__
+        // add some debug for modelsim
+        if(core.memtoWB.pc)
+        {
+            printf("%06x    %4lld    ", core.memtoWB.pc.to_int(), core.csrs.minstret.to_int64());
+            for(int i(0); i < 32; ++i)
+                if(core.REG[i])
+                    printf("%d:%08x ", i, (int)core.REG[i]);
+            printf("\n");
+        }
+#endif
     }
-    printf("Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
-    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", numins.to_int64(), cycles.to_int64());
+    printf("Successfully executed %lld instructions in %lld cycles\n", core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
+    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
 
     sim.writeBack();
 

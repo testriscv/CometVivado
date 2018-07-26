@@ -49,8 +49,8 @@ struct DCtoEx
 
 struct ExtoMem
 {
-#ifndef __HLS__
     ac_int<32, false> pc;
+#ifndef __HLS__
     ac_int<32, false> instruction;
 #endif
 
@@ -65,8 +65,8 @@ struct ExtoMem
 
 struct MemtoWB
 {
-#ifndef __HLS__
     ac_int<32, false> pc;
+#ifndef __HLS__
     ac_int<32, false> instruction;
 #endif
 
@@ -159,7 +159,7 @@ void doStep(ac_int<32, false> pc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
         #ifndef __HLS__
-            , ac_int<64, false>& c, ac_int<64, false>& numins, Simulator* syscall
+            , Simulator* syscall
         #endif
             );
 
