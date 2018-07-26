@@ -155,9 +155,10 @@ struct Core
 
 extern Core core;// = {0};
 
-void doStep(ac_int<32, false> pc, bool &exit,
+void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
+            ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* syscall
         #endif

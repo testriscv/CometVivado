@@ -38,7 +38,7 @@
 #include <stdint.h>
 
 #ifdef __DEBUG__
-#define gdebug(...)      printf(__VA_ARGS__)     // generic debug, can be deactivated
+#define gdebug(...)     printf(__VA_ARGS__)     // generic debug, can be deactivated
 #else
 #define gdebug(...)
 #endif

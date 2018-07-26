@@ -23,7 +23,6 @@ CCS_MAIN(int argc, char** argv)
     printf("Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
     printf("Parameters : %5d   %8d   %13d   %4d   %6d   %13d    %13d\n", Size, 4*Blocksize, Associativity, Sets, Policy, ICacheControlWidth, DCacheControlWidth);
 
-    //return 0;
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
@@ -92,7 +91,17 @@ CCS_MAIN(int argc, char** argv)
     unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
     unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
 
-    sim.setCore(core.REG, &core.dctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
+    // 128 instead of ac::log2_ceil<XCacheControlWidth>::val
+    ac_int<128, false>* memictrl = new ac_int<128, false>[Sets];
+    ac_int<128, false>* memdctrl = new ac_int<128, false>[Sets];
+
+    // zero the control (although only the valid bit should be zeroed, rest is don't care)
+    for(int i(0); i < Sets; ++i)
+    {
+        memictrl[i] = 0;
+        memdctrl[i] = 0;
+    }
+    sim.setCore(core.REG, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
 
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
@@ -117,11 +126,13 @@ CCS_MAIN(int argc, char** argv)
     coredebug("end of preambule\n");
 
     bool exit = false;
+    //core.pc = sim.getPC();
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), exit,
-                          im, dm,
-                          (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm))
+/* main memories */       im, dm,
+/** cache memories **/    (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)),
+/* control memories */    memictrl, memdctrl
                   #ifndef __HLS__
                       , &sim
                   #endif

@@ -187,13 +187,14 @@ void Simulator::writeBack()
     //cache write back for simulation
     for(unsigned int i  = 0; i < Sets; ++i)
         for(unsigned int j = 0; j < Associativity; ++j)
-            if(dctrl->dirty[i][j] && dctrl->valid[i][j])
+                            // dirty bit                                    // valid bit
+            if(dctrl[i].slc<1>(Associativity*(32-tagshift+1) + j) && dctrl[i].slc<1>(Associativity*(32-tagshift) + j))
                 for(unsigned int k = 0; k < Blocksize; ++k)
-                    dm[(dctrl->tag[i][j].to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+                    dm[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
 #endif
 }
 
-void Simulator::setCore(ac_int<32, true> *r, DCacheControl* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
+void Simulator::setCore(ac_int<32, true> *r, ac_int<128, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
 {
     reg = r;
     dctrl = ctrl;
@@ -226,12 +227,12 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     int i = getSet(addr);
     for(int j(0); j < Associativity; ++j)
     {
-        if(dctrl->tag[i][j] == getTag(addr))
+        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
         {
             ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatwrite(addr, 0, mem, value);
             ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
-            dctrl->dirty[i][j] = true;      // mark as dirty because we wrote it
+            dctrl[i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
             //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
         }
     }
@@ -277,7 +278,7 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
     int i = getSet(addr);
     for(int j(0); j < Associativity; ++j)
     {
-        if(dctrl->tag[i][j] == getTag(addr))
+        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
         {
             ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatread(addr, 0, 0, mem);

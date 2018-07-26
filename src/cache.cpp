@@ -200,9 +200,10 @@ void update_policy(DCacheControl& dctrl)
 #endif
 }
 
-void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
-           ac_int<32, false> address,                                                               // from cpu
-           ac_int<32, false>& cachepc, int& instruction, bool& insvalid                             // to cpu
+void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],                            // control
+            unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
+            ac_int<32, false> address,                                                          // from cpu
+            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                        // to cpu
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
@@ -223,16 +224,19 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
 
             if(!ictrl.ctrlLoaded)
             {
+                ac_int<128, false> setctrl = memictrl[ictrl.currentset];
+                // use ibourrage here?
                 #pragma hls_unroll yes
                 loadiset:for(int i = 0; i < Associativity; ++i)
                 {
-                    ictrl.setctrl.tag[i] = ictrl.tag[ictrl.currentset][i];
-                    ictrl.setctrl.valid[i] = ictrl.valid[ictrl.currentset][i];
-                #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-                    ictrl.setctrl.policy = ictrl.policy[ictrl.currentset];
-                #endif
+                    ictrl.setctrl.tag[i] = setctrl.slc<32-tagshift>(i*(32-tagshift));
+                    ictrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
                 }
+            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+                ictrl.setctrl.policy = setctrl.slc<IPolicyWidth>(Associativity*(32-tagshift+1));
+            #endif
             }
+
             #pragma hls_unroll yes
             loadidata:for(int i = 0; i < Associativity; ++i)    // force reload because offset may have changed
             {
@@ -280,16 +284,19 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
             gdebug("StoreControl for %d %d  %06x to %06x\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(),
                         (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift),
                         ((ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift))+Blocksize*4-1);
+
+            ac_int<128, false> setctrl = 0;
             #pragma hls_unroll yes
             storeicontrol:for(int i = 0; i < Associativity; ++i)
             {
-                ictrl.tag[ictrl.currentset][i] = ictrl.setctrl.tag[i];
-                ictrl.valid[ictrl.currentset][i] = ictrl.setctrl.valid[i];
-            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-                ictrl.policy[ictrl.currentset] = ictrl.setctrl.policy;
-            #endif
+                setctrl.set_slc(i*(32-tagshift), ictrl.setctrl.tag[i]);
+                setctrl.set_slc(Associativity*(32-tagshift) + i, (ac_int<1, false>)ictrl.setctrl.valid[i]);
                 gdebug("tag : %6x      valid : %s\n", (ictrl.setctrl.tag[i].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift), ictrl.setctrl.valid[i]?"true":"false");
             }
+        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+            setctrl.set_slc(Associativity*(32-tagshift+1), ictrl.setctrl.policy);
+        #endif
+            memictrl[ictrl.currentset] = setctrl;
         }
         else
         {
@@ -343,9 +350,10 @@ void icache(ICacheControl& ictrl, unsigned int imem[DRAM_SIZE], unsigned int dat
 
 }
 
-void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],      // control, memory and cachedata
-           ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-           int& read, bool& datavalid                                                       // to cpu
+void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],                            // control
+            unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
+            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
+            int& read, bool& datavalid                                                          // to cpu
 #ifndef __HLS__
            , ac_int<64, false>& cycles
 #endif
@@ -374,17 +382,21 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int dat
         {
             dctrl.currentset = getSet(address);
             dctrl.i = getOffset(address);
+
+            ac_int<128, false> setctrl = memdctrl[dctrl.currentset];
+            // use dbourrage here?
             #pragma hls_unroll yes
             loaddset:for(int i = 0; i < Associativity; ++i)
             {
                 dctrl.setctrl.data[i] = data[dctrl.currentset][dctrl.i][i];
-                dctrl.setctrl.tag[i] = dctrl.tag[dctrl.currentset][i];
-                dctrl.setctrl.dirty[i] = dctrl.dirty[dctrl.currentset][i];
-                dctrl.setctrl.valid[i] = dctrl.valid[dctrl.currentset][i];
-            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-                dctrl.setctrl.policy = dctrl.policy[dctrl.currentset];
-            #endif
+
+                dctrl.setctrl.tag[i] = setctrl.slc<32-tagshift>(i*(32-tagshift));
+                dctrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
+                dctrl.setctrl.dirty[i] = setctrl.slc<1>(Associativity*(32-tagshift+1) + i);
             }
+        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+            dctrl.setctrl.policy = setctrl.slc<DPolicyWidth>(Associativity*(32-tagshift+2));
+        #endif
 
             if(find(dctrl, address))
             {
@@ -460,36 +472,45 @@ void dcache(DCacheControl& dctrl, unsigned int dmem[DRAM_SIZE], unsigned int dat
             datavalid = false;
         break;
     case DState::StoreControl:
+    {
+        ac_int<128, false> setctrl = 0;
         #pragma hls_unroll yes
         storedcontrol:for(int i = 0; i < Associativity; ++i)
         {
-            dctrl.tag[dctrl.currentset][i] = dctrl.setctrl.tag[i];
-            dctrl.dirty[dctrl.currentset][i] = dctrl.setctrl.dirty[i];
-            dctrl.valid[dctrl.currentset][i] = dctrl.setctrl.valid[i];
-        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-            dctrl.policy[dctrl.currentset] = dctrl.setctrl.policy;
-        #endif
+            setctrl.set_slc(i*(32-tagshift), dctrl.setctrl.tag[i]);
+            setctrl.set_slc(Associativity*(32-tagshift) + i, (ac_int<1, false>)dctrl.setctrl.valid[i]);
+            setctrl.set_slc(Associativity*(32-tagshift+1) + i, (ac_int<1, false>)dctrl.setctrl.dirty[i]);
         }
+    #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+        setctrl.set_slc(Associativity*(32-tagshift+2), dctrl.setctrl.policy);
+    #endif
 
+        memdctrl[dctrl.currentset] = setctrl;
         dctrl.state = DState::Idle;
         datavalid = false;
         break;
+    }
     case DState::StoreData:
+    {
+        ac_int<128, false> setctrl = 0;
         #pragma hls_unroll yes
         storedata:for(int i = 0; i < Associativity; ++i)
         {
-            dctrl.tag[dctrl.currentset][i] = dctrl.setctrl.tag[i];
-            dctrl.dirty[dctrl.currentset][i] = dctrl.setctrl.dirty[i];
-            dctrl.valid[dctrl.currentset][i] = dctrl.setctrl.valid[i];
-        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-            dctrl.policy[dctrl.currentset] = dctrl.setctrl.policy;
-        #endif
+            setctrl.set_slc(i*(32-tagshift), dctrl.setctrl.tag[i]);
+            setctrl.set_slc(Associativity*(32-tagshift) + i, (ac_int<1, false>)dctrl.setctrl.valid[i]);
+            setctrl.set_slc(Associativity*(32-tagshift+1) + i, (ac_int<1, false>)dctrl.setctrl.dirty[i]);
         }
+    #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+        setctrl.set_slc(Associativity*(32-tagshift+2), dctrl.setctrl.policy);
+    #endif
+        memdctrl[dctrl.currentset] = setctrl;
+
         data[dctrl.currentset][getOffset(dctrl.workAddress)][dctrl.currentway] = dctrl.valuetowrite;
 
         dctrl.state = DState::Idle;
         datavalid = false;
         break;
+    }
     case DState::FirstWriteBack:
     {   //bracket for scope and allow compilation
         dctrl.i = 0;

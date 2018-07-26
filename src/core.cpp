@@ -222,6 +222,7 @@ void DC(Core& core
     ac_int<3, false> funct3 = instruction.slc<3>(12);
     ac_int<5, false> rd = instruction.slc<5>(7);
     ac_int<7, false> opCode = instruction.slc<7>(0);    // reduced to 5 bits because 1:0 is always 11
+    // cannot reduce opCode to 5 bits with modelsim (x propagation...)
 
     dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
               pc.to_int(), instruction.to_int());
@@ -736,6 +737,7 @@ void Ex(Core& core
             core.extoMem.result = lhs & rhs;
             break;
         case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
+            // & shift amount held in the lower 5 bits (riscv spec)
             core.extoMem.result = lhs << (ac_int<5, false>)rhs;
             break;
         case RISCV_OPI_SRI:
@@ -1155,11 +1157,13 @@ void doWB(Core& core)
 
 }
 
+// now that core is global, do we need this?
+// yes because pc start at 0 in modelsim...
 void coreinit(Core& core, ac_int<32, false> startpc)
 {
     core.ctrl.init = true;
-    core.pc = startpc % (4*DRAM_SIZE);   // startpc - 4 ?
 
+    core.pc = startpc;
     core.ftoDC.instruction = simul(core.dctoEx.instruction =
     core.extoMem.instruction = core.memtoWB.instruction =) 0x13;
 
@@ -1177,41 +1181,18 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
+            ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim
         #endif
             )
 {
-/*#ifdef __HLS__
-    static bool idummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.idata, Sets*Associativity*Blocksize);
-    (void)idummy;
-    static bool itaginit = ac::init_array<AC_VAL_0>((ac_int<32-tagshift, false>*)core.ictrl.tag, Sets*Associativity);
-    (void)itaginit;
-    static bool ivalinit = ac::init_array<AC_VAL_0>((bool*)core.ictrl.valid, Sets*Associativity);
-    (void)ivalinit;
-
-    static bool dummy = ac::init_array<AC_VAL_DC>((unsigned int*)core.ddata, Sets*Associativity*Blocksize);
-    (void)dummy;
-    static bool taginit = ac::init_array<AC_VAL_0>((ac_int<32-tagshift, false>*)core.dctrl.tag, Sets*Associativity);
-    (void)taginit;
-    static bool dirinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.dirty, Sets*Associativity);
-    (void)dirinit;
-    static bool valinit = ac::init_array<AC_VAL_0>((bool*)core.dctrl.valid, Sets*Associativity);
-    (void)valinit;
-#if Policy == RP_FIFO
-    static bool dpolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.dctrl.policy, Sets);
-    (void)dpolinit;
-    static bool ipolinit = ac::init_array<AC_VAL_DC>((ac_int<ac::log2_ceil<Associativity>::val, false>*)core.ictrl.policy, Sets);
-    (void)ipolinit;
-#elif Policy == RP_LRU
-    static bool dpolinit = ac::init_array<AC_VAL_0>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.dctrl.policy, Sets);
-    (void)dpolinit;
-    static bool ipolinit = ac::init_array<AC_VAL_0>((ac_int<Associativity * (Associativity-1) / 2, false>*)core.ictrl.policy, Sets);
-    (void)ipolinit;
-#endif
-#endif  // __HLS__*/
-
+    // now that core is global, do we need this?
+    // we can init in main
+    // but what happens during the synthesis, everything is 0
+    // i think it's ok because nothing bad will happen (rd is 0, no assert in synthesis, etc.)
+    // only the cycle will increment (and who cares)
     if(!core.ctrl.init)
     {
         coreinit(core, startpc);
@@ -1286,13 +1267,13 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     // cache should maybe be all the way up or down
     // cache down generates less hardware and is less cycle costly(20%?)
     // but cache up has a slightly better critical path
-    dcache(core.dctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
+    dcache(core.dctrl, memdctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
            core.writeenable, core.writevalue, core.readvalue, core.datavalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
            );
-    icache(core.ictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid
+    icache(core.ictrl, memictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid
        #ifndef __HLS__
            , core.csrs.mcycle
        #endif
@@ -1317,14 +1298,15 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
 void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity]
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
+            ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim
         #endif
             )
 {
     doCore<0>(startpc, exit, im, dm,
-              cim, cdm
+              cim, cdm, memictrl, memdctrl
           #ifndef __HLS__
               , sim
           #endif
