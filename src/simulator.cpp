@@ -9,7 +9,7 @@
 #include "simulator.h"
 
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
-    : reg(0), dctrl(0), ddata(0)
+    : core(0), dctrl(0), ddata(0)
 {
     ins_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
     data_memory = (ac_int<32, true> *)malloc(DRAM_SIZE * sizeof(ac_int<32, true>));
@@ -194,9 +194,9 @@ void Simulator::writeBack()
 #endif
 }
 
-void Simulator::setCore(ac_int<32, true> *r, ac_int<128, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
+void Simulator::setCore(Core *c, ac_int<128, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
 {
-    reg = r;
+    core = c;
     dctrl = ctrl;
     ddata = (unsigned int*)cachedata;
 }
@@ -209,6 +209,11 @@ ac_int<32, true>* Simulator::getInstructionMemory() const
 ac_int<32, true>* Simulator::getDataMemory() const
 {
     return data_memory;
+}
+
+Core* Simulator::getCore() const
+{
+    return core;
 }
 
 void Simulator::setPC(ac_int<32, false> pc)
@@ -744,7 +749,7 @@ ac_int<32, false> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    dbgassert(reg[2] > heapAddress, "Stack and heap overlaps %08x!!\n", value.to_int());
+    dbgassert(core->reg[2] > heapAddress, "Stack and heap overlaps %08x!!\n", value.to_int());
     
     return result;
 }

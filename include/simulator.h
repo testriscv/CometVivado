@@ -3,10 +3,11 @@
 
 #include <map>
 
-#include <ac_int.h>
+struct Core;
 
 #include "portability.h"
 #include "cache.h"
+#include "core.h"
 #include "elfFile.h"
 #include "riscvISA.h"
 
@@ -22,7 +23,6 @@ private:
     ac_int<32, true>* ins_memory;
     ac_int<32, true>* data_memory;
 
-    ac_int<32, true>* reg;
     unsigned int* im;
     unsigned int* dm;
 
@@ -33,6 +33,7 @@ private:
 
     ac_int<128, false>* dctrl;
     unsigned int* ddata; //[Sets][Blocksize][Associativity];
+    Core* core;
 
 public:
     Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int argc, char** argv);
@@ -43,11 +44,12 @@ public:
     void setDataMemory(ac_int<32, false> addr, ac_int<8, true> value);
     void setDM(unsigned int* d);
     void setIM(unsigned int* i);
-    void setCore(ac_int<32, true>* r, ac_int<128, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
+    void setCore(Core* core, ac_int<128, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void writeBack();
 
     ac_int<32, true>* getInstructionMemory() const;
     ac_int<32, true>* getDataMemory() const;
+    Core* getCore() const;
 
     void setPC(ac_int<32, false> pc);
     ac_int<32, false> getPC() const;

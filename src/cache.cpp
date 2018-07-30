@@ -225,7 +225,7 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
             if(!ictrl.ctrlLoaded)
             {
                 ac_int<128, false> setctrl = memictrl[ictrl.currentset];
-                // use ibourrage here?
+                ictrl.setctrl.bourrage = setctrl.slc<ibourrage>(ICacheControlWidth);
                 #pragma hls_unroll yes
                 loadiset:for(int i = 0; i < Associativity; ++i)
                 {
@@ -286,6 +286,7 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
                         ((ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift))+Blocksize*4-1);
 
             ac_int<128, false> setctrl = 0;
+            setctrl.set_slc(ICacheControlWidth, ictrl.setctrl.bourrage);
             #pragma hls_unroll yes
             storeicontrol:for(int i = 0; i < Associativity; ++i)
             {
@@ -384,7 +385,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
             dctrl.i = getOffset(address);
 
             ac_int<128, false> setctrl = memdctrl[dctrl.currentset];
-            // use dbourrage here?
+            dctrl.setctrl.bourrage = setctrl.slc<dbourrage>(DCacheControlWidth);
             #pragma hls_unroll yes
             loaddset:for(int i = 0; i < Associativity; ++i)
             {
@@ -474,6 +475,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
     case DState::StoreControl:
     {
         ac_int<128, false> setctrl = 0;
+        setctrl.set_slc(DCacheControlWidth, dctrl.setctrl.bourrage);
         #pragma hls_unroll yes
         storedcontrol:for(int i = 0; i < Associativity; ++i)
         {
@@ -493,6 +495,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
     case DState::StoreData:
     {
         ac_int<128, false> setctrl = 0;
+        setctrl.set_slc(DCacheControlWidth, dctrl.setctrl.bourrage);
         #pragma hls_unroll yes
         storedata:for(int i = 0; i < Associativity; ++i)
         {

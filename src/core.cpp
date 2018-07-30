@@ -16,8 +16,6 @@
 
 #endif
 
-Core core;
-
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mvendorid = 0;
 //template<unsigned int hartid>
@@ -1157,8 +1155,8 @@ void doWB(Core& core)
 
 }
 
-// now that core is global, do we need this?
-// yes because pc start at 0 in modelsim...
+// writing all the init stuff in {} is messy
+// and lead easily to error
 void coreinit(Core& core, ac_int<32, false> startpc)
 {
     core.ctrl.init = true;
@@ -1188,14 +1186,13 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         #endif
             )
 {
-    // now that core is global, do we need this?
-    // we can init in main
-    // but what happens during the synthesis, everything is 0
-    // i think it's ok because nothing bad will happen (rd is 0, no assert in synthesis, etc.)
-    // only the cycle will increment (and who cares)
+    static Core core;
+
     if(!core.ctrl.init)
     {
         coreinit(core, startpc);
+
+        simul(sim->setCore(&core, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));)
     }
 
     simul(uint64_t oldcycles = core.csrs.mcycle;)

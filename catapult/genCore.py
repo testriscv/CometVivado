@@ -108,9 +108,6 @@ directive set -COMPGRADE fast
 directive set -DESIGN_HIERARCHY doStep
 """
 
-# ~ cacheparameters = """solution file set ../src/core.cpp -args {{{nocache}}}
-# ~ """
-
 libraries = """go analyze
 solution library remove *
 solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
@@ -120,7 +117,7 @@ solution library add ST_singleport_8192x32
 go libraries
 directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly
-directive set /doStep/core/core.REG:rsc -MAP_TO_MODULE {{[Register]}}
+directive set /doStep/core/doCore<0U>:core.REG:rsc/MAP_TO_MODULE {{[Register]}}
 directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
 directive set /doStep/core -CLOCK_OVERHEAD 0.0
 """

@@ -101,7 +101,8 @@ CCS_MAIN(int argc, char** argv)
         memictrl[i] = 0;
         memdctrl[i] = 0;
     }
-    sim.setCore(core.REG, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
+
+    sim.setCore(0, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
 
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
@@ -137,36 +138,14 @@ CCS_MAIN(int argc, char** argv)
                       , &sim
                   #endif
                   ));
-#ifdef __HLS__
-        // add some debug for modelsim
-        if(core.memtoWB.pc)
-        {
-            printf("%06x    %4lld    ", core.memtoWB.pc.to_int(), core.csrs.minstret.to_int64());
-            for(int i(0); i < 32; ++i)
-                if(core.REG[i])
-                    printf("%d:%08x ", i, (int)core.REG[i]);
-            printf("\n");
-        }
-#endif
     }
-    printf("Successfully executed %lld instructions in %lld cycles\n", core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
-    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
 
     sim.writeBack();
 
-#ifdef __HLS__
-    printf("memory : \n");
-    for(int i = 0; i < DRAM_SIZE; i++)
-    {
-        for(int j(0); j < 4; ++j)
-        {
-            if(dm[i] & (0xFF << (8*j)))
-            {
-                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
-            }
-        }
-    }
-#else
+#ifndef __HLS__
+    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
+    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
+
     coredebug("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
     {
@@ -175,6 +154,18 @@ CCS_MAIN(int argc, char** argv)
             if(dm[i] & (0xFF << (8*j)))
             {
                 coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+            }
+        }
+    }
+#else
+    printf("memory : \n");
+    for(int i = 0; i < DRAM_SIZE; i++)
+    {
+        for(int j(0); j < 4; ++j)
+        {
+            if(dm[i] & (0xFF << (8*j)))
+            {
+                printf("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
             }
         }
     }

@@ -153,7 +153,7 @@ struct Core
     bool datavalid;
 };
 
-extern Core core;// = {0};
+class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
