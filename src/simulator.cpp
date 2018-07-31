@@ -569,7 +569,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
         localBuffer[i] = this->ldb(bufferAddr + i);
 
     ac_int<32, true> result = 0;
-    if(file < 4)
+    if(file < 3)    // 3 is the first available file descriptor
     {
         if(output)
         {
@@ -676,7 +676,7 @@ ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> pa
 
 ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 {
-    if(file > 3)    // don't close simulator's stdin, stdout & stderr
+    if(file > 2)    // don't close simulator's stdin, stdout & stderr
     {
         int result = close(file);
         dbgsys("Closing localfile %d\n", file.to_int());
