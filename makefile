@@ -14,6 +14,9 @@ I_HEADER=$(foreach f, $(HEADER), $(INC)/$f)
 all: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES)
 
+dall: $(S_FILES) $(I_HEADER)
+	g++ -g -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES)
+
 catapult: $(S_FILES) $(I_HEADER)
 	g++ -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__
 
@@ -24,7 +27,7 @@ text: $(S_FILES) $(I_HEADER)
 	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__DEBUG__ > comet.cpp
 
 textcatapult: $(S_FILES) $(I_HEADER)
-	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__ > comet.cpp
+	g++ -E $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__SYNTHESIS__ > catapult.cpp
 
 debug: $(S_FILES) $(I_HEADER)
 	g++ -g -o comet.sim $(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -D__DEBUG__ 
@@ -33,7 +36,7 @@ vivado.sim: $(S_FILES) $(I_HEADER)
 	g++ -o vivado.sim $(INC_PARAMS) $(S_FILES) $(VARS_VIV)
 
 clean:
-	rm -rf *.o comet.sim vivado.sim comet.cpp 
+	rm -rf *.o comet.sim vivado.sim comet.cpp catapult.cpp 
 
 .PHONY: all catapult clean debug text textcatapult
 

@@ -64,7 +64,7 @@ void select(ICacheControl& ictrl)
             ictrl.currentway = 0;
         }
     #else
-        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
+        #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
     ictrl.currentway = ictrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // ictrl.policy & (Associativity - 1)
@@ -101,7 +101,7 @@ void select(DCacheControl& dctrl)
             dctrl.currentway = 0;
         }
     #else
-        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
+        #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
     dctrl.currentway = dctrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // dctrl.policy & (Associativity - 1)
@@ -146,7 +146,7 @@ void update_policy(ICacheControl& ictrl)
             break;
         }
     #else
-        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
+        #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
     // no promotion
@@ -190,7 +190,7 @@ void update_policy(DCacheControl& dctrl)
             break;
         }
     #else
-        #error "RP_LRU with DRAM_SIZE >= 8 ways associativity is not implemented"
+        #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
     // no promotion
