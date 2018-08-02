@@ -548,8 +548,10 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
     if(file < 3 && output)  // 3 is the first available file descriptor
         result = write(output->_fileno, localBuffer, size);
     else
+    {
+        fflush(stdout); //  prevent mixed output
         result = write(file, localBuffer, size);
-
+    }
     delete[] localBuffer;
     return result;
 }
