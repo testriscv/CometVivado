@@ -46,6 +46,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
                 counter++;
                 setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
             }
+            free(sectionContent);
             coredebug("filling data from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
         }
 
@@ -56,6 +57,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             {
                 setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
             }
+            free(sectionContent);
             coredebug("filling instruction from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
         }
     }
@@ -63,7 +65,8 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
     for(int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++)
     {
         ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
-        const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
+        unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
+        const char* name = (const char*) &(sectionContent[symbol->name]);
         if(strcmp(name, "_start") == 0)
         {
             fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
@@ -79,6 +82,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         {
             dbglog("fromhost @%06x\n", symbol->offset);
         }
+        free(sectionContent);
     }
 
     unsigned int heap = heapAddress;    // keep heap where it is because it will be set over stackpointer
@@ -545,11 +549,15 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
         localBuffer[i] = this->ldb(bufferAddr + i);
 
     ac_int<32, true> result = 0;
-    if(file < 3 && output)  // 3 is the first available file descriptor
+    if(file == 1 && output)  // 3 is the first available file descriptor
+    {
+        fflush(stdout);
         result = write(output->_fileno, localBuffer, size);
+    }
     else
     {
-        fflush(stdout); //  prevent mixed output
+        if(file == 1)
+            fflush(stdout); //  prevent mixed output
         result = write(file, localBuffer, size);
     }
     delete[] localBuffer;
@@ -558,7 +566,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
 
 ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
-    dbgsys("SYS_fstat on file %d\n", file.to_int());
+    dbgsys("Syscall : SYS_fstat on file %d\n", file.to_int());
     ac_int<32, true> result = 0;
     struct stat filestat;
 

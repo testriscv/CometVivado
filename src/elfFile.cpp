@@ -184,6 +184,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
         section->nameIndex = this->nameTable->size();
         this->nameTable->push_back(name);
     }
+    free(localNameTable);
 
     //*************************************************************************************
     // Reading the symbol table
@@ -200,12 +201,14 @@ ElfFile::ElfFile(const char* pathToElfFile)
                 Elf32_Sym* symbols = (Elf32_Sym*) section->getSectionCode();
                 for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf32_Sym); oneSymbolIndex++)
                     this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+                free(symbols);
             }
             else
             {
                 Elf64_Sym* symbols = (Elf64_Sym*) section->getSectionCode();
                 for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf64_Sym); oneSymbolIndex++)
                     this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+                free(symbols);
             }
         }
     }
@@ -221,6 +224,17 @@ ElfFile::ElfFile(const char* pathToElfFile)
         }
     }
 
+}
+
+ElfFile::~ElfFile()
+{
+    delete this->nameTable;
+    for(int i(0); i < this->symbols->size(); ++i)
+        delete this->symbols->at(i);
+    delete this->symbols;
+    for(int i(0); i < this->sectionTable->size(); ++i)
+        delete this->sectionTable->at(i);
+    delete this->sectionTable;
 }
 
 ElfFile* ElfFile::copy(char* newDest)

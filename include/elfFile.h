@@ -29,6 +29,7 @@ public:
     int indexOfSymbolNameSection;
 
     ElfFile(const char* pathToElfFile);
+    ~ElfFile();
     ElfFile* copy(char* newDest);
 
     FILE* elfFile;
