@@ -55,16 +55,17 @@
     fprintf(stderr, __VA_ARGS__); \
     printf(__VA_ARGS__); \
 } while(0)
+#else
+#define dbglog(...)
+#endif
+
 #define dbgassert(cond, ...) do { \
     if(!(cond)) {  \
-        dbglog(__VA_ARGS__); \
+        fprintf(stderr, __VA_ARGS__); \
+        printf(__VA_ARGS__); \
         assert(cond); \
     } \
 } while(0)
-#else
-#define dbglog(...)
-#define dbgassert(cond, ...)
-#endif
 
 #else
 #define gdebug(...)

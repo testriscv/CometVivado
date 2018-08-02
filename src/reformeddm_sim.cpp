@@ -178,5 +178,7 @@ CCS_MAIN(int argc, char** argv)
     delete[] im;
     delete[] cim;
     delete[] cdm;
+    delete[] memictrl;
+    delete[] memdctrl;
     CCS_RETURN(0);
 }

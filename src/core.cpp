@@ -23,38 +23,6 @@ const ac_int<32, false> CSR::marchid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
 
-void memorySet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<32, true> value, ac_int<2, false> op
-            #ifndef __HLS__
-               , ac_int<64, false>& cycles
-            #endif
-               )
-{
-    ac_int<32, false> wrapped_address = address % (4*DRAM_SIZE);
-    ac_int<32, false> location = wrapped_address >> 2;
-    ac_int<32, false> memory_val = memory[location];
-    simul(cycles += MEMORY_READ_LATENCY);
-    //formatwrite(address, op, memory_val, value);
-    // data                                     size-1        @address         what was there before  what we want to write  what is actually written
-    coredebug("dW%d  @%06x   %08x   %08x   %08x\n", op.to_int(), wrapped_address.to_int(), memory[location], value.to_int(), memory_val.to_int());
-    memory[location] = value;
-}
-
-ac_int<32, true> memoryGet(unsigned int memory[DRAM_SIZE], ac_int<32, false> address, ac_int<2, false> op, bool sign
-                       #ifndef __HLS__
-                           , ac_int<64, false>& cycles
-                       #endif
-                           )
-{
-    ac_int<32, false> wrapped_address = address % (4*DRAM_SIZE);
-    ac_int<32, false> location = wrapped_address >> 2;
-    ac_int<32, false> mem_read = memory[location];
-    simul(cycles += MEMORY_READ_LATENCY);
-    formatread(address, op, sign, mem_read);
-    // data                                   size-1        @address               what is in memory   what is actually read    sign extension
-    coredebug("dR%d  @%06x   %08x   %08x   %s\n", op.to_int(), wrapped_address.to_int(), memory[location], mem_read.to_int(), sign?"true":"false");
-    return mem_read;
-}
-
 void Ft(Core& core, unsigned int im[DRAM_SIZE]
     #ifndef __HLS__
         , ac_int<64, false>& cycles
@@ -913,6 +881,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
 {
     if(core.ctrl.cachelock)
     {
+#ifndef nocache
         if(core.datavalid)
         {
             core.memtoWB.pc = core.extoMem.pc;
@@ -932,6 +901,15 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
         }
+#else
+        data_memory[core.daddress >> 2] = core.dctrl.valuetowrite;
+        core.ctrl.cachelock = false;
+
+        core.memtoWB.realInstruction = core.extoMem.realInstruction;
+        simul(core.memtoWB.pc = core.extoMem.pc;
+        core.memtoWB.instruction = core.extoMem.instruction;)
+        core.memtoWB.rd = core.extoMem.rd;
+#endif
     }
     else if(core.ctrl.branch[2])
     {
@@ -949,10 +927,11 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
         switch(core.extoMem.opCode)
         {
         case RISCV_LD:
+        {
             core.datasize = core.extoMem.funct3.slc<2>(0);
             core.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
-            core.daddress = core.extoMem.result;// % (4*DRAM_SIZE);
+            core.daddress = core.extoMem.result;
             core.dcacheenable = true;
             core.writeenable = false;
             core.ctrl.cachelock = true;
@@ -966,12 +945,16 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             simul(core.memtoWB.pc = core.extoMem.pc;
             core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
-            //gdebug("%5d  ", cycles);
-            core.memtoWB.result = memoryGet(data_memory, core.extoMem.result, core.datasize, core.signenable
-                                   #ifndef __HLS__
-                                       , cycles
-                                   #endif
-                                       );
+
+            ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
+            simul(cycles += MEMORY_READ_LATENCY;)
+            formatread(core.extoMem.result, core.datasize, core.signenable, mem_read);
+            core.memtoWB.result = mem_read;
+
+            // data                                             size                @address
+            coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
+                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.signenable?"true":"false");
+                   // what is in memory                  what is actually read    sign extension
 #endif
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
             {
@@ -981,7 +964,9 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
                 core.memtoWB.result = 1;
             })
             break;
+        }
         case RISCV_ST:
+        {
             core.datasize = core.extoMem.funct3.slc<2>(0);
             core.signenable = core.extoMem.funct3.slc<1>(2);
 
@@ -989,7 +974,7 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
                   fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
                           core.datasize.to_int(), core.extoMem.datac.to_int());)
 #ifndef nocache
-            core.daddress = core.extoMem.result;// % (4*DRAM_SIZE);
+            core.daddress = core.extoMem.result;
             core.dcacheenable = true;
             core.writeenable = true;
             core.writevalue = core.extoMem.datac;
@@ -1000,18 +985,27 @@ void do_Mem(Core& core, unsigned int data_memory[DRAM_SIZE]
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
 #else
-            core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            simul(core.memtoWB.pc = core.extoMem.pc;
-            core.memtoWB.instruction = core.extoMem.instruction;)
-            core.memtoWB.rd = core.extoMem.rd;
-            //gdebug("%5d  ", cycles);
-            memorySet(data_memory, core.extoMem.result, core.extoMem.datac, core.datasize
-                  #ifndef __HLS__
-                      , cycles
-                  #endif
-                      );
+            core.memtoWB.pc = 0;
+            simul(core.memtoWB.instruction = 0;)
+            core.memtoWB.rd = 0;
+            core.memtoWB.realInstruction = false;
+
+            ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
+            simul(cycles += MEMORY_READ_LATENCY;)
+            formatwrite(core.extoMem.result, core.datasize, memory_val, core.extoMem.datac);
+
+            core.daddress = core.extoMem.result;
+            core.dctrl.valuetowrite = memory_val;   // dctrl is not used anyway
+
+            // data                                         size                    @address
+            coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.datasize.to_int(), core.extoMem.result.to_int(),
+                      data_memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
+                   // what was there before                 what we want to write       what is actually written
+
+            core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data
 #endif
             break;
+        }
         default:
             core.memtoWB.pc = core.extoMem.pc;
             simul(core.memtoWB.instruction = core.extoMem.instruction;)
@@ -1244,7 +1238,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         {
             core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
             core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;  // prevent useless dependencies
-            core.ctrl.branch[2] = 1;
+            core.ctrl.branch[2] = core.ctrl.branch[1];
             core.ctrl.branch[1] = core.ctrl.branch[0] = 0;      // prevent taking wrong branch
         }
         else
