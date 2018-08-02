@@ -214,8 +214,12 @@ def doCore(doCache, cachesize, associativity, blocksize, explore=False, name="")
 	if name == "":
 		name = str(cachesize)+"x32cachecore"
 
-	print("Generating", name, "with cachesize ", cachesize, " bytes and associativity ", associativity, " and block size of ", blocksize, " bytes.")
-	print("Tagbits {}\nBitwidth of control {}({})\nSets {}".format(tagbits, bits, nextpowerof2(bits), sets))
+	if doCache:
+		print("Generating", name, "with cachesize ", cachesize, " bytes and associativity ", associativity, " and block size of ", blocksize, " bytes.")
+		print("Tagbits {}\nBitwidth of control {}({})\nSets {}".format(tagbits, bits, nextpowerof2(bits), sets))
+	else:
+		print("Generating", name, "without cache.")
+
 	bitwidth = nextpowerof2(bits)
 	sets = nextpowerof2(sets)
 	area = int((1.4624*sets*bitwidth)/8+4915)
