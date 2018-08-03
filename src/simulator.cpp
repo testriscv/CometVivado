@@ -568,14 +568,11 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
 {
     dbgsys("Syscall : SYS_fstat on file %d\n", file.to_int());
     ac_int<32, true> result = 0;
-    struct stat filestat = {0};
+    struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
 
     if(file != 1)
         result = fstat(file, &filestat);
-    else
-    {
-        //filestat.st_mode = 0100644;
-    }
+
     /*struct  kernel_stat
     {
       unsigned long long st_dev;
@@ -616,7 +613,7 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     stw(stataddr+96 , filestat.__pad0         );  // long
     stw(stataddr+100, filestat.__pad0         );  // long
 
-    fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
+    /*fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
     fprintf(stderr, "st_ino         : %lld\n", filestat.st_ino         );  // unsigned long long
     fprintf(stderr, "st_mode        : %o\n", filestat.st_mode        );  // unsigned int
     fprintf(stderr, "st_nlink       : %d\n", filestat.st_nlink       );  // unsigned int
@@ -631,7 +628,7 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     fprintf(stderr, "st_mtim.sec    : %d\n", filestat.st_mtim.tv_sec );  // long
     fprintf(stderr, "st_mtim.nsec   : %d\n", filestat.st_mtim.tv_nsec);  // long
     fprintf(stderr, "st_ctim.sec    : %d\n", filestat.st_ctim.tv_sec );  // long
-    fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long
+    fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long*/
 
     return result;
 }
@@ -717,7 +714,8 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
 
 ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
 {
-    dbgsys("Syscall : SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?abs(value.to_int()-(int)heapAddress):0);
+    dbgsys("Syscall : SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
+
     ac_int<32, true> result;
     if (value == 0)
     {
