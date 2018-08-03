@@ -568,9 +568,14 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
 {
     dbgsys("Syscall : SYS_fstat on file %d\n", file.to_int());
     ac_int<32, true> result = 0;
-    struct stat filestat;
+    struct stat filestat = {0};
 
-    result = fstat(file, &filestat);
+    if(file != 1)
+        result = fstat(file, &filestat);
+    else
+    {
+        //filestat.st_mode = 0100644;
+    }
     /*struct  kernel_stat
     {
       unsigned long long st_dev;
@@ -610,6 +615,23 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     stw(stataddr+92 , filestat.st_ctim.tv_nsec);  // long
     stw(stataddr+96 , filestat.__pad0         );  // long
     stw(stataddr+100, filestat.__pad0         );  // long
+
+    fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
+    fprintf(stderr, "st_ino         : %lld\n", filestat.st_ino         );  // unsigned long long
+    fprintf(stderr, "st_mode        : %o\n", filestat.st_mode        );  // unsigned int
+    fprintf(stderr, "st_nlink       : %d\n", filestat.st_nlink       );  // unsigned int
+    fprintf(stderr, "st_uid         : %d\n", filestat.st_uid         );  // unsigned int
+    fprintf(stderr, "st_gid         : %d\n", filestat.st_gid         );  // unsigned int
+    fprintf(stderr, "st_rdev        : %lld\n", filestat.st_rdev        );  // unsigned long long
+    fprintf(stderr, "st_size        : %lld\n", filestat.st_size        );  // long long
+    fprintf(stderr, "st_blksize     : %d\n", filestat.st_blksize     );  // int
+    fprintf(stderr, "st_blocks      : %lld\n", filestat.st_blocks      );  // long long
+    fprintf(stderr, "st_atim.sec    : %d\n", filestat.st_atim.tv_sec );  // long
+    fprintf(stderr, "st_atim.nsec   : %d\n", filestat.st_atim.tv_nsec);  // long
+    fprintf(stderr, "st_mtim.sec    : %d\n", filestat.st_mtim.tv_sec );  // long
+    fprintf(stderr, "st_mtim.nsec   : %d\n", filestat.st_mtim.tv_nsec);  // long
+    fprintf(stderr, "st_ctim.sec    : %d\n", filestat.st_ctim.tv_sec );  // long
+    fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long
 
     return result;
 }

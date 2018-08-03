@@ -228,6 +228,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
 ElfFile::~ElfFile()
 {
+    fclose(elfFile);
     delete this->nameTable;
     for(int i(0); i < this->symbols->size(); ++i)
         delete this->symbols->at(i);
