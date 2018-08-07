@@ -225,10 +225,10 @@ def doCore(doCache, cachesize, associativity, blocksize, explore=False, name="")
 	area = int((1.4624*sets*bitwidth)/8+4915)
 	tagbits = 4*tagbits
 
-	doMem(2**24, 32, "main")
-	if doCache:
-		doMem(sets, bitwidth, "control")
-		doMem(int(8*cachesize/32), 32, "data")
+	# ~ doMem(2**24, 32, "main")
+	# ~ if doCache:
+		# ~ doMem(sets, bitwidth, "control")
+		# ~ doMem(int(8*cachesize/32), 32, "data")
 	bitwidth = 32
 
 	#core
