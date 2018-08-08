@@ -5,11 +5,13 @@ void cacheWrapper(ac_int<128, false> memictrl[Sets], unsigned int imem[DRAM_SIZE
                   ac_int<128, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
                   ac_int<32, false> daddress, ac_int<2, false> datasize, bool signenable, bool writeenable, int writevalue, int& read, bool& datavalid)
 {
+#ifdef __HLS__
     static ICacheControl ictrl;
     static DCacheControl dctrl;
 
     icache(ictrl, memictrl, imem, cim, iaddress, cachepc, ins, insvalid);
     dcache(dctrl, memdctrl, dmem, cdm, daddress, datasize, signenable, true, writeenable, writevalue, read, datavalid);
+#endif
 }
 
 bool find(ICacheControl& ictrl, ac_int<32, false> address)
