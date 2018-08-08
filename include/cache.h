@@ -188,4 +188,8 @@ void dcache(DCacheControl& ctrl, ac_int<128, false> memctrl[Sets],              
 #endif
            );
 
+// wrapper to synthesize caches only
+void cacheWrapper(ac_int<128, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int idata[Sets][Blocksize][Associativity],
+                  ac_int<128, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int ddata[Sets][Blocksize][Associativity]);
+
 #endif // CACHE_H

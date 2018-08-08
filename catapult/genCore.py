@@ -55,11 +55,12 @@ PINMAPS {{
 
 }}"""
 
-header = """logfile close
+header = """set start [clock seconds]
+logfile close
 logfile open {name}.log
 project set -incr_directory {name}
 solution new -state initial
-solution options set /Input/CompilerFlags {{-D __CATAPULT__=1 {nocache} -DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize}}}
+solution options set /Input/CompilerFlags {{-D __CATAPULT__=1 {nocache} -DSize={cachesize} -DAssociativity={associativity} -DBlocksize={blocksize} -DPolicy={policy}}}
 solution options set /Input/SearchPath ../include
 solution options set ComponentLibs/SearchPath ../memories -append
 flow package require /SCVerify
@@ -105,7 +106,7 @@ directive set -CLUSTER_RTL_SYN false
 directive set -CLUSTER_FAST_MODE false
 directive set -CLUSTER_TYPE combinational
 directive set -COMPGRADE fast
-directive set -DESIGN_HIERARCHY doStep
+directive set -DESIGN_HIERARCHY {top}
 """
 
 libraries = """go analyze
@@ -117,34 +118,71 @@ solution library add ST_singleport_8192x32
 go libraries
 directive set -CLOCKS {{clk {{-CLOCK_PERIOD {period:.2f} -CLOCK_EDGE rising -CLOCK_HIGH_TIME {halfperiod:.2f} -CLOCK_OFFSET 0.000000 -CLOCK_UNCERTAINTY 0.0 -RESET_KIND sync -RESET_SYNC_NAME rst -RESET_SYNC_ACTIVE high -RESET_ASYNC_NAME arst_n -RESET_ASYNC_ACTIVE low -ENABLE_NAME {{}} -ENABLE_ACTIVE high}}}}
 go assembly
-directive set /doStep/core/doCore<0U>:core.REG:rsc/MAP_TO_MODULE {{[Register]}}
-directive set /doStep/core/main -PIPELINE_INIT_INTERVAL 1
-directive set /doStep/core -CLOCK_OVERHEAD 0.0
+directive set /{top}/core/main -PIPELINE_INIT_INTERVAL 1
+directive set /{top}/core -CLOCK_OVERHEAD 0.0
 """
 
-genCore = """go architect
-go schedule
-go extract
-project save {cachesize}x32cachecore.ccs
-"""
-
-genCache = """directive set /doStep/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/cim:rsc -INTERLEAVE {associativity}
-directive set /doStep/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doStep/cdm:rsc -INTERLEAVE {associativity}
-
-directive set /doStep/memictrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
-directive set /doStep/memictrl -WORD_WIDTH 128
-directive set /doStep/memdctrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
-directive set /doStep/memdctrl -WORD_WIDTH 128
-
+genCore = """directive set /{top}/core/doCore<0U>:core.REG:rsc/MAP_TO_MODULE {{[Register]}}
 go architect
-cycle add /doStep/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /doStep/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /doStep/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
-cycle add /doStep/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /doStep/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
-go schedule
+"""
+
+genCache = """directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /{top}/cim:rsc -INTERLEAVE {associativity}
+directive set /{top}/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /{top}/cdm:rsc -INTERLEAVE {associativity}
+
+directive set /{top}/memictrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /{top}/memictrl -WORD_WIDTH 128
+directive set /{top}/memdctrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /{top}/memdctrl -WORD_WIDTH 128
+go architect
+cycle add /{top}/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
+cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+"""
+
+genCacheonly = """directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /{top}/cim:rsc -INTERLEAVE {associativity}
+directive set /{top}/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+directive set /{top}/cdm:rsc -INTERLEAVE {associativity}
+
+directive set /{top}/memictrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /{top}/memictrl -WORD_WIDTH 128
+directive set /{top}/memdctrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
+directive set /{top}/memdctrl -WORD_WIDTH 128
+go architect
+cycle add /{top}/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
+cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+set read_mem [cycle find_op *read_mem(cim* -all true]
+foreach rm $read_mem {{
+	cycle add $rm -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+}}
+"""
+
+
+constraintall = """set read_mem [cycle find_op *read_mem* -all true]
+set write_mem [cycle find_op *write_mem* -all true]
+while { [lsearch $read_mem "*memory*"] != -1 } {
+	set idx [lsearch $read_mem "*memory*"]
+	set read_mem [lreplace $read_mem $idx $idx]
+}
+while { [lsearch $write_mem "*memory*"] != -1 } {
+	set idx [lsearch $write_mem "*memory*"]
+	set write_mem [lreplace $write_mem $idx $idx]
+}
+foreach rm $read_mem {
+	foreach wm $write_mem {
+		cycle add $rm -from $wm -equal 0
+	}
+}
+"""
+
+endScript = """go schedule
 go extract
 project save {name}.ccs
+set end [clock seconds]
+puts "Done in [expr ($end-$start)/60]:[expr ($end-$start)%60]"
 """
 
 exploreCore = """dofile func.tcl
@@ -205,15 +243,21 @@ def doMem(memsize, bitwidth, name=None):
 		with open("../memories/generateCacheMemories.tcl", "w") as f:
 			f.write(mem)
 		subprocess.check_call(["./catapult.sh", "-product lb -shell -f ../memories/generateCacheMemories.tcl"])
-	
-def doCore(doCache, cachesize, associativity, blocksize, explore=False, name=""):
+
+def doCore(doCache, cachesize, associativity, blocksize, policy, explore=False, name="", cacheonly=False):
 	nocache = "" if doCache else "-Dnocache"
 	sets = int(cachesize/(blocksize)/associativity)
 	tagbits = int(32 - log2(blocksize/4) - log2(sets) - 2)
 	bits = int(associativity*(tagbits+1+1)+associativity*(associativity-1)/2)
 	if name == "":
-		name = str(cachesize)+"x32cachecore"
-
+		if cacheonly:
+			name = str(cachesize) + policy + str(associativity) + "cache"
+		else:
+			name = str(cachesize)+"x32cachecore"
+	
+	policytodefine = {"NONE" : 0, "FIFO" : 1, "LRU" : 2, "RANDOM" : 3}
+	policy = policytodefine[policy]
+	
 	if doCache:
 		print("Generating", name, "with cachesize ", cachesize, " bytes and associativity ", associativity, " and block size of ", blocksize, " bytes.")
 		print("Tagbits {}\nBitwidth of control {}({})\nSets {}".format(tagbits, bits, nextpowerof2(bits), sets))
@@ -240,21 +284,30 @@ def doCore(doCache, cachesize, associativity, blocksize, explore=False, name="")
 	period = 1.5
 	halfperiod = period/2
 	
-	if doCache:
+	if cacheonly:
+		top = "cacheWrapper"
+		core = (header + libraries + genCacheonly).format(**locals())
+	elif doCache:
+		top = "doStep"
 		core = (header + libraries + genCache).format(**locals())
 	else:
+		top = "doStep"
 		core = (header + libraries + genCore).format(**locals())
+		
+	# ~ core += constraint
+	
+	core += endScript.format(**locals())
 	
 	if explore:
 		core += exploreCore
 		
-	with open("genCore_{}x32.tcl".format(cachesize), "w") as f:
+	with open("{}.tcl".format(name), "w") as f:
 		f.write(core)
 
 	if args.shell:
-		subprocess.check_call(["./catapult.sh", "-shell -f genCore_{}x32.tcl".format(cachesize)])
+		subprocess.check_call(["./catapult.sh", "-shell -f {}.tcl".format(name)])
 	else:
-		subprocess.check_call(["./catapult.sh", "-f genCore_{}x32.tcl".format(cachesize)])
+		subprocess.check_call(["./catapult.sh", "-f {}.tcl".format(name)])
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
@@ -266,6 +319,7 @@ if __name__ == "__main__":
 	parser.add_argument("-b", "--blocksize", help="Cache blocksize in bytes", type=int)
 	parser.add_argument("-p", "--policy", help="Replacement policy")
 	parser.add_argument("-e", "--explore", help="Do some exploration in the solution space", action="store_true")
+	parser.add_argument("-o", "--cache-only", help="Generate only cache", action="store_true")
 
 	args = parser.parse_args()
 	nocache = args.no_cache
@@ -302,6 +356,8 @@ if __name__ == "__main__":
 	policy = policy.upper()
 	assert (associativity == 1 and policy == "NONE") or (associativity != 1 and policy != "NONE")
 	assert policy in ["LRU", "RANDOM", "NONE", "FIFO"]
+	
+	assert (args.cache_only and args.no_cache) is False, "Cannot have nocache with cache-only option"
 
 	# ~ defines = "-D{}={} "
 	# ~ defines = defines.format("Size", cachesize) + defines.format("Associativity", associativity) + defines.format("Blocksize", int(blocksize/4)) + defines.format("Policy", policy)
@@ -309,5 +365,5 @@ if __name__ == "__main__":
 	# ~ with open("output.log", "w") as output:
 		# ~ subprocess.check_call(["./testbench.sim"], stdout=output)
 
-	doCore(not nocache, cachesize, associativity, blocksize, args.explore, args.name)
+	doCore(not nocache, cachesize, associativity, blocksize, policy, args.explore, args.name, args.cache_only)
 	
