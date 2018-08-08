@@ -255,4 +255,16 @@ extern const char* riscvNames[8];
 #define SYS_fcntl               25
 #define SYS_getdents            61
 #define SYS_dup                 23
+
+#define SYS_O_RDONLY            0x0
+#define SYS_O_WRONLY            0x1
+#define SYS_O_RDWR              0x2
+#define SYS_O_APPEND            0x8
+#define SYS_O_CREAT             0x200
+#define SYS_O_TRUNC             0x400
+#define SYS_O_EXCL              0x800
+#define SYS_O_SYNC              0x2000
+#define SYS_O_NONBLOCK          0x4000
+#define SYS_O_NOCTTY            0x8000
+
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

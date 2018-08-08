@@ -9,7 +9,7 @@
 #include "simulator.h"
 
 #if 1
-#define dbgsys(...)     fprintf(stderr, __VA_ARGS__)
+#define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
 #else
 #define dbgsys(...)
 #endif
@@ -358,7 +358,7 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
     {
     case SYS_exit:
         sys_status = 1; //Currently we break on ECALL
-        dbgsys("Syscall : SYS_exit\n");
+        dbgsys("SYS_exit\n");
         break;
     case SYS_read:
         result = this->doRead(arg1, arg2, arg3);
@@ -520,7 +520,7 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
 
 ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    dbgsys("Syscall : SYS_read %d bytes from file %d\n", size.to_int(), file.to_int());
+    dbgsys("SYS_read %d bytes from file %d\n", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     ac_int<32, true> result;
 
@@ -543,7 +543,7 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
 
 ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    dbgsys("Syscall : SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
+    //dbgsys("SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     for (int i=0; i<size; i++)
         localBuffer[i] = this->ldb(bufferAddr + i);
@@ -566,7 +566,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
 
 ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
-    dbgsys("Syscall : SYS_fstat on file %d\n", file.to_int());
+    dbgsys("SYS_fstat on file %d\n", file.to_int());
     ac_int<32, true> result = 0;
     struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
 
@@ -650,9 +650,62 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
         localPath[i] = this->ldb(path + i);
     localPath[pathSize] = '\0';
 
-    dbgsys("Syscall : SYS_open on file %s with flags %x and mode %o\n", localPath, flags.to_int(), mode.to_int());
-
-    int result  = open(localPath, flags.to_int(), mode.to_int());
+    // convert riscv flags to unix flags
+    int riscvflags = flags;
+    std::string str;
+    if(riscvflags & SYS_O_WRONLY)
+        str += "WRONLY, ";
+    else if(riscvflags & SYS_O_RDWR)
+        str += "RDWR, ";
+    else
+        str += "RDONLY, ";
+    int unixflags = riscvflags&3;    // O_RDONLY, O_WRITE, O_RDWR are the same
+    riscvflags ^= unixflags;
+    if(riscvflags & SYS_O_APPEND)
+    {
+        unixflags |= O_APPEND;
+        riscvflags ^= SYS_O_APPEND;
+        str += "APPEND, ";
+    }
+    if(riscvflags & SYS_O_CREAT)
+    {
+        unixflags |= O_CREAT;
+        riscvflags ^= SYS_O_CREAT;
+        str += "CREAT, ";
+    }
+    if(riscvflags & SYS_O_TRUNC)
+    {
+        unixflags |= O_TRUNC;
+        riscvflags ^= SYS_O_TRUNC;
+        str += "TRUNC, ";
+    }
+    if(riscvflags & SYS_O_EXCL)
+    {
+        unixflags |= O_EXCL;
+        riscvflags ^= SYS_O_EXCL;
+        str += "EXCL, ";
+    }
+    if(riscvflags & SYS_O_SYNC)
+    {
+        unixflags |= O_SYNC;
+        riscvflags ^= SYS_O_SYNC;
+        str += "SYNC, ";
+    }
+    if(riscvflags & SYS_O_NONBLOCK)
+    {
+        unixflags |= O_NONBLOCK;
+        riscvflags ^= SYS_O_NONBLOCK;
+        str += "NONBLOCK, ";
+    }
+    if(riscvflags & SYS_O_NOCTTY)
+    {
+        unixflags |= O_NOCTTY;
+        riscvflags ^= SYS_O_NOCTTY;
+        str += "NOCTTY";
+    }
+    dbgsys("SYS_open on file %s with flags %s (%x) and mode %o\n", localPath, str.c_str(), unixflags, mode.to_int());
+    dbgassert(riscvflags == 0, "Some flags were not translated!\n");
+    int result  = open(localPath, unixflags, mode.to_int());
 
     delete[] localPath;
     return result;
@@ -667,7 +720,7 @@ ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> pa
 
 ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 {
-    dbgsys("Syscall : SYS_close on file %d\n", file.to_int());
+    dbgsys("SYS_close on file %d\n", file.to_int());
     if(file > 2)    // don't close simulator's stdin, stdout & stderr
     {
         return close(file);
@@ -679,11 +732,11 @@ ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
 {
     int result = lseek(file, ptr, dir);
-    dbgsys("Syscall : SYS_lseek on file %d    ptr %d      dir %d\n", file.to_int(), ptr.to_int(), dir.to_int());
+    dbgsys("SYS_lseek on file %d    ptr %d      dir %d\n", file.to_int(), ptr.to_int(), dir.to_int());
     return result;
 }
 
-ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false> ptr)
+ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
 {
     int oneStringElement = this->ldb(filename);
     int index = 0;
@@ -699,14 +752,31 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(filename + i);
     localPath[pathSize] = '\0';
-    dbgsys("Syscall : SYS_stat on %s\n", localPath);
+    dbgsys("SYS_stat on %s\n", localPath);
 
-    struct stat fileStat;
-    int result = stat(localPath, &fileStat);
+    struct stat filestat;
+    int result = stat(localPath, &filestat);
 
-    //We copy the result in simulator memory
-    for (int oneChar = 0; oneChar<sizeof(struct stat); oneChar++)
-        this->stb(ptr+oneChar, ((char*)(&fileStat))[oneChar]);
+    std(stataddr    , filestat.st_dev         );  // unsigned long long
+    std(stataddr+8  , filestat.st_ino         );  // unsigned long long
+    stw(stataddr+16 , filestat.st_mode        );  // unsigned int
+    stw(stataddr+20 , filestat.st_nlink       );  // unsigned int
+    stw(stataddr+24 , filestat.st_uid         );  // unsigned int
+    stw(stataddr+28 , filestat.st_gid         );  // unsigned int
+    std(stataddr+32 , filestat.st_rdev        );  // unsigned long long
+    std(stataddr+40 , filestat.__pad0         );  // unsigned long long
+    std(stataddr+48 , filestat.st_size        );  // long long
+    stw(stataddr+56 , filestat.st_blksize     );  // int
+    stw(stataddr+60 , filestat.__pad0         );  // int
+    std(stataddr+64 , filestat.st_blocks      );  // long long
+    stw(stataddr+72 , filestat.st_atim.tv_sec );  // long
+    stw(stataddr+76 , filestat.st_atim.tv_nsec);  // long
+    stw(stataddr+80 , filestat.st_mtim.tv_sec );  // long
+    stw(stataddr+84 , filestat.st_mtim.tv_nsec);  // long
+    stw(stataddr+88 , filestat.st_ctim.tv_sec );  // long
+    stw(stataddr+92 , filestat.st_ctim.tv_nsec);  // long
+    stw(stataddr+96 , filestat.__pad0         );  // long
+    stw(stataddr+100, filestat.__pad0         );  // long
 
     delete[] localPath;
     return result;
@@ -714,7 +784,7 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
 
 ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
 {
-    dbgsys("Syscall : SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
+    dbgsys("SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
 
     ac_int<32, true> result;
     if (value == 0)
@@ -727,14 +797,14 @@ ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    dbgassert(core->REG[2] > heapAddress, "Stack and heap overlaps %08x!!\n", value.to_int());
+    dbgassert(core->REG[2].to_uint() > heapAddress, "Stack and heap overlaps (%08x > %08x)!!\n", core->REG[2].to_uint(), heapAddress);
     
     return result;
 }
 
 ac_int<32, true> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
 {
-    dbgsys("Syscall : SYS_gettimeofday\n");
+    dbgsys("SYS_gettimeofday\n");
     struct timeval oneTimeVal;
     int result = gettimeofday(&oneTimeVal, NULL);
 
@@ -760,7 +830,7 @@ ac_int<32, true> Simulator::doUnlink(ac_int<32, false> path)
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(path + i);
     localPath[pathSize] = '\0';
-    dbgsys("Syscall : SYS_unlink on file %s\n", localPath);
+    dbgsys("SYS_unlink on file %s\n", localPath);
 
     int result = unlink(localPath);
 
