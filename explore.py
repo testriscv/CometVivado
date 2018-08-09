@@ -17,7 +17,6 @@ def buildsimulator(parameters="DEFINES=-DSize=1024 -DBlocksize=32 -DAssociativit
 def testbenchmark():
 	progs = os.listdir("benchmarks/build")
 	progs[:] = [p for p in progs if p.endswith(".riscv")]
-	progs = ["matmul_int_4.riscv"]
 
 	global res
 	res = {p : [] for p in progs}
