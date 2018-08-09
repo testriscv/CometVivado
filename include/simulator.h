@@ -30,7 +30,7 @@ private:
     FILE* output;
     unsigned int heapAddress;
 
-    ac_int<128, false>* dctrl;
+    ac_int<DWidth, false>* dctrl;
     unsigned int* ddata; //[Sets][Blocksize][Associativity];
     Core* core;
 
@@ -43,7 +43,7 @@ public:
     void setDataMemory(ac_int<32, false> addr, ac_int<8, true> value);
     void setDM(unsigned int* d);
     void setIM(unsigned int* i);
-    void setCore(Core* core, ac_int<128, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
+    void setCore(Core* core, ac_int<DWidth, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void writeBack();
 
     ac_int<32, true>* getInstructionMemory() const;

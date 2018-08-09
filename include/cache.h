@@ -91,11 +91,22 @@ enum DState {
 #elif Policy == RP_LRU
 #define IPolicyWidth         (Associativity * (Associativity-1) / 2)
 #define DPolicyWidth         (Associativity * (Associativity-1) / 2)
+#elif Policy == RP_RANDOM
+#define IPolicyWidth         0      // ok as long as it's protected by #if when used in slc method
+#define DPolicyWidth         0
 #endif
 #define ICacheControlWidth   (Associativity*(32-tagshift+1)+IPolicyWidth)   // tag + valid bit
 #define DCacheControlWidth   (Associativity*(32-tagshift+2)+DPolicyWidth)   // tag + valid + dirty bit
 #define ibourrage            ((1 << ac::log2_ceil<ICacheControlWidth>::val) - ICacheControlWidth)
 #define dbourrage            ((1 << ac::log2_ceil<DCacheControlWidth>::val) - DCacheControlWidth)
+
+#ifndef __HLS__
+#define IWidth               (1 << ac::log2_ceil<ICacheControlWidth>::val)
+#define DWidth               (1 << ac::log2_ceil<DCacheControlWidth>::val)
+#else       // 128 instead of 1 << ac::log2_ceil<XCacheControlWidth>::val because st mem is 128 bits
+#define IWidth               128
+#define DWidth               128
+#endif
 
 struct ISetControl
 {
@@ -110,9 +121,9 @@ struct ISetControl
   #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy;
   #elif Policy == RP_RANDOM
-    //ac_int<ac::log2_ceil<Associativity>::val, false> policy;
+    ac_int<32, false> policy;
   #else   // None
-    //ac_int<1, false> policy;
+    #error "Cannot have Associativity > 1 and no policy"
   #endif
 #endif
 };
@@ -148,9 +159,9 @@ struct DSetControl
   #elif Policy == RP_LRU
     ac_int<Associativity * (Associativity-1) / 2, false> policy;
   #elif Policy == RP_RANDOM
-    ac_int<ac::log2_ceil<Associativity>::val, false> policy;
+    ac_int<32, false> policy;
   #else   // None
-    //ac_int<1, false> policy;
+    #error "Cannot have Associativity > 1 and no policy"
   #endif
 #endif
 };
@@ -171,7 +182,7 @@ struct DCacheControl
     DSetControl setctrl;
 };
 
-void icache(ICacheControl& ctrl, ac_int<128, false> memctrl[Sets],                              // control
+void icache(ICacheControl& ctrl, ac_int<IWidth, false> memctrl[Sets],                              // control
             unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> iaddress,                                                         // from cpu
             ac_int<32, false> &cachepc, int& instruction, bool& insvalid                        // to cpu
@@ -179,7 +190,7 @@ void icache(ICacheControl& ctrl, ac_int<128, false> memctrl[Sets],              
            , ac_int<64, false>& cycles
 #endif
            );
-void dcache(DCacheControl& ctrl, ac_int<128, false> memctrl[Sets],                              // control
+void dcache(DCacheControl& ctrl, ac_int<DWidth, false> memctrl[Sets],                              // control
             unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
             int& read, bool& datavalid                                                          // to cpu
@@ -189,9 +200,9 @@ void dcache(DCacheControl& ctrl, ac_int<128, false> memctrl[Sets],              
            );
 
 // wrapper to synthesize caches only
-void cacheWrapper(ac_int<128, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
+void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
                   ac_int<32, false> iaddress, ac_int<32, false>& cachepc, int& ins, bool& insvalid,
-                  ac_int<128, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
+                  ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
                   ac_int<32, false> daddress, ac_int<2, false> datasize, bool signenable, bool writeenable, int writevalue, int& read, bool& datavalid);
 
 #endif // CACHE_H

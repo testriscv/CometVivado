@@ -1,8 +1,8 @@
 #include "cache.h"
 
-void cacheWrapper(ac_int<128, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
+void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
                   ac_int<32, false> iaddress, ac_int<32, false>& cachepc, int& ins, bool& insvalid,
-                  ac_int<128, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
+                  ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
                   ac_int<32, false> daddress, ac_int<2, false> datasize, bool signenable, bool writeenable, int writevalue, int& read, bool& datavalid)
 {
 #ifdef __HLS__
@@ -56,7 +56,7 @@ void select(ICacheControl& ictrl)
 {
 #if Associativity > 1
   #if Policy == RP_FIFO
-    ictrl.currentway = ictrl.setctrl.policy++;
+    ictrl.currentway = ictrl.setctrl.policy;
   #elif Policy == RP_LRU
     #if Associativity == 2
         ictrl.currentway = !ictrl.setctrl.policy;
@@ -81,8 +81,7 @@ void select(ICacheControl& ictrl)
         #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
-    ictrl.currentway = ictrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // ictrl.policy & (Associativity - 1)
-    ictrl.policy = (ictrl.policy.slc<1>(31) ^ ictrl.policy.slc<1>(21) ^ ictrl.policy.slc<1>(1) ^ ictrl.policy.slc<1>(0)) | (ictrl.policy << 1);
+    ictrl.currentway = ictrl.setctrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // ictrl.setctrl.policy & (Associativity - 1)
   #else   // None
     ictrl.currentway = 0;
   #endif
@@ -93,7 +92,7 @@ void select(DCacheControl& dctrl)
 {
 #if Associativity > 1
   #if Policy == RP_FIFO
-    dctrl.currentway = dctrl.setctrl.policy++;
+    dctrl.currentway = dctrl.setctrl.policy;
   #elif Policy == RP_LRU
     #if Associativity == 2
         dctrl.currentway = !dctrl.setctrl.policy;
@@ -118,8 +117,7 @@ void select(DCacheControl& dctrl)
         #error "RP_LRU with N >= 8 ways associativity is not implemented"
     #endif
   #elif Policy == RP_RANDOM
-    dctrl.currentway = dctrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // dctrl.policy & (Associativity - 1)
-    dctrl.policy = (dctrl.policy.slc<1>(31) ^ dctrl.policy.slc<1>(21) ^ dctrl.policy.slc<1>(1) ^ dctrl.policy.slc<1>(0)) | (dctrl.policy << 1);
+    dctrl.currentway = dctrl.setctrl.policy.slc<ac::log2_ceil<Associativity>::val>(0);     // dctrl.setctrl.policy & (Associativity - 1)
   #else   // None
     dctrl.currentway = 0;
   #endif
@@ -214,7 +212,33 @@ void update_policy(DCacheControl& dctrl)
 #endif
 }
 
-void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],                            // control
+void insert_policy(ICacheControl& ictrl)
+{
+#if Associativity > 1
+  #if Policy == RP_FIFO
+    ictrl.setctrl.policy++;
+  #elif Policy == RP_LRU    // insertion & promotion are same
+    update_policy(ictrl);
+  #elif Policy == RP_RANDOM
+    ictrl.setctrl.policy = (ictrl.setctrl.policy.slc<1>(31) ^ ictrl.setctrl.policy.slc<1>(21) ^ ictrl.setctrl.policy.slc<1>(1) ^ ictrl.setctrl.policy.slc<1>(0)) | (ictrl.setctrl.policy << 1);
+  #endif
+#endif
+}
+
+void insert_policy(DCacheControl& dctrl)
+{
+#if Associativity > 1
+  #if Policy == RP_FIFO
+    dctrl.setctrl.policy++;
+  #elif Policy == RP_LRU
+    update_policy(dctrl);
+  #elif Policy == RP_RANDOM
+    dctrl.setctrl.policy = (dctrl.setctrl.policy.slc<1>(31) ^ dctrl.setctrl.policy.slc<1>(21) ^ dctrl.setctrl.policy.slc<1>(1) ^ dctrl.setctrl.policy.slc<1>(0)) | (dctrl.setctrl.policy << 1);
+  #endif
+#endif
+}
+
+void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],                         // control
             unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address,                                                          // from cpu
             ac_int<32, false>& cachepc, int& instruction, bool& insvalid                        // to cpu
@@ -238,7 +262,7 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
 
             if(!ictrl.ctrlLoaded)
             {
-                ac_int<128, false> setctrl = memictrl[ictrl.currentset];
+                ac_int<IWidth, false> setctrl = memictrl[ictrl.currentset];
                 ictrl.setctrl.bourrage = setctrl.slc<ibourrage>(ICacheControlWidth);
                 #pragma hls_unroll yes
                 loadiset:for(int i = 0; i < Associativity; ++i)
@@ -265,6 +289,8 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
                 instruction = ictrl.setctrl.data[ictrl.currentway];
 
                 ictrl.state = IState::Idle;
+
+                update_policy(ictrl);
             }
             else    // not found or invalid
             {
@@ -284,9 +310,10 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
                 simul(cycles += MEMORY_READ_LATENCY);
                 // critical word first
                 instruction = ictrl.valuetowrite;
+
+                insert_policy(ictrl);
             }
 
-            update_policy(ictrl);
             insvalid = true;
             cachepc = address;
         }
@@ -299,7 +326,7 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
                         (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift),
                         ((ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift))+Blocksize*4-1);
 
-            ac_int<128, false> setctrl = 0;
+            ac_int<IWidth, false> setctrl = 0;
             setctrl.set_slc(ICacheControlWidth, ictrl.setctrl.bourrage);
             #pragma hls_unroll yes
             storeicontrol:for(int i = 0; i < Associativity; ++i)
@@ -365,7 +392,7 @@ void icache(ICacheControl& ictrl, ac_int<128, false> memictrl[Sets],            
 
 }
 
-void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],                            // control
+void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],                         // control
             unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
             int& read, bool& datavalid                                                          // to cpu
@@ -398,7 +425,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
             dctrl.currentset = getSet(address);
             dctrl.i = getOffset(address);
 
-            ac_int<128, false> setctrl = memdctrl[dctrl.currentset];
+            ac_int<DWidth, false> setctrl = memdctrl[dctrl.currentset];
             dctrl.setctrl.bourrage = setctrl.slc<dbourrage>(DCacheControlWidth);
             #pragma hls_unroll yes
             loaddset:for(int i = 0; i < Associativity; ++i)
@@ -480,6 +507,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
                     }
 
                     datavalid = true;
+                    insert_policy(dctrl);
                 }
             }
         }
@@ -488,7 +516,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
         break;
     case DState::StoreControl:
     {
-        ac_int<128, false> setctrl = 0;
+        ac_int<DWidth, false> setctrl = 0;
         setctrl.set_slc(DCacheControlWidth, dctrl.setctrl.bourrage);
         #pragma hls_unroll yes
         storedcontrol:for(int i = 0; i < Associativity; ++i)
@@ -508,7 +536,7 @@ void dcache(DCacheControl& dctrl, ac_int<128, false> memdctrl[Sets],            
     }
     case DState::StoreData:
     {
-        ac_int<128, false> setctrl = 0;
+        ac_int<DWidth, false> setctrl = 0;
         setctrl.set_slc(DCacheControlWidth, dctrl.setctrl.bourrage);
         #pragma hls_unroll yes
         storedata:for(int i = 0; i < Associativity; ++i)

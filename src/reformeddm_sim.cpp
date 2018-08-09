@@ -20,9 +20,10 @@ using namespace std;
 
 CCS_MAIN(int argc, char** argv)
 {
+#ifndef nocache
     printf("Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
     printf("Parameters : %5d   %8d   %13d   %4d   %6d   %13d    %13d\n", Size, 4*Blocksize, Associativity, Sets, Policy, ICacheControlWidth, DCacheControlWidth);
-
+#endif
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;
@@ -91,9 +92,8 @@ CCS_MAIN(int argc, char** argv)
     unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
     unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
 
-    // 128 instead of ac::log2_ceil<XCacheControlWidth>::val
-    ac_int<128, false>* memictrl = new ac_int<128, false>[Sets];
-    ac_int<128, false>* memdctrl = new ac_int<128, false>[Sets];
+    ac_int<IWidth, false>* memictrl = new ac_int<IWidth, false>[Sets];
+    ac_int<DWidth, false>* memdctrl = new ac_int<DWidth, false>[Sets];
 
     // zero the control (although only the valid bit should be zeroed, rest is don't care)
     for(int i(0); i < Sets; ++i)

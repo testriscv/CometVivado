@@ -204,7 +204,7 @@ void Simulator::writeBack()
 #endif
 }
 
-void Simulator::setCore(Core *c, ac_int<128, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
+void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
 {
     core = c;
     dctrl = ctrl;

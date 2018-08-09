@@ -1165,8 +1165,8 @@ void coreinit(Core& core, ac_int<32, false> startpc)
     core.REG[2] = STACK_INIT;
 
 #if Policy == RP_RANDOM
-    core.dctrl.policy = 0xF2D4B698;
-    core.ictrl.policy = 0xF2D4B698;
+    core.ictrl.setctrl.policy = 0xF2D4B698;
+    core.dctrl.setctrl.policy = 0xF2D4B698;
 #endif
 }
 
@@ -1174,7 +1174,7 @@ template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
-            ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
+            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim
         #endif
@@ -1290,7 +1290,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
-            ac_int<128, false> memictrl[Sets], ac_int<128, false> memdctrl[Sets]
+            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim
         #endif
