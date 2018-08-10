@@ -3,6 +3,8 @@
 import argparse, os, sys
 from math import log2
 import subprocess
+from multiprocessing import Process, Queue
+from time import time, sleep
 
 genMem = """flow package require MemGen
 
@@ -141,22 +143,33 @@ cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -
 cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
 """
 
-genCacheonly = """directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /{top}/cim:rsc -INTERLEAVE {associativity}
-directive set /{top}/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /{top}/cdm:rsc -INTERLEAVE {associativity}
-
+genCacheonly = """if {{ {cachesize} == 65536 }} {{
+	directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
+	directive set /{top}/cim:rsc -INTERLEAVE {associativity}
+	directive set /{top}/cdm:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
+	directive set /{top}/cdm:rsc -INTERLEAVE {associativity}
+}} else {{
+	directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+	directive set /{top}/cim:rsc -INTERLEAVE {associativity}
+	directive set /{top}/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+	directive set /{top}/cdm:rsc -INTERLEAVE {associativity}
+}}
 directive set /{top}/memictrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
 directive set /{top}/memictrl -WORD_WIDTH 128
 directive set /{top}/memdctrl:rsc -MAP_TO_MODULE ST_singleport_4096x128.ST_SPHD_BB_4096x128m8_aTdol_wrapper
 directive set /{top}/memdctrl -WORD_WIDTH 128
 go architect
-cycle add /{top}/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
-cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
-cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
-set read_mem [cycle find_op *read_mem(cim* -all true]
-foreach rm $read_mem {{
-	cycle add $rm -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+//cycle add /{top}/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+//cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
+//cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+set read_mem [cycle find_op *read_mem* -all true]
+set write_mem [cycle find_op *write_mem* -all true]
+for {{ set i 1 }} {{ $i < [llength $read_mem] }} {{ incr i }} {{
+	cycle add [lindex $read_mem $i-1] -from [lindex $read_mem $i] -equal 0
+}}
+cycle add [lindex $read_mem $i-1] -from [lindex $write_mem 0] -equal 0
+for {{ set i 1 }} {{ $i < [llength $write_mem] }} {{ incr i }} {{
+	cycle add [lindex $write_mem $i-1] -from [lindex $write_mem $i] -equal 0
 }}
 """
 
@@ -183,6 +196,69 @@ go extract
 project save {name}.ccs
 set end [clock seconds]
 puts "Done in [expr ($end-$start)/60]:[expr ($end-$start)%60]"
+set blocksize {blocksize}
+"""
+
+exploreCache = """dofile func.tcl
+set Associativity [list 2 4]
+set BlockSize [list 2 4 8 16]
+set CacheSize [list 1024 2048 4096 8192 16384 32768 65536]
+set Policy [list 1 2 3]
+set StrPolicy [list fifo lru random]
+foreach cachesize $CacheSize {
+	if { $cachesize == 65536 } {
+		break
+	}
+	go new
+	solution new
+	solution rename "${cachesize}Direct1x[expr 4*$blocksize]"
+	solution options set /Input/CompilerFlags "-D __CATAPULT__=1 -DSize=$cachesize -DAssociativity=1 -DBlocksize=$blocksize -DPolicy=0"
+	go assembly
+	go architect
+	set read_mem [cycle find_op *read_mem* -all true]
+	set write_mem [cycle find_op *write_mem* -all true]
+	for { set i 1 } { $i < [llength $read_mem] } { incr i } {
+		cycle add [lindex $read_mem $i-1] -from [lindex $read_mem $i] -equal 0
+	}
+	cycle add [lindex $read_mem $i-1] -from [lindex $write_mem 0] -equal 0
+	for { set i 1 } { $i < [llength $write_mem] } { incr i } {
+		cycle add [lindex $write_mem $i-1] -from [lindex $write_mem $i] -equal 0
+	}
+	go extract
+}
+foreach policy $Policy {
+	foreach assoc $Associativity {
+		foreach cachesize $CacheSize {
+			go new
+			solution new
+			solution rename "${cachesize}[lindex $StrPolicy [lsearch $Policy $policy]]${assoc}x[expr 4*$blocksize]"
+			solution options set /Input/CompilerFlags "-D __CATAPULT__=1 -DSize=$cachesize -DAssociativity=$assoc -DBlocksize=$blocksize -DPolicy=$policy"
+			go assembly
+			if { $cachesize == 65536 } {
+				directive set /cacheWrapper/cim:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
+				directive set /cacheWrapper/cim:rsc -INTERLEAVE $assoc
+				directive set /cacheWrapper/cdm:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
+				directive set /cacheWrapper/cdm:rsc -INTERLEAVE $assoc
+			} else {
+				directive set /cacheWrapper/cim:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+				directive set /cacheWrapper/cim:rsc -INTERLEAVE $assoc
+				directive set /cacheWrapper/cdm:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
+				directive set /cacheWrapper/cdm:rsc -INTERLEAVE $assoc
+			}
+			go architect
+			set read_mem [cycle find_op *read_mem* -all true]
+			set write_mem [cycle find_op *write_mem* -all true]
+			for { set i 1 } { $i < [llength $read_mem] } { incr i } {
+				cycle add [lindex $read_mem $i-1] -from [lindex $read_mem $i] -equal 0
+			}
+			cycle add [lindex $read_mem $i-1] -from [lindex $write_mem 0] -equal 0
+			for { set i 1 } { $i < [llength $write_mem] } { incr i } {
+				cycle add [lindex $write_mem $i-1] -from [lindex $write_mem $i] -equal 0
+			}
+			go extract
+		}
+	}
+}
 """
 
 exploreCore = """dofile func.tcl
@@ -299,7 +375,10 @@ def doCore(doCache, cachesize, associativity, blocksize, policy, explore=False, 
 	core += endScript.format(**locals())
 	
 	if explore:
-		core += exploreCore
+		if cacheonly:
+			core += exploreCache
+		else:
+			core += exploreCore
 		
 	with open("{}.tcl".format(name), "w") as f:
 		f.write(core)
@@ -365,5 +444,15 @@ if __name__ == "__main__":
 	# ~ with open("output.log", "w") as output:
 		# ~ subprocess.check_call(["./testbench.sim"], stdout=output)
 
-	doCore(not nocache, cachesize, associativity, blocksize, policy, args.explore, args.name, args.cache_only)
+	if args.explore and args.cache_only:
+		processes = []
+		args.shell = True
+		for blocksize in (8,16,32,64):
+			processes.append(Process(target=doCore, args=(not nocache, cachesize, associativity, blocksize, policy, args.explore, "explCache{}".format(blocksize), args.cache_only)))
+			processes[-1].start()
+		
+		while any(p.join() for p in processes):
+			sleep(1)
+	else:
+		doCore(not nocache, cachesize, associativity, blocksize, policy, args.explore, args.name, args.cache_only)
 	
