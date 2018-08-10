@@ -21,7 +21,11 @@
 #endif
 
 #ifndef Associativity
-#define Associativity               4
+  #if Policy == RP_NONE
+    #define Associativity           1
+  #else
+    #define Associativity           4
+  #endif
 #else
 #if Associativity == 0
 #undef Associativity
@@ -59,10 +63,28 @@
 #define setOffset(address, offset)  (address = ((offset) << blockshift) | (address & ~blockmask))
 #endif
 
-enum {
-    MemtoCache = 0,
-    CachetoMem = 1
-};
+#if Policy == RP_FIFO
+#define IPolicyWidth         (ac::log2_ceil<Associativity>::val)
+#define DPolicyWidth         (ac::log2_ceil<Associativity>::val)
+#elif Policy == RP_LRU
+#define IPolicyWidth         (Associativity * (Associativity-1) / 2)
+#define DPolicyWidth         (Associativity * (Associativity-1) / 2)
+#else
+#define IPolicyWidth         0      // ok as long as it's protected by #if when used in slc method
+#define DPolicyWidth         0
+#endif
+#define ICacheControlWidth   (Associativity*(32-tagshift+1)+IPolicyWidth)   // tag + valid bit
+#define DCacheControlWidth   (Associativity*(32-tagshift+2)+DPolicyWidth)   // tag + valid + dirty bit
+#define ibourrage            ((1 << ac::log2_ceil<ICacheControlWidth>::val) - ICacheControlWidth)
+#define dbourrage            ((1 << ac::log2_ceil<DCacheControlWidth>::val) - DCacheControlWidth)
+
+#ifndef __HLS__
+#define IWidth               (1 << ac::log2_ceil<ICacheControlWidth>::val)
+#define DWidth               (1 << ac::log2_ceil<DCacheControlWidth>::val)
+#else       // 128 instead of 1 << ac::log2_ceil<XCacheControlWidth>::val because st mem is 128 bits
+#define IWidth               128
+#define DWidth               128
+#endif
 
 namespace IState {
 enum IState {
@@ -84,29 +106,6 @@ enum DState {
     DStates
 };
 }
-
-#if Policy == RP_FIFO
-#define IPolicyWidth         (ac::log2_ceil<Associativity>::val)
-#define DPolicyWidth         (ac::log2_ceil<Associativity>::val)
-#elif Policy == RP_LRU
-#define IPolicyWidth         (Associativity * (Associativity-1) / 2)
-#define DPolicyWidth         (Associativity * (Associativity-1) / 2)
-#elif Policy == RP_RANDOM
-#define IPolicyWidth         0      // ok as long as it's protected by #if when used in slc method
-#define DPolicyWidth         0
-#endif
-#define ICacheControlWidth   (Associativity*(32-tagshift+1)+IPolicyWidth)   // tag + valid bit
-#define DCacheControlWidth   (Associativity*(32-tagshift+2)+DPolicyWidth)   // tag + valid + dirty bit
-#define ibourrage            ((1 << ac::log2_ceil<ICacheControlWidth>::val) - ICacheControlWidth)
-#define dbourrage            ((1 << ac::log2_ceil<DCacheControlWidth>::val) - DCacheControlWidth)
-
-#ifndef __HLS__
-#define IWidth               (1 << ac::log2_ceil<ICacheControlWidth>::val)
-#define DWidth               (1 << ac::log2_ceil<DCacheControlWidth>::val)
-#else       // 128 instead of 1 << ac::log2_ceil<XCacheControlWidth>::val because st mem is 128 bits
-#define IWidth               128
-#define DWidth               128
-#endif
 
 struct ISetControl
 {
