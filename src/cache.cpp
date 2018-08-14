@@ -286,6 +286,9 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
             ictrl.state = IState::Idle;
 
             update_policy(ictrl);
+
+            insvalid = true;
+            cachepc = address;
         }
         else    // not found or invalid
         {
@@ -307,10 +310,9 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
             instruction = ictrl.valuetowrite;
 
             insert_policy(ictrl);
-        }
 
-        insvalid = true;
-        cachepc = address;
+            insvalid = false;
+        }
         break;
     case IState::StoreControl:
         #pragma hls_unroll yes
@@ -349,6 +351,10 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
         if(ictrl.memcnt == MEMORY_READ_LATENCY)
         {
             data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
+            instruction = ictrl.valuetowrite;
+            cachepc = ictrl.workAddress;
+            cachepc.set_slc(2, ictrl.i);
+            insvalid = true;
 
             if(++ictrl.i != getOffset(ictrl.workAddress))
             {
@@ -358,10 +364,6 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
                 setOffset(bytead, ictrl.i);
 
                 ictrl.valuetowrite = imem[bytead >> 2];
-                instruction = ictrl.valuetowrite;
-                cachepc = ictrl.workAddress;
-                cachepc.set_slc(2, ictrl.i);
-                insvalid = true;
             }
             else
             {
