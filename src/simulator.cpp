@@ -510,7 +510,9 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         sys_status = 1;
         break;
     default:
-        fprintf(stderr, "Syscall : Unknown system call, %d\n", syscallId.to_int());
+        fprintf(stderr, "Syscall : Unknown system call, %d (%x) with arguments :\n", syscallId.to_int(), syscallId.to_int());
+        fprintf(stderr, "%d (%x)\n%d (%x)\n%d (%x)\n%d (%x)\n", arg1.to_int(), arg1.to_int(), arg2.to_int(), arg2.to_int(),
+                arg3.to_int(), arg3.to_int(), arg4.to_int(), arg4.to_int());
         sys_status = 1;
         break;
     }
