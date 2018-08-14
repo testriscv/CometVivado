@@ -509,6 +509,18 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         fprintf(stderr, "Syscall : SYS_dup\n");
         sys_status = 1;
         break;
+
+    // Custom syscalls
+    case SYS_threadstart:
+        dbgsys("SYS_threadstart id %d fn @%06x args @%06x\n", arg1.to_int(), arg2.to_int(), arg3.to_int());
+        result = 0;
+        break;
+    case SYS_nbcore:
+        dbgsys("SYS_nbcore\n");
+        result = 1;
+        break;
+
+
     default:
         fprintf(stderr, "Syscall : Unknown system call, %d (%x) with arguments :\n", syscallId.to_int(), syscallId.to_int());
         fprintf(stderr, "%d (%x)\n%d (%x)\n%d (%x)\n%d (%x)\n", arg1.to_int(), arg1.to_int(), arg2.to_int(), arg2.to_int(),

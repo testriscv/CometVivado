@@ -290,7 +290,7 @@ void DC(Core& core
         lhs = core.REG[rs1];
         rhs = core.REG[rs2];
 
-        realInstruction = true;
+        realInstruction = core.ftoDC.realInstruction;
 
         switch(opCode)
         {
@@ -435,8 +435,9 @@ void DC(Core& core
             }
             else simul(if(funct3 != 0x4))
             {
+                immediate &= 0x00000FFF;
                 if(funct3.slc<1>(2))
-                    lhs = rs1;
+                    rhs = rs1;
                 // handle the case for rd = 0 for CSRRW
                 // handle WIRI/WARL/etc.
                 fprintf(stderr, "%03x :     %x  %x  %x  %x\n", (int)immediate, (int)immediate.slc<2>(10), (int)immediate.slc<2>(8),
@@ -450,25 +451,25 @@ void DC(Core& core
                             switch(immediate.slc<3>(0))
                             {
                             case 0:
-                                rhs = core.csrs.mstatus;
+                                lhs = core.csrs.mstatus;
                                 break;
                             case 1:
-                                rhs = core.csrs.misa;
+                                lhs = core.csrs.misa;
                                 break;
                             case 2:
-                                rhs = core.csrs.medeleg;
+                                lhs = core.csrs.medeleg;
                                 break;
                             case 3:
-                                rhs = core.csrs.mideleg;
+                                lhs = core.csrs.mideleg;
                                 break;
                             case 4:
-                                rhs = core.csrs.mie;
+                                lhs = core.csrs.mie;
                                 break;
                             case 5:
-                                rhs = core.csrs.mtvec;
+                                lhs = core.csrs.mtvec;
                                 break;
                             case 6:
-                                rhs = core.csrs.mcounteren;
+                                lhs = core.csrs.mcounteren;
                                 break;
                             default:
                                 dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
@@ -480,19 +481,19 @@ void DC(Core& core
                             switch(immediate.slc<3>(0))
                             {
                             case 0:
-                                rhs = core.csrs.mscratch;
+                                lhs = core.csrs.mscratch;
                                 break;
                             case 1:
-                                rhs = core.csrs.mepc;
+                                lhs = core.csrs.mepc;
                                 break;
                             case 2:
-                                rhs = core.csrs.mcause;
+                                lhs = core.csrs.mcause;
                                 break;
                             case 3:
-                                rhs = core.csrs.mtval;
+                                lhs = core.csrs.mtval;
                                 break;
                             case 4:
-                                rhs = core.csrs.mip;
+                                lhs = core.csrs.mip;
                                 break;
                             default:
                                 dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
@@ -508,16 +509,16 @@ void DC(Core& core
                         switch(foo)
                         {
                         case 0:
-                            rhs = core.csrs.mcycle.slc<32>(0);
+                            lhs = core.csrs.mcycle.slc<32>(0);
                             break;
                         case 1:
-                            rhs = core.csrs.minstret.slc<32>(0);
+                            lhs = core.csrs.minstret.slc<32>(0);
                             break;
                         case 2:
-                            rhs = core.csrs.mcycle.slc<32>(32);
+                            lhs = core.csrs.mcycle.slc<32>(32);
                             break;
                         case 3:
-                            rhs = core.csrs.minstret.slc<32>(32);
+                            lhs = core.csrs.minstret.slc<32>(32);
                             break;
                         }
                     }
@@ -526,16 +527,16 @@ void DC(Core& core
                         switch(immediate.slc<2>(0))
                         {
                         case 1:
-                            rhs = core.csrs.mvendorid;
+                            lhs = core.csrs.mvendorid;
                             break;
                         case 2:
-                            rhs = core.csrs.marchid;
+                            lhs = core.csrs.marchid;
                             break;
                         case 3:
-                            rhs = core.csrs.mimpid;
+                            lhs = core.csrs.mimpid;
                             break;
                         case 0:
-                            rhs = hartid;
+                            lhs = hartid;
                             break;
                         }
                     }
@@ -555,8 +556,6 @@ void DC(Core& core
                                         pc.to_int(), instruction.to_int()));
             break;
         }
-        core.ctrl.freeze_fetch = 0;
-        realInstruction = core.ftoDC.realInstruction;
     }
 
     core.ctrl.prev_opCode[0] = opCode;
@@ -830,34 +829,31 @@ void Ex(Core& core
             break;
             // lhs is from rs1, rhs is from csr
         case RISCV_SYSTEM_CSRRW:
-            core.extoMem.datac = lhs;       // written back to csr
-            //fprintf(stderr, "CSRRW @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.datac = rhs;       // written back to csr
+            core.extoMem.result = lhs;      // written back to rd
             break;
         case RISCV_SYSTEM_CSRRS:
             core.extoMem.datac = lhs | rhs;
-            //fprintf(stderr, "CSRRS @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.result = lhs;
             break;
         case RISCV_SYSTEM_CSRRC:
-            core.extoMem.datac = ((ac_int<32, false>)~lhs) & rhs;
-            //fprintf(stderr, "CSRRC @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.datac = lhs & ((ac_int<32, false>)~rhs);
+            core.extoMem.result = lhs;
             break;
         case RISCV_SYSTEM_CSRRWI:
-            core.extoMem.datac = lhs;
-            //fprintf(stderr, "CSRRWI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.datac = rhs;
+            core.extoMem.result = lhs;
             break;
         case RISCV_SYSTEM_CSRRSI:
             core.extoMem.datac = lhs | rhs;
-            //fprintf(stderr, "CSRRSI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.result = lhs;
             break;
         case RISCV_SYSTEM_CSRRCI:
-            core.extoMem.datac = ((ac_int<32, false>)~lhs) & rhs;
-            //fprintf(stderr, "CSRRCI @%03x    @%06x\n", core.dctoEx.memValue.to_int(), core.dctoEx.pc.to_int());
+            core.extoMem.datac = lhs & ((ac_int<32, false>)~rhs);
+            core.extoMem.result = lhs;
             break;
         EXDEFAULT();
         }
-        #ifdef __HLS__
-            core.extoMem.result = rhs;      // written back to rd
-        #endif
         break;
     EXDEFAULT();
     }
@@ -1190,7 +1186,6 @@ void doCore(ac_int<32, false> startpc, bool &exit,
         simul(sim->setCore(&core, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));)
     }
 
-    simul(uint64_t oldcycles = core.csrs.mcycle;)
     core.csrs.mcycle += 1;
 
     doWB(core);
@@ -1260,26 +1255,9 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     // cache down generates less hardware and is less cycle costly(20%?)
     // but cache up has a slightly better critical path
     dcache(core.dctrl, memdctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
-           core.writeenable, core.writevalue, core.readvalue, core.datavalid
-       #ifndef __HLS__
-           , core.csrs.mcycle
-       #endif
-           );
-    icache(core.ictrl, memictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid
-       #ifndef __HLS__
-           , core.csrs.mcycle
-       #endif
-           );
+           core.writeenable, core.writevalue, core.readvalue, core.datavalid);
+    icache(core.ictrl, memictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid);
 #endif
-
-
-    simul(
-    int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
-    if(oldcycles + M < core.csrs.mcycle)
-    {
-        core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
-    }
-    )
 
 
     // riscv specification v2.2 p11
@@ -1297,10 +1275,24 @@ void doStep(ac_int<32, false> startpc, bool &exit,
         #endif
             )
 {
+    simul(uint64_t oldcycles = core.csrs.mcycle;)
+
     doCore<0>(startpc, exit, im, dm,
               cim, cdm, memictrl, memdctrl
           #ifndef __HLS__
               , sim
           #endif
               );
+
+    // doCore<1>(...)
+    // directory cache control
+
+
+    simul(
+    int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
+    if(oldcycles + M < core.csrs.mcycle)
+    {
+        core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
+    }
+    )
 }

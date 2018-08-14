@@ -24,6 +24,7 @@ CCS_MAIN(int argc, char** argv)
     printf("Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
     printf("Parameters : %5d   %8d   %13d   %4d   %6d   %13d    %13d\n", Size, 4*Blocksize, Associativity, Sets, Policy, ICacheControlWidth, DCacheControlWidth);
 #endif
+
     const char* binaryFile = 0;
     const char* inputFile = 0;
     const char* outputFile = 0;

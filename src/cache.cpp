@@ -241,11 +241,7 @@ void insert_policy(DCacheControl& dctrl)
 void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],                         // control
             unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address,                                                          // from cpu
-            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                        // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           )
+            ac_int<32, false>& cachepc, int& instruction, bool& insvalid)                       // to cpu
 {
     if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(address))  // different way but same set keeps same control, except for data......
     {
@@ -307,7 +303,6 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
                 coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
                       (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
                 ictrl.valuetowrite = imem[wordad];
-                simul(cycles += MEMORY_READ_LATENCY);
                 // critical word first
                 instruction = ictrl.valuetowrite;
 
@@ -362,7 +357,6 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
             setOffset(bytead, ictrl.i);
 
             ictrl.valuetowrite = imem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
             instruction = ictrl.valuetowrite;
             cachepc = ictrl.workAddress;
             cachepc.set_slc(2, ictrl.i);
@@ -395,11 +389,7 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
 void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],                         // control
             unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid                                                          // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           )
+            int& read, bool& datavalid)                                                          // to cpu
 {
     /*if(dcacheenable && datavalid)   // we can avoid storing control if we hit same set multiple times in a row
     {
@@ -491,7 +481,6 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
                     coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
                           (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 );
                     dctrl.valuetowrite = dmem[wordad];
-                    simul(cycles += MEMORY_READ_LATENCY);
                     // critical word first
                     if(writeenable)
                     {
@@ -576,7 +565,6 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
         setSet(bytead, dctrl.currentset);
         setOffset(bytead, dctrl.i);
         dmem[bytead >> 2] = dctrl.valuetowrite;
-        simul(cycles += MEMORY_WRITE_LATENCY);
 
         if(++dctrl.i)
             dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
@@ -601,7 +589,6 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
             setOffset(bytead, dctrl.i);
 
             dctrl.valuetowrite = dmem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
         }
         else
         {
