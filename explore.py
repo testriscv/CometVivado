@@ -221,11 +221,11 @@ def mediabenchmark():
 		pass
 		
 	with open("res.txt", "a") as output:
-		for p in progs:
-			for el in res[p]:
-				print(p, *el, file=output)
+		for b in benchs:
+			for el in res[b]:
+				print(b, *el, file=output)
 	with open("mediabench.txt", "w") as output:
-		for p in progs:
-			for el in res[p]:
-				print(p, *el, file=output)
+		for b in benchs:
+			for el in res[b]:
+				print(b, *el, file=output)
 

@@ -260,6 +260,7 @@ void DC(Core& core
         /// duplicate instruction to remove freeze fetch
         /// and the dependency from dc to ft
         /// but how to handle it?
+        /// make freeze_fetch an array as well, and retain next instruction?
 
         core.ctrl.freeze_fetch = 1;
         opCode = RISCV_OPI;
@@ -1218,7 +1219,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     #ifdef __HLS__
                    , exit
     #endif
-                   );
+          );
         Ft(core, im
    #ifndef __HLS__
           , core.csrs.mcycle
