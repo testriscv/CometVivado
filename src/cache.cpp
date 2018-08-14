@@ -241,11 +241,7 @@ void insert_policy(DCacheControl& dctrl)
 void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],                         // control
             unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address,                                                          // from cpu
-            ac_int<32, false>& cachepc, int& instruction, bool& insvalid                        // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           )
+            ac_int<32, false>& cachepc, int& instruction, bool& insvalid)                       // to cpu
 {
     if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(address))  // different way but same set keeps same control, except for data......
     {
@@ -256,67 +252,65 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
     switch(ictrl.state)
     {
     case IState::Idle:
+        ictrl.currentset = getSet(address);
+        ictrl.i = getOffset(address);
+
+        if(!ictrl.ctrlLoaded)
         {
-            ictrl.currentset = getSet(address);
-            ictrl.i = getOffset(address);
-
-            if(!ictrl.ctrlLoaded)
-            {
-                ac_int<IWidth, false> setctrl = memictrl[ictrl.currentset];
-                ictrl.setctrl.bourrage = setctrl.slc<ibourrage>(ICacheControlWidth);
-                #pragma hls_unroll yes
-                loadiset:for(int i = 0; i < Associativity; ++i)
-                {
-                    ictrl.setctrl.tag[i] = setctrl.slc<32-tagshift>(i*(32-tagshift));
-                    ictrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
-                }
-            #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
-                ictrl.setctrl.policy = setctrl.slc<IPolicyWidth>(Associativity*(32-tagshift+1));
-            #endif
-            }
-
+            ac_int<IWidth, false> setctrl = memictrl[ictrl.currentset];
+            ictrl.setctrl.bourrage = setctrl.slc<ibourrage>(ICacheControlWidth);
             #pragma hls_unroll yes
-            loadidata:for(int i = 0; i < Associativity; ++i)    // force reload because offset may have changed
+            loadiset:for(int i = 0; i < Associativity; ++i)
             {
-                ictrl.setctrl.data[i] = data[ictrl.currentset][ictrl.i][i];
+                ictrl.setctrl.tag[i] = setctrl.slc<32-tagshift>(i*(32-tagshift));
+                ictrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
             }
-
-            ictrl.workAddress = address;
-            ictrl.ctrlLoaded = true;
-
-            if(find(ictrl, address))
-            {
-                instruction = ictrl.setctrl.data[ictrl.currentway];
-
-                ictrl.state = IState::Idle;
-
-                update_policy(ictrl);
-            }
-            else    // not found or invalid
-            {
-                select(ictrl);
-                coredebug("cim  @%06x   not found or invalid   ", address.to_int());
-                ictrl.setctrl.tag[ictrl.currentway] = getTag(address);
-
-                ictrl.state = IState::Fetch;
-                ictrl.setctrl.valid[ictrl.currentway] = false;
-                ictrl.i = getOffset(address);
-                ac_int<32, false> wordad = 0;
-                wordad.set_slc(0, address.slc<30>(2));
-                wordad.set_slc(30, (ac_int<2, false>)0);
-                coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
-                      (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
-                ictrl.valuetowrite = imem[wordad];
-                simul(cycles += MEMORY_READ_LATENCY);
-                // critical word first
-                instruction = ictrl.valuetowrite;
-
-                insert_policy(ictrl);
-            }
-
-            insvalid = true;
-            cachepc = address;
+        #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
+            ictrl.setctrl.policy = setctrl.slc<IPolicyWidth>(Associativity*(32-tagshift+1));
+        #endif
         }
+
+        #pragma hls_unroll yes
+        loadidata:for(int i = 0; i < Associativity; ++i)    // force reload because offset may have changed
+        {
+            ictrl.setctrl.data[i] = data[ictrl.currentset][ictrl.i][i];
+        }
+
+        ictrl.workAddress = address;
+        ictrl.ctrlLoaded = true;
+
+        if(find(ictrl, address))
+        {
+            instruction = ictrl.setctrl.data[ictrl.currentway];
+
+            ictrl.state = IState::Idle;
+
+            update_policy(ictrl);
+        }
+        else    // not found or invalid
+        {
+            select(ictrl);
+            coredebug("cim  @%06x   not found or invalid   ", address.to_int());
+            ictrl.setctrl.tag[ictrl.currentway] = getTag(address);
+
+            ictrl.state = IState::Fetch;
+            ictrl.setctrl.valid[ictrl.currentway] = false;
+            ictrl.i = getOffset(address);
+            ac_int<32, false> wordad = 0;
+            wordad.set_slc(0, address.slc<30>(2));
+            wordad.set_slc(30, (ac_int<2, false>)0);
+            coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
+                  (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
+            ictrl.valuetowrite = imem[wordad];
+            ictrl.memcnt = 1;
+            // critical word first
+            instruction = ictrl.valuetowrite;
+
+            insert_policy(ictrl);
+        }
+
+        insvalid = true;
+        cachepc = address;
         break;
     case IState::StoreControl:
         #pragma hls_unroll yes
@@ -352,31 +346,40 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
         insvalid = false;
         break;
     case IState::Fetch:
-        data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
-
-        if(++ictrl.i != getOffset(ictrl.workAddress))
+        if(ictrl.memcnt == MEMORY_READ_LATENCY)
         {
-            ac_int<32, false> bytead = 0;
-            setTag(bytead, ictrl.setctrl.tag[ictrl.currentway]);
-            setSet(bytead, ictrl.currentset);
-            setOffset(bytead, ictrl.i);
+            data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
 
-            ictrl.valuetowrite = imem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
-            instruction = ictrl.valuetowrite;
-            cachepc = ictrl.workAddress;
-            cachepc.set_slc(2, ictrl.i);
-            insvalid = true;
+            if(++ictrl.i != getOffset(ictrl.workAddress))
+            {
+                ac_int<32, false> bytead = 0;
+                setTag(bytead, ictrl.setctrl.tag[ictrl.currentway]);
+                setSet(bytead, ictrl.currentset);
+                setOffset(bytead, ictrl.i);
+
+                ictrl.valuetowrite = imem[bytead >> 2];
+                instruction = ictrl.valuetowrite;
+                cachepc = ictrl.workAddress;
+                cachepc.set_slc(2, ictrl.i);
+                insvalid = true;
+            }
+            else
+            {
+                ictrl.state = IState::Idle;
+                ictrl.setctrl.valid[ictrl.currentway] = true;
+                ictrl.ctrlLoaded = true;
+                //ictrl.currentset = getSet(address);  //use workaddress?
+                //ictrl.workAddress = address;
+                insvalid = false;
+            }
+            ictrl.memcnt = 0;
         }
         else
         {
-            ictrl.state = IState::Idle;
-            ictrl.setctrl.valid[ictrl.currentway] = true;
-            ictrl.ctrlLoaded = true;
-            //ictrl.currentset = getSet(address);  //use workaddress?
-            //ictrl.workAddress = address;
+            ictrl.memcnt++;
             insvalid = false;
         }
+
         break;
     default:
         insvalid = false;
@@ -395,11 +398,7 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
 void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],                         // control
             unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid                                                          // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           )
+            int& read, bool& datavalid)                                                          // to cpu
 {
     /*if(dcacheenable && datavalid)   // we can avoid storing control if we hit same set multiple times in a row
     {
@@ -491,7 +490,7 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
                     coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
                           (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 );
                     dctrl.valuetowrite = dmem[wordad];
-                    simul(cycles += MEMORY_READ_LATENCY);
+                    dctrl.memcnt = 1;
                     // critical word first
                     if(writeenable)
                     {
@@ -559,6 +558,7 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
     case DState::FirstWriteBack:
     {   //bracket for scope and allow compilation
         dctrl.i = 0;
+        dctrl.memcnt = 0;
         ac_int<32, false> bytead = 0;
         setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
         setSet(bytead, dctrl.currentset);
@@ -570,47 +570,57 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
         break;
     }
     case DState::WriteBack:
-    {   //bracket for scope and allow compilation
-        ac_int<32, false> bytead = 0;
-        setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
-        setSet(bytead, dctrl.currentset);
-        setOffset(bytead, dctrl.i);
-        dmem[bytead >> 2] = dctrl.valuetowrite;
-        simul(cycles += MEMORY_WRITE_LATENCY);
-
-        if(++dctrl.i)
-            dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
-        else
-        {
-            dctrl.state = DState::StoreControl;
-            dctrl.setctrl.dirty[dctrl.currentway] = false;
-            //gdebug("end of writeback\n");
-        }
-
-        datavalid = false;
-        break;
-    }
-    case DState::Fetch:
-        data[dctrl.currentset][dctrl.i][dctrl.currentway] = dctrl.valuetowrite;
-
-        if(++dctrl.i != getOffset(dctrl.workAddress))
-        {
+        if(dctrl.memcnt == MEMORY_WRITE_LATENCY)
+        {   //bracket for scope and allow compilation
             ac_int<32, false> bytead = 0;
             setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
             setSet(bytead, dctrl.currentset);
             setOffset(bytead, dctrl.i);
+            dmem[bytead >> 2] = dctrl.valuetowrite;
 
-            dctrl.valuetowrite = dmem[bytead >> 2];
-            simul(cycles += MEMORY_READ_LATENCY);
+            if(++dctrl.i)
+                dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
+            else
+            {
+                dctrl.state = DState::StoreControl;
+                dctrl.setctrl.dirty[dctrl.currentway] = false;
+                //gdebug("end of writeback\n");
+            }
+            dctrl.memcnt = 0;
         }
         else
         {
-            dctrl.state = DState::StoreControl;
-            dctrl.setctrl.valid[dctrl.currentway] = true;
-            update_policy(dctrl);
-            //gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            dctrl.memcnt++;
         }
+        datavalid = false;
+        break;
+    case DState::Fetch:
+        if(dctrl.memcnt == MEMORY_READ_LATENCY)
+        {
+            data[dctrl.currentset][dctrl.i][dctrl.currentway] = dctrl.valuetowrite;
 
+            if(++dctrl.i != getOffset(dctrl.workAddress))
+            {
+                ac_int<32, false> bytead = 0;
+                setTag(bytead, dctrl.setctrl.tag[dctrl.currentway]);
+                setSet(bytead, dctrl.currentset);
+                setOffset(bytead, dctrl.i);
+
+                dctrl.valuetowrite = dmem[bytead >> 2];
+            }
+            else
+            {
+                dctrl.state = DState::StoreControl;
+                dctrl.setctrl.valid[dctrl.currentway] = true;
+                update_policy(dctrl);
+                //gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
+            }
+            dctrl.memcnt = 0;
+        }
+        else
+        {
+            dctrl.memcnt++;
+        }
         datavalid = false;
         break;
     default:

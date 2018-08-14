@@ -141,6 +141,9 @@ struct ICacheControl
     ac_int<ac::log2_ceil<Associativity>::val, false> currentway;
 #endif
 
+    // counter to simulate the slow main memory
+    ac_int<ac::log2_ceil<AC_MAX(MEMORY_READ_LATENCY, MEMORY_WRITE_LATENCY)>::val, false> memcnt;
+
     ISetControl setctrl;
 };
 
@@ -178,25 +181,21 @@ struct DCacheControl
     ac_int<ac::log2_ceil<Associativity>::val, false> currentway;
 #endif
 
+    // counter to simulate the slow main memory
+    ac_int<ac::log2_ceil<AC_MAX(MEMORY_READ_LATENCY, MEMORY_WRITE_LATENCY)>::val, false> memcnt;
+
     DSetControl setctrl;
 };
 
 void icache(ICacheControl& ctrl, ac_int<IWidth, false> memctrl[Sets],                              // control
             unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> iaddress,                                                         // from cpu
-            ac_int<32, false> &cachepc, int& instruction, bool& insvalid                        // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           );
+            ac_int<32, false> &cachepc, int& instruction, bool& insvalid);                      // to cpu
+
 void dcache(DCacheControl& ctrl, ac_int<DWidth, false> memctrl[Sets],                              // control
             unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
             ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid                                                          // to cpu
-#ifndef __HLS__
-           , ac_int<64, false>& cycles
-#endif
-           );
+            int& read, bool& datavalid);                                                        // to cpu
 
 // wrapper to synthesize caches only
 void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
