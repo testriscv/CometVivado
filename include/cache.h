@@ -147,6 +147,14 @@ struct ICacheControl
     ISetControl setctrl;
 };
 
+struct ICacheRequest
+{
+    ac_int<32, false> iaddress;
+    ac_int<32, false> cachepc;
+    int instruction;
+    bool insvalid;
+};
+
 struct DSetControl
 {
     unsigned int data[Associativity];
@@ -185,6 +193,18 @@ struct DCacheControl
     ac_int<ac::log2_ceil<AC_MAX(MEMORY_READ_LATENCY, MEMORY_WRITE_LATENCY)>::val, false> memcnt;
 
     DSetControl setctrl;
+};
+
+struct DCacheRequest
+{
+    ac_int<32, false> address;
+    ac_int<2, false> datasize;
+    bool signenable;
+    bool dcacheenable;
+    bool writeenable;
+    int writevalue;
+    int& read;
+    bool& datavalid;
 };
 
 void icache(ICacheControl& ctrl, ac_int<IWidth, false> memctrl[Sets],                              // control

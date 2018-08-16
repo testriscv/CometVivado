@@ -256,6 +256,13 @@ extern const char* riscvNames[8];
 #define SYS_getdents            61
 #define SYS_dup                 23
 
+// Custom syscall
+#define SYS_threadstart         0x1234
+#define SYS_nbcore              0x4321
+// end of custom syscall
+
+
+// Translation of flags from riscv to local machine
 #define SYS_O_RDONLY            0x0
 #define SYS_O_WRONLY            0x1
 #define SYS_O_RDWR              0x2
