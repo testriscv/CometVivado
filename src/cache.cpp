@@ -643,7 +643,8 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         break;
     }
 
-    dreply = {read, datavalid};
+    dreply.readvalue = read;
+    dreply.datavalid = datavalid;
 
     simul(if(datavalid)
     {

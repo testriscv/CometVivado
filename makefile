@@ -10,7 +10,7 @@ S=./src
 S_FILES=$(foreach f, $(FILES), $(S)/$f)
 HEADER=cache.h core.h elf.h elfFile.h portability.h riscvISA.h simulator.h
 I_HEADER=$(foreach f, $(HEADER), $(INC)/$f)
-GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES)
+GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++98
 
 all: $(S_FILES) $(I_HEADER)
 	g++ -O3 -o comet.sim $(GENERIC)
