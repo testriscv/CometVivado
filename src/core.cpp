@@ -41,9 +41,9 @@ void Ft(Core& core
     }
     else
     {
-        if(core.insvalid && core.cachepc == core.pc)
+        if(core.ireply.insvalid && core.ireply.cachepc == core.pc)
         {
-            core.ftoDC.instruction = core.instruction;
+            core.ftoDC.instruction = core.ireply.instruction;
             core.ftoDC.pc = core.pc;
             core.ftoDC.realInstruction = true;
 
@@ -95,8 +95,8 @@ void Ft(Core& core
         core.ftoDC.nextpc = next_pc;
     }
 
-    core.iaddress = core.pc;
-    gdebug("%06x\n", core.iaddress.to_int());
+    core.irequest.address = core.pc;
+    gdebug("%06x\n", core.irequest.address.to_int());
 
     simul(if(core.ftoDC.realInstruction)
     {
@@ -885,17 +885,17 @@ void do_Mem(Core& core
     if(core.ctrl.cachelock)
     {
 #ifndef nocache
-        if(core.datavalid)
+        if(core.dreply.datavalid)
         {
             core.memtoWB.pc = core.extoMem.pc;
             simul(core.memtoWB.instruction = core.extoMem.instruction;)
             core.memtoWB.rd = core.extoMem.rd;
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            if(!core.writeenable)
-                core.memtoWB.result = core.readvalue;
+            if(!core.drequest.writeenable)
+                core.memtoWB.result = core.dreply.readvalue;
             core.ctrl.cachelock = false;
-            core.dcacheenable = false;
-            core.writeenable = false;
+            core.drequest.dcacheenable = false;
+            core.drequest.writeenable = false;
         }
         else
         {
@@ -905,7 +905,7 @@ void do_Mem(Core& core
             core.memtoWB.realInstruction = false;
         }
 #else
-        data_memory[core.daddress >> 2] = core.dctrl.valuetowrite;
+        data_memory[core.drequest.address >> 2] = core.drequest.writevalue;
         core.ctrl.cachelock = false;
 
         core.memtoWB.realInstruction = core.extoMem.realInstruction;
@@ -931,12 +931,12 @@ void do_Mem(Core& core
         {
         case RISCV_LD:
         {
-            core.datasize = core.extoMem.funct3.slc<2>(0);
-            core.signenable = !core.extoMem.funct3.slc<1>(2);
+            core.drequest.datasize = core.extoMem.funct3.slc<2>(0);
+            core.drequest.signenable = !core.extoMem.funct3.slc<1>(2);
 #ifndef nocache
-            core.daddress = core.extoMem.result;
-            core.dcacheenable = true;
-            core.writeenable = false;
+            core.drequest.address = core.extoMem.result;
+            core.drequest.dcacheenable = true;
+            core.drequest.writeenable = false;
             core.ctrl.cachelock = true;
 
             core.memtoWB.pc = 0;
@@ -951,18 +951,18 @@ void do_Mem(Core& core
 
             ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
             simul(cycles += MEMORY_READ_LATENCY;)
-            formatread(core.extoMem.result, core.datasize, core.signenable, mem_read);
+            formatread(core.extoMem.result, core.drequest.datasize, core.drequest.signenable, mem_read);
             core.memtoWB.result = mem_read;
 
             // data                                             size                @address
-            coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.signenable?"true":"false");
+            coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
+                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.drequest.signenable?"true":"false");
                    // what is in memory                  what is actually read    sign extension
 #endif
             simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
             {
                 fprintf(stderr, "end here? %lld   @%06x   @%06x R%d\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
-                          core.datasize.to_int());
+                          core.drequest.datasize.to_int());
                 core.ctrl.cachelock = false;
                 core.memtoWB.result = 1;
             })
@@ -970,17 +970,17 @@ void do_Mem(Core& core
         }
         case RISCV_ST:
         {
-            core.datasize = core.extoMem.funct3.slc<2>(0);
-            core.signenable = core.extoMem.funct3.slc<1>(2);
+            core.drequest.datasize = core.extoMem.funct3.slc<2>(0);
+            core.drequest.signenable = core.extoMem.funct3.slc<1>(2);
 
             simul(if(core.extoMem.result >= 0x11000 && core.extoMem.result < 0x11040)
                   fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
-                          core.datasize.to_int(), core.extoMem.datac.to_int());)
+                          core.drequest.datasize.to_int(), core.extoMem.datac.to_int());)
 #ifndef nocache
-            core.daddress = core.extoMem.result;
-            core.dcacheenable = true;
-            core.writeenable = true;
-            core.writevalue = core.extoMem.datac;
+            core.drequest.address = core.extoMem.result;
+            core.drequest.dcacheenable = true;
+            core.drequest.writeenable = true;
+            core.drequest.writevalue = core.extoMem.datac;
             core.ctrl.cachelock = true;
 
             core.memtoWB.pc = 0;
@@ -995,13 +995,13 @@ void do_Mem(Core& core
 
             ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
             simul(cycles += MEMORY_READ_LATENCY;)
-            formatwrite(core.extoMem.result, core.datasize, memory_val, core.extoMem.datac);
+            formatwrite(core.extoMem.result, core.drequest.datasize, memory_val, core.extoMem.datac);
 
-            core.daddress = core.extoMem.result;
-            core.dctrl.valuetowrite = memory_val;   // dctrl is not used anyway
+            core.drequest.address = core.extoMem.result;
+            core.drequest.writevalue = memory_val;   // dctrl is not used anyway
 
             // data                                         size                    @address
-            coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.datasize.to_int(), core.extoMem.result.to_int(),
+            coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
                       data_memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
                    // what was there before                 what we want to write       what is actually written
 
@@ -1175,9 +1175,12 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
-            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
-            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
+        #ifdef nocache
+            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE]
+        #else
+            ICacheRequest& ireq, ICacheReply irep,
+            DCacheRequest& dreq, DCacheReply drep
+        #endif
         #ifndef __HLS__
             , Simulator* sim
         #endif
@@ -1189,104 +1192,110 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     {
         coreinit(core, startpc);
 
-        simul(sim->setCore(&core, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));)
+        simul(sim->setCore(&core);)
     }
 
 #ifdef nocache
     simul(uint64_t oldcycles = core.csrs.mcycle;)
+#else
+    core.ireply = irep;
+    core.dreply = drep;
 #endif
-    core.csrs.mcycle += 1;
 
-    doWB(core);
-    simul(coredebug("%lld ", core.csrs.mcycle.to_int64());
-    for(int i=0; i<32; i++)
+    //if(!core.ctrl.sleep)
     {
-        if(core.REG[i])
-            coredebug("%d:%08x ", i, (int)core.REG[i]);
-    }
-    coredebug("\n");)
+        core.csrs.mcycle += 1;
 
-    do_Mem(core
+        doWB(core);
+        simul(coredebug("%lld ", core.csrs.mcycle.to_int64());
+        for(int i=0; i<32; i++)
+        {
+            if(core.REG[i])
+                coredebug("%d:%08x ", i, (int)core.REG[i]);
+        }
+        coredebug("\n");)
+
+        do_Mem(core
+        #ifdef nocache
+               , dm
+           #ifndef __HLS__
+               , core.csrs.mcycle
+           #endif
+        #endif
+               );
+
+        if(!core.ctrl.cachelock)
+        {
+            Ex(core
+        #ifndef __HLS__
+               , exit, sim
+        #endif
+               );
+            DC<hartid>(core
+        #ifdef __HLS__
+                       , exit
+        #endif
+              );
+            Ft(core
+       #ifdef nocache
+           , im
+           #ifndef __HLS__
+               , core.csrs.mcycle
+           #endif
+       #endif
+              );
+
+            if(core.ctrl.prev_opCode[2] == RISCV_LD)
+                core.ctrl.prev_res[2] = core.memtoWB.result;    // store the loaded value, not the address
+                // this works because we know that we can't have lw a5, x   addi a0, a5, 1
+                // there's always a nop between load and next use of value
+            else
+                core.ctrl.prev_res[2] = core.ctrl.prev_res[1];
+            core.ctrl.prev_res[1] = core.ctrl.prev_res[0];
+
+            // if we had a branch, zeros everything
+            if(core.ctrl.branch[1])
+            {
+                core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
+                core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;  // prevent useless dependencies
+                core.ctrl.branch[2] = core.ctrl.branch[1];
+                core.ctrl.branch[1] = core.ctrl.branch[0] = 0;      // prevent taking wrong branch
+            }
+            else
+            {
+                core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1];
+                core.ctrl.prev_opCode[1] = core.ctrl.prev_opCode[0];
+                core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1];
+                core.ctrl.prev_rds[1] = core.ctrl.prev_rds[0];
+                core.ctrl.branch[2] = core.ctrl.branch[1];
+                core.ctrl.branch[1] = core.ctrl.branch[0];
+            }
+            core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
+        }
+
     #ifdef nocache
-           , dm
-       #ifndef __HLS__
-           , core.csrs.mcycle
-       #endif
-    #endif
-           );
-
-    if(!core.ctrl.cachelock)
-    {
-        Ex(core
-    #ifndef __HLS__
-           , exit, sim
-    #endif
-           );
-        DC<hartid>(core
-    #ifdef __HLS__
-                   , exit
-    #endif
-          );
-        Ft(core
-   #ifdef nocache
-       , im
-       #ifndef __HLS__
-           , core.csrs.mcycle
-       #endif
-   #endif
-          );
-
-        if(core.ctrl.prev_opCode[2] == RISCV_LD)
-            core.ctrl.prev_res[2] = core.memtoWB.result;    // store the loaded value, not the address
-            // this works because we know that we can't have lw a5, x   addi a0, a5, 1
-            // there's always a nop between load and next use of value
-        else
-            core.ctrl.prev_res[2] = core.ctrl.prev_res[1];
-        core.ctrl.prev_res[1] = core.ctrl.prev_res[0];
-
-        // if we had a branch, zeros everything
-        if(core.ctrl.branch[1])
+        simul(
+        int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
+        if(oldcycles + M < core.csrs.mcycle)
         {
-            core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
-            core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1] = 0;  // prevent useless dependencies
-            core.ctrl.branch[2] = core.ctrl.branch[1];
-            core.ctrl.branch[1] = core.ctrl.branch[0] = 0;      // prevent taking wrong branch
+            core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
         }
-        else
-        {
-            core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1];
-            core.ctrl.prev_opCode[1] = core.ctrl.prev_opCode[0];
-            core.ctrl.prev_rds[2] = core.ctrl.prev_rds[1];
-            core.ctrl.prev_rds[1] = core.ctrl.prev_rds[0];
-            core.ctrl.branch[2] = core.ctrl.branch[1];
-            core.ctrl.branch[1] = core.ctrl.branch[0];
-        }
-        core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
+        )
+    #endif
+
+        // riscv specification v2.2 p11
+        dbgassert((core.pc.to_int() & 3) == 0, "Misaligned instruction @%06x\n",
+                   core.pc.to_int());
     }
+
 
 
 #ifndef nocache
-    // cache should maybe be all the way up or down
-    // cache down generates less hardware and is less cycle costly(20%?)
-    // but cache up has a slightly better critical path
-    dcache(core.dctrl, memdctrl, dm, cdm, core.daddress, core.datasize, core.signenable, core.dcacheenable,
-           core.writeenable, core.writevalue, core.readvalue, core.datavalid);
-    icache(core.ictrl, memictrl, im, cim, core.iaddress, core.cachepc, core.instruction, core.insvalid);
+    ireq = core.irequest;
+    dreq = core.drequest;
 #endif
 
-#ifdef nocache
-    simul(
-    int M = MEMORY_READ_LATENCY>MEMORY_WRITE_LATENCY?MEMORY_READ_LATENCY:MEMORY_WRITE_LATENCY;
-    if(oldcycles + M < core.csrs.mcycle)
-    {
-        core.csrs.mcycle = oldcycles + M; // we cannot step slower than the worst latency
-    }
-    )
-#endif
 
-    // riscv specification v2.2 p11
-    dbgassert((core.pc.to_int() & 3) == 0, "Misaligned instruction @%06x\n",
-               core.pc.to_int());
 
 }
 
@@ -1299,14 +1308,28 @@ void doStep(ac_int<32, false> startpc, bool &exit,
         #endif
             )
 {
+    static ICacheRequest ireq; static ICacheReply irep;
+    static DCacheRequest dreq; static DCacheReply drep;
 
-
-    doCore<0>(startpc, exit, im, dm,
-              cim, cdm, memictrl, memdctrl
+    doCore<0>(startpc, exit,
+          #ifdef nocache
+              im, dm
+          #else
+              ireq, irep,
+              dreq, drep
+          #endif
           #ifndef __HLS__
               , sim
           #endif
               );
+
+#ifndef nocache
+    // cache should maybe be all the way up or down
+    // cache down generates less hardware and is less cycle costly(20%?)
+    // but cache up has a slightly better critical path
+    dcache(memdctrl, dm, cdm, dreq, drep);
+    icache(memictrl, im, cim, ireq, irep);
+#endif
 
     // doCore<1>(...)
     // directory cache control

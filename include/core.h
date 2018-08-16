@@ -110,6 +110,7 @@ struct CoreCtrl
     bool freeze_fetch;              // used for LD dependencies
     bool cachelock;                 // stall Ft, DC & Ex when cache is working
     bool init;                      // is core initialized?
+    bool sleep;                     // sleep core, can be waken up by other core
 
     // used to break dependencies, because using extoMem or memtoWB
     // implies a dependency from stage ex or mem to dc (i.e. they
@@ -133,24 +134,14 @@ struct Core
     ac_int<32, false> pc;
 
     /// Instruction cache
-    ICacheControl ictrl;
     //unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
-    ac_int<32, false> iaddress;
-    ac_int<32, false> cachepc;
-    int instruction;
-    bool insvalid;
+    ICacheRequest irequest;
+    ICacheReply ireply;
 
     /// Data cache
-    DCacheControl dctrl;
     //unsigned int ddata[Sets][Blocksize][Associativity];   // made external for modelsim
-    ac_int<32, false> daddress;
-    ac_int<2, false> datasize;
-    bool signenable;
-    bool dcacheenable;
-    bool writeenable;
-    int writevalue;
-    int readvalue;
-    bool datavalid;
+    DCacheRequest drequest;
+    DCacheReply dreply;
 };
 
 class Simulator;

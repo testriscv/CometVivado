@@ -149,7 +149,11 @@ struct ICacheControl
 
 struct ICacheRequest
 {
-    ac_int<32, false> iaddress;
+    ac_int<32, false> address;
+};
+
+struct ICacheReply
+{
     ac_int<32, false> cachepc;
     int instruction;
     bool insvalid;
@@ -203,24 +207,27 @@ struct DCacheRequest
     bool dcacheenable;
     bool writeenable;
     int writevalue;
-    int& read;
-    bool& datavalid;
 };
 
-void icache(ICacheControl& ctrl, ac_int<IWidth, false> memctrl[Sets],                              // control
-            unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> iaddress,                                                         // from cpu
-            ac_int<32, false> &cachepc, int& instruction, bool& insvalid);                      // to cpu
+struct DCacheReply
+{
+    int readvalue;
+    bool datavalid;
+};
 
-void dcache(DCacheControl& ctrl, ac_int<DWidth, false> memctrl[Sets],                              // control
-            unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid);                                                        // to cpu
+void icache(ac_int<IWidth, false> memctrl[Sets], unsigned int imem[DRAM_SIZE],  // control & memory
+            unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
+            ICacheRequest irequest, ICacheReply& ireply);                       // from & to cpu
+
+void dcache(ac_int<DWidth, false> memctrl[Sets], unsigned int dmem[DRAM_SIZE],  // control & memory
+            unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
+            DCacheRequest drequest, DCacheReply& dreply);                       // from & to cpu
 
 // wrapper to synthesize caches only
 void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
-                  ac_int<32, false> iaddress, ac_int<32, false>& cachepc, int& ins, bool& insvalid,
+                  ICacheRequest irequest, ICacheReply& ireply,
                   ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
-                  ac_int<32, false> daddress, ac_int<2, false> datasize, bool signenable, bool writeenable, int writevalue, int& read, bool& datavalid);
+                  DCacheRequest drequest, DCacheReply& dreply);
+
 
 #endif // CACHE_H

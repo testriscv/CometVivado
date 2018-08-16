@@ -44,6 +44,7 @@ public:
     void setDM(unsigned int* d);
     void setIM(unsigned int* i);
     void setCore(Core* core, ac_int<DWidth, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
+    void setCore(Core* core);
     void writeBack();
 
     ac_int<32, true>* getInstructionMemory() const;

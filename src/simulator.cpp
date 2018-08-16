@@ -211,6 +211,11 @@ void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cache
     ddata = (unsigned int*)cachedata;
 }
 
+void Simulator::setCore(Core* c)
+{
+    core = c;
+}
+
 ac_int<32, true>* Simulator::getInstructionMemory() const
 {
     return ins_memory;

@@ -1,16 +1,16 @@
 #include "cache.h"
 
 void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
-                  ac_int<32, false> iaddress, ac_int<32, false>& cachepc, int& ins, bool& insvalid,
+                  ICacheRequest irequest, ICacheReply& ireply,
                   ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
-                  ac_int<32, false> daddress, ac_int<2, false> datasize, bool signenable, bool writeenable, int writevalue, int& read, bool& datavalid)
+                  DCacheRequest drequest, DCacheReply& dreply)
 {
 #ifdef __HLS__
     static ICacheControl ictrl;
     static DCacheControl dctrl;
 
-    icache(ictrl, memictrl, imem, cim, iaddress, cachepc, ins, insvalid);
-    dcache(dctrl, memdctrl, dmem, cdm, daddress, datasize, signenable, true, writeenable, writevalue, read, datavalid);
+    icache(memictrl, imem, cim, irequest, ireply);
+    dcache(memdctrl, dmem, cdm, drequest, dreply);
 #endif
 }
 
@@ -238,22 +238,23 @@ void insert_policy(DCacheControl& dctrl)
 #endif
 }
 
-void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],                         // control
-            unsigned int imem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address,                                                          // from cpu
-            ac_int<32, false>& cachepc, int& instruction, bool& insvalid)                       // to cpu
+void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], // control & memory
+            unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
+            ICacheRequest irequest, ICacheReply& ireply)                        // from & to cpu
 {
-    if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(address))  // different way but same set keeps same control, except for data......
+    static ICacheControl ictrl;
+
+    if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(irequest.address))  // different way but same set keeps same control, except for data......
     {
         ictrl.state = IState::StoreControl;
-        gdebug("address %06x storecontrol\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
+        gdebug("irequest.address %06x storecontrol\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
     }
 
     switch(ictrl.state)
     {
     case IState::Idle:
-        ictrl.currentset = getSet(address);
-        ictrl.i = getOffset(address);
+        ictrl.currentset = getSet(irequest.address);
+        ictrl.i = getOffset(irequest.address);
 
         if(!ictrl.ctrlLoaded)
         {
@@ -276,47 +277,47 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
             ictrl.setctrl.data[i] = data[ictrl.currentset][ictrl.i][i];
         }
 
-        ictrl.workAddress = address;
+        ictrl.workAddress = irequest.address;
         ictrl.ctrlLoaded = true;
 
-        if(find(ictrl, address))
+        if(find(ictrl, irequest.address))
         {
-            instruction = ictrl.setctrl.data[ictrl.currentway];
+            ireply.instruction = ictrl.setctrl.data[ictrl.currentway];
 
             ictrl.state = IState::Idle;
 
             update_policy(ictrl);
 
-            insvalid = true;
-            cachepc = address;
+            ireply.insvalid = true;
+            ireply.cachepc = irequest.address;
         }
         else    // not found or invalid
         {
             select(ictrl);
-            coredebug("cim  @%06x   not found or invalid   ", address.to_int());
-            ictrl.setctrl.tag[ictrl.currentway] = getTag(address);
+            coredebug("cim  @%06x   not found or invalid   ", irequest.address.to_int());
+            ictrl.setctrl.tag[ictrl.currentway] = getTag(irequest.address);
 
             ictrl.state = IState::Fetch;
             ictrl.setctrl.valid[ictrl.currentway] = false;
-            ictrl.i = getOffset(address);
+            ictrl.i = getOffset(irequest.address);
             ac_int<32, false> wordad = 0;
-            wordad.set_slc(0, address.slc<30>(2));
+            wordad.set_slc(0, irequest.address.slc<30>(2));
             wordad.set_slc(30, (ac_int<2, false>)0);
             coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
-                  (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
+                  (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (irequest.address >> 2).to_int() & (~(blockmask >> 2)), (((irequest.address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
             ictrl.valuetowrite = imem[wordad];
             ictrl.memcnt = 1;
             // critical word first
-            instruction = ictrl.valuetowrite;
+            ireply.instruction = ictrl.valuetowrite;
 
             insert_policy(ictrl);
 
-            insvalid = false;
+            ireply.insvalid = false;
         }
         break;
     case IState::StoreControl:
         #pragma hls_unroll yes
-        if(ictrl.ctrlLoaded)        // this prevent storing false control when we jump to another jump instruction
+        if(ictrl.ctrlLoaded)        // this prevent storing false control when we jump to another jump ireply.instruction
         {
             gdebug("StoreControl for %d %d  %06x to %06x\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(),
                         (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift),
@@ -342,19 +343,19 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
         }
 
         ictrl.state = IState::Idle;
-        ictrl.currentset = getSet(address);  //use workaddress?
-        ictrl.workAddress = address;
+        ictrl.currentset = getSet(irequest.address);  //use workaddress?
+        ictrl.workAddress = irequest.address;
         ictrl.ctrlLoaded = false;
-        insvalid = false;
+        ireply.insvalid = false;
         break;
     case IState::Fetch:
         if(ictrl.memcnt == MEMORY_READ_LATENCY)
         {
             data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
-            instruction = ictrl.valuetowrite;
-            cachepc = ictrl.workAddress;
-            cachepc.set_slc(2, ictrl.i);
-            insvalid = true;
+            ireply.instruction = ictrl.valuetowrite;
+            ireply.cachepc = ictrl.workAddress;
+            ireply.cachepc.set_slc(2, ictrl.i);
+            ireply.insvalid = true;
 
             if(++ictrl.i != getOffset(ictrl.workAddress))
             {
@@ -370,37 +371,36 @@ void icache(ICacheControl& ictrl, ac_int<IWidth, false> memictrl[Sets],         
                 ictrl.state = IState::Idle;
                 ictrl.setctrl.valid[ictrl.currentway] = true;
                 ictrl.ctrlLoaded = true;
-                //ictrl.currentset = getSet(address);  //use workaddress?
-                //ictrl.workAddress = address;
-                insvalid = false;
+                //ictrl.currentset = getSet(irequest.address);  //use workaddress?
+                //ictrl.workAddress = irequest.address;
+                ireply.insvalid = false;
             }
             ictrl.memcnt = 0;
         }
         else
         {
             ictrl.memcnt++;
-            insvalid = false;
+            ireply.insvalid = false;
         }
 
         break;
     default:
-        insvalid = false;
+        ireply.insvalid = false;
         ictrl.state = IState::Idle;
         ictrl.ctrlLoaded = false;
         break;
     }
 
-    simul(if(insvalid)
+    simul(if(ireply.insvalid)
     {
-        coredebug("i    @%06x   %08x    %d %d\n", cachepc.to_int(), instruction, ictrl.currentset.to_int(), ictrl.currentway.to_int());
+        coredebug("i    @%06x   %08x    %d %d\n", ireply.cachepc.to_int(), ireply.instruction, ictrl.currentset.to_int(), ictrl.currentway.to_int());
     })
 
 }
 
-void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],                         // control
-            unsigned int dmem[DRAM_SIZE], unsigned int data[Sets][Blocksize][Associativity],    // memory and cachedata
-            ac_int<32, false> address, ac_int<2, false> datasize, bool signenable, bool dcacheenable, bool writeenable, int writevalue,    // from cpu
-            int& read, bool& datavalid)                                                          // to cpu
+void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], // control & memory
+             unsigned int data[Sets][Blocksize][Associativity],                 // cachedata
+            DCacheRequest drequest, DCacheReply& dreply)                        // from & to cpu                                          // to cpu
 {
     /*if(dcacheenable && datavalid)   // we can avoid storing control if we hit same set multiple times in a row
     {
@@ -417,6 +417,18 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
     {
         dctrl.state == DState::StoreControl;
     }*/
+
+    static DCacheControl dctrl;
+
+    ac_int<32, false> address = drequest.address;
+    ac_int<2, false> datasize = drequest.datasize;
+    bool signenable = drequest.signenable;
+    bool dcacheenable = drequest.dcacheenable;
+    bool writeenable = drequest.writeenable;
+    int writevalue = drequest.writevalue;
+
+    int read = 0;
+    bool datavalid = false;
 
     switch(dctrl.state)
     {
@@ -630,6 +642,8 @@ void dcache(DCacheControl& dctrl, ac_int<DWidth, false> memdctrl[Sets],         
         dctrl.state = DState::Idle;
         break;
     }
+
+    dreply = {read, datavalid};
 
     simul(if(datavalid)
     {
