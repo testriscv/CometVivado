@@ -299,16 +299,8 @@ void DC(Core& core
         {
         // R-type instruction
         case RISCV_OP:
-            if(funct7.slc<1>(0))    // M extension
-            {
-                if(funct3.slc<1>(2))    // DIV, DIVU, REM, REMU
-                {
-                    // lock for n cycles depending on the operation
-                    dbglog("DIV/U or REM/U operation @%06x\n", pc);
-                }
-            }
             break;
-        case RISCV_ATOMIC:          // A extension
+        case RISCV_ATOMIC:
             dbgassert(opCode != RISCV_ATOMIC, "Atomic operation not implemented yet @%06x   %08x\n",
                       pc.to_int(), instruction.to_int());
             break;
@@ -442,7 +434,6 @@ void DC(Core& core
                 // ignore ecall in synthesis because it makes no sense
                 // we should jump at some address specified by a csr
                 exit = true;
-                core.ctrl.sleep = true;
             #endif
             }
             else simul(if(funct3 != 0x4))
@@ -603,8 +594,7 @@ void DC(Core& core
     })
 }
 
-template<unsigned int hartid>
-void Ex(Core& core, MultiCycleOp& mcop, MultiCycleRes mcres
+void Ex(Core& core
     #ifndef __HLS__
         , bool& exit, Simulator* sim
     #endif
@@ -644,9 +634,9 @@ void Ex(Core& core, MultiCycleOp& mcop, MultiCycleRes mcres
         else
             core.extoMem.datac = core.ctrl.prev_res[2];
     else
-        core.extoMem.datac = core.dctoEx.datac;
+        core.extoMem.datac = core.dctoEx.datac;;
 
-    switch(core.dctoEx.opCode)
+    switch (core.dctoEx.opCode)
     {
     case RISCV_LUI:
         core.extoMem.result = lhs;
@@ -837,8 +827,7 @@ void Ex(Core& core, MultiCycleOp& mcop, MultiCycleRes mcres
         case RISCV_SYSTEM_ENV:
         #ifndef __HLS__
             dbglog("Syscall @%06x (%lld)\n", core.dctoEx.pc.to_int(), core.csrs.mcycle.to_int64());
-            core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit, hartid);
-            core.ctrl.sleep = exit;
+            core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
         #endif
             break;
             // lhs is from rs1, rhs is from csr
@@ -1169,11 +1158,6 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 {
     core.ctrl.init = true;
 
-    if(startpc)
-        core.ctrl.sleep = false;
-    else
-        core.ctrl.sleep = true;
-
     core.pc = startpc;
     core.ftoDC.instruction = simul(core.dctoEx.instruction =
     core.extoMem.instruction = core.memtoWB.instruction =) 0x13;
@@ -1218,7 +1202,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
     core.dreply = drep;
 #endif
 
-    if(!core.ctrl.sleep)
+    //if(!core.ctrl.sleep)
     {
         core.csrs.mcycle += 1;
 
@@ -1242,7 +1226,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
         if(!core.ctrl.cachelock)
         {
-            Ex<hartid>(core
+            Ex(core
         #ifndef __HLS__
                , exit, sim
         #endif
@@ -1317,39 +1301,22 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
 void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim0[Sets][Blocksize][Associativity], unsigned int cdm0[Sets][Blocksize][Associativity],
-            ac_int<IWidth, false> memictrl0[Sets], ac_int<DWidth, false> memdctrl0[Sets],
-            unsigned int cim1[Sets][Blocksize][Associativity], unsigned int cdm1[Sets][Blocksize][Associativity],
-            ac_int<IWidth, false> memictrl1[Sets], ac_int<DWidth, false> memdctrl1[Sets]
+            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
+            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
         #ifndef __HLS__
             , Simulator* sim
         #endif
             )
 {
-    static ICacheRequest ireq0; static ICacheReply irep0;
-    static DCacheRequest dreq0; static DCacheReply drep0;
-
-    static ICacheRequest ireq1; static ICacheReply irep1;
-    static DCacheRequest dreq1; static DCacheReply drep1;
+    static ICacheRequest ireq; static ICacheReply irep;
+    static DCacheRequest dreq; static DCacheReply drep;
 
     doCore<0>(startpc, exit,
           #ifdef nocache
               im, dm
           #else
-              ireq0, irep0,
-              dreq0, drep0
-          #endif
-          #ifndef __HLS__
-              , sim
-          #endif
-              );
-
-    doCore<1>(0, exit,
-          #ifdef nocache
-              im, dm
-          #else
-              ireq1, irep1,
-              dreq1, drep1
+              ireq, irep,
+              dreq, drep
           #endif
           #ifndef __HLS__
               , sim
@@ -1357,11 +1324,16 @@ void doStep(ac_int<32, false> startpc, bool &exit,
               );
 
 #ifndef nocache
-    dcache<0>(memdctrl0, dm, cdm0, dreq0, drep0);
-    icache<0>(memictrl0, im, cim0, ireq0, irep0);
-    dcache<1>(memdctrl1, dm, cdm1, dreq1, drep1);
-    icache<1>(memictrl1, im, cim1, ireq1, irep1);
+    // cache should maybe be all the way up or down
+    // cache down generates less hardware and is less cycle costly(20%?)
+    // but cache up has a slightly better critical path
+    dcache(memdctrl, dm, cdm, dreq, drep);
+    icache(memictrl, im, cim, ireq, irep);
 #endif
+
+    // doCore<1>(...)
+    // directory cache control
+
 
 
 }
