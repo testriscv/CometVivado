@@ -16,7 +16,31 @@
 #include "portability.h"
 #include "simulator.h"
 
-using namespace std;
+#define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
+
+void createCacheMemories(ac_int<IWidth, false>** memictrl, unsigned int** cim,
+                         ac_int<DWidth, false>** memdctrl, unsigned int** cdm)
+{
+    *cim = new unsigned int[Sets*Blocksize*Associativity];
+    *cdm = new unsigned int[Sets*Blocksize*Associativity];
+
+    *memictrl = new ac_int<IWidth, false>[Sets];
+    *memdctrl = new ac_int<DWidth, false>[Sets];
+}
+
+void deleteCacheMemories(ac_int<IWidth, false>** memictrl, unsigned int** cim,
+                         ac_int<DWidth, false>** memdctrl, unsigned int** cdm)
+{
+    delete[] *cim;
+    delete[] *cdm;
+    delete[] *memictrl;
+    delete[] *memdctrl;
+
+    *memictrl = 0;
+    *memdctrl = 0;
+    *cim = 0;
+    *cdm = 0;
+}
 
 CCS_MAIN(int argc, char** argv)
 {
@@ -88,22 +112,29 @@ CCS_MAIN(int argc, char** argv)
     }
 
     sim.setDM(dm);
-    sim.setIM(im);   
+    sim.setIM(im);
 
-    unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
-    unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
+    unsigned int** cim = new unsigned int*[sim.doNbcore()];
+    unsigned int** cdm = new unsigned int*[sim.doNbcore()];
+    ac_int<IWidth, false>** memictrl = new ac_int<IWidth, false>*[sim.doNbcore()];
+    ac_int<DWidth, false>** memdctrl = new ac_int<DWidth, false>*[sim.doNbcore()];
 
-    ac_int<IWidth, false>* memictrl = new ac_int<IWidth, false>[Sets];
-    ac_int<DWidth, false>* memdctrl = new ac_int<DWidth, false>[Sets];
-
-    // zero the control (although only the valid bit should be zeroed, rest is don't care)
-    for(int i(0); i < Sets; ++i)
+    for(int i(0); i < sim.doNbcore(); ++i)
     {
-        memictrl[i] = 0;
-        memdctrl[i] = 0;
+        createCacheMemories(&memictrl[i], &cim[i], &memdctrl[i], &cdm[i]);
     }
 
-    sim.setCore(0, memdctrl, (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)));
+
+    // zero the control (although only the valid bit should be zeroed, rest is don't care)
+    for(int c(0); c < sim.doNbcore(); ++c)
+        for(int i(0); i < Sets; ++i)
+        {
+            memictrl[c][i] = 0;
+            memdctrl[c][i] = 0;
+        }
+
+    for(int i(0); i < sim.doNbcore(); ++i)
+        sim.setCore(0, memdctrl[i], (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm[i])));
 
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
@@ -133,8 +164,10 @@ CCS_MAIN(int argc, char** argv)
     {
         CCS_DESIGN(doStep(sim.getPC(), exit,
 /* main memories */       im, dm,
-/** cache memories **/    (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)),
-/* control memories */    memictrl, memdctrl
+/** cache memories **/    ptrtocache(cim[0]), ptrtocache(cdm[0]),
+/* control memories */    memictrl[0], memdctrl[0],
+                          ptrtocache(cim[1]), ptrtocache(cdm[1]),
+                          memictrl[1], memdctrl[1]
                   #ifndef __HLS__
                       , &sim
                   #endif
@@ -144,8 +177,8 @@ CCS_MAIN(int argc, char** argv)
     sim.writeBack();
 
 #ifndef __HLS__
-    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
-    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
+    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore(0)->csrs.minstret.to_int64(), sim.getCore(0)->csrs.mcycle.to_int64());
+    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore(0)->csrs.minstret.to_int64(), sim.getCore(0)->csrs.mcycle.to_int64());
 
     coredebug("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
@@ -177,9 +210,16 @@ CCS_MAIN(int argc, char** argv)
     delete[] benchargv;
     delete[] dm;
     delete[] im;
+
+    for(int i(0); i < sim.doNbcore(); ++i)
+    {
+        deleteCacheMemories(&memictrl[i], &cim[i], &memdctrl[i], &cdm[i]);
+    }
+
     delete[] cim;
     delete[] cdm;
     delete[] memictrl;
     delete[] memdctrl;
+
     CCS_RETURN(0);
 }

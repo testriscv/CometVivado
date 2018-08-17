@@ -19,6 +19,7 @@ private:
     std::map<ac_int<32, false>, ac_int<8, false> > data_memorymap;
 
     ac_int<32, false> pc;
+    ac_int<32, false> exit;
 
     ac_int<32, true>* ins_memory;
     ac_int<32, true>* data_memory;
@@ -30,9 +31,10 @@ private:
     FILE* output;
     unsigned int heapAddress;
 
-    ac_int<DWidth, false>* dctrl;
-    unsigned int* ddata; //[Sets][Blocksize][Associativity];
-    Core* core;
+    std::vector<ac_int<DWidth, false>* > dctrl;
+    std::vector<unsigned int*> ddata; //[Sets][Blocksize][Associativity];
+    std::vector<Core*> core;
+    unsigned int currentcore;
 
 public:
     Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int argc, char** argv);
@@ -49,7 +51,7 @@ public:
 
     ac_int<32, true>* getInstructionMemory() const;
     ac_int<32, true>* getDataMemory() const;
-    Core* getCore() const;
+    Core* getCore(int id) const;
 
     void setPC(ac_int<32, false> pc);
     ac_int<32, false> getPC() const;
@@ -70,8 +72,9 @@ public:
     //********************************************************
     //System calls
 
-    ac_int<32, true> solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool& sys_status);
+    ac_int<32, true> solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool& sys_status, unsigned int hartid);
 
+    ac_int<32, true> doExit(ac_int<32, false> retcode, bool& sys_status);
     ac_int<32, true> doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
     ac_int<32, true> doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
     ac_int<32, true> doOpen(ac_int<32, false> name, ac_int<32, false> flags, ac_int<32, false> mode);
@@ -84,6 +87,8 @@ public:
     ac_int<32, true> doUnlink(ac_int<32, false> path);
     ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
 
+    ac_int<32, true> doThreadstart(ac_int<32, false> tid, ac_int<32, false> fnptr, ac_int<32, false> fnargs);
+    ac_int<32, true> doNbcore();
 };
 
 #endif // SIMULATOR_H

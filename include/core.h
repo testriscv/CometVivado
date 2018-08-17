@@ -144,12 +144,42 @@ struct Core
     DCacheReply dreply;
 };
 
+namespace ExternalOperation
+{
+enum ExternalOperation
+{
+    DIV     ,
+    DIVU    ,
+    REM     ,
+    REMU
+};
+}
+
+struct MultiCycleOp
+{
+    ExternalOperation::ExternalOperation op;
+    ac_int<32, true> lhs;
+    ac_int<32, true> rhs;
+    ac_int<5, false> rd;
+};
+
+struct MultiCycleRes
+{
+    ExternalOperation::ExternalOperation op;
+    ac_int<32, true> res;
+    ac_int<5, false> rd;
+};
+
 class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
-            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
+            unsigned int cim0[Sets][Blocksize][Associativity], unsigned int cdm0[Sets][Blocksize][Associativity],
+            ac_int<IWidth, false> memictrl0[Sets], ac_int<DWidth, false> memdctrl0[Sets],
+            MultiCycleOp& mcop0, MultiCycleRes mcres0,
+            unsigned int cim1[Sets][Blocksize][Associativity], unsigned int cdm1[Sets][Blocksize][Associativity],
+            ac_int<IWidth, false> memictrl1[Sets], ac_int<DWidth, false> memdctrl1[Sets],
+            MultiCycleOp& mcop1, MultiCycleRes mcres1
         #ifndef __HLS__
             , Simulator* syscall
         #endif

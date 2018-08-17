@@ -8,14 +8,14 @@
 
 #include "simulator.h"
 
-#if 1
-#define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
+#ifndef nodbgsys
+#define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format " from core %d\n", core[currentcore]->csrs.minstret.to_int64(), ## __VA_ARGS__, currentcore)
 #else
 #define dbgsys(...)
 #endif
 
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
-    : core(0), dctrl(0), ddata(0)
+    : core(0), dctrl(0), ddata(0), currentcore(-1)
 {
     ins_memory = new ac_int<32, true>[DRAM_SIZE];
     data_memory = new ac_int<32, true>[DRAM_SIZE];
@@ -71,6 +71,12 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         {
             fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
             setPC(symbol->offset);
+        }
+
+        if(strcmp(name, "_exit") == 0)
+        {
+            fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
+            exit = symbol->offset;
         }
 
         if(strcmp(name, "tohost") == 0)
@@ -142,12 +148,12 @@ void Simulator::fillMemory()
     if(ins_memorymap.size() / 4 > DRAM_SIZE)
     {
         printf("Error! Instruction memory size exceeded");
-        exit(-1);
+        std::exit(-1);
     }
     if(data_memorymap.size() / 4 > DRAM_SIZE)
     {
         printf("Error! Data memory size exceeded");
-        exit(-1);
+        std::exit(-1);
     }
 
     //fill instruction memory
@@ -192,28 +198,32 @@ void Simulator::setIM(unsigned int *i)
 void Simulator::writeBack()
 {
 #ifndef nocache
-    unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(ddata));
+    for(currentcore = 0; currentcore < doNbcore(); ++currentcore)
+    {
+        unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(ddata[currentcore]));
 
-    //cache write back for simulation
-    for(unsigned int i  = 0; i < Sets; ++i)
-        for(unsigned int j = 0; j < Associativity; ++j)
-                            // dirty bit                                    // valid bit
-            if(dctrl[i].slc<1>(Associativity*(32-tagshift+1) + j) && dctrl[i].slc<1>(Associativity*(32-tagshift) + j))
-                for(unsigned int k = 0; k < Blocksize; ++k)
-                    dm[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+        //cache write back for simulation
+        for(unsigned int i  = 0; i < Sets; ++i)
+            for(unsigned int j = 0; j < Associativity; ++j)
+                                // dirty bit                                    // valid bit
+                if(dctrl[currentcore][i].slc<1>(Associativity*(32-tagshift+1) + j) && dctrl[currentcore][i].slc<1>(Associativity*(32-tagshift) + j))
+                    for(unsigned int k = 0; k < Blocksize; ++k)
+                        dm[(dctrl[currentcore][i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
+    }
 #endif
 }
 
 void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
 {
-    core = c;
-    dctrl = ctrl;
-    ddata = (unsigned int*)cachedata;
+    if(c)
+        core.push_back(c);
+    dctrl.push_back(ctrl);
+    ddata.push_back((unsigned int*)cachedata);
 }
 
 void Simulator::setCore(Core* c)
 {
-    core = c;
+    core.push_back(c);
 }
 
 ac_int<32, true>* Simulator::getInstructionMemory() const
@@ -226,9 +236,9 @@ ac_int<32, true>* Simulator::getDataMemory() const
     return data_memory;
 }
 
-Core* Simulator::getCore() const
+Core* Simulator::getCore(int id) const
 {
-    return core;
+    return core[id];
 }
 
 void Simulator::setPC(ac_int<32, false> pc)
@@ -247,13 +257,13 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     int i = getSet(addr);
     for(int j(0); j < Associativity; ++j)
     {
-        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
+        if(dctrl[currentcore][i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
         {
-            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+            ac_int<32, false> mem = ddata[currentcore][i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatwrite(addr, 0, mem, value);
-            ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
-            dctrl[i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+            ddata[currentcore][i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
+            dctrl[currentcore][i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
+            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl[currentcore]->tag[i][j].to_int());
         }
     }
 #endif
@@ -298,11 +308,11 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
     int i = getSet(addr);
     for(int j(0); j < Associativity; ++j)
     {
-        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
+        if(dctrl[currentcore][i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
         {
-            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+            ac_int<32, false> mem = ddata[currentcore][i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatread(addr, 0, 0, mem);
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
+            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl[currentcore]->tag[i][j].to_int());
             return mem;
         }
     }
@@ -356,14 +366,14 @@ ac_int<32, true> Simulator::ldd(ac_int<32, false> addr)
 
 
 
-ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &sys_status)
+ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &sys_status, unsigned int hartid)
 {
     ac_int<32, true> result = 0;
+    currentcore = hartid;
     switch (syscallId)
     {
     case SYS_exit:
-        sys_status = 1; //Currently we break on ECALL
-        dbgsys("SYS_exit\n");
+        result = this->doExit(arg1, sys_status);
         break;
     case SYS_read:
         result = this->doRead(arg1, arg2, arg3);
@@ -517,12 +527,11 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
 
     // Custom syscalls
     case SYS_threadstart:
-        dbgsys("SYS_threadstart id %d fn @%06x args @%06x\n", arg1.to_int(), arg2.to_int(), arg3.to_int());
-        result = 0;
+        result = this->doThreadstart(arg1, arg2, arg3);
         break;
     case SYS_nbcore:
-        dbgsys("SYS_nbcore\n");
-        result = 1;
+        dbgsys("SYS_nbcore");
+        result = doNbcore();
         break;
 
 
@@ -537,9 +546,48 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
     return result;
 }
 
+ac_int<32, true> Simulator::doThreadstart(ac_int<32, false> tid, ac_int<32, false> fnptr, ac_int<32, false> fnargs)
+{
+    dbgsys("SYS_threadstart id %d fn @%06x args @%06x", tid.to_int(), fnptr.to_int(), fnargs.to_int());
+    dbgassert(tid < doNbcore(), "Cannot start thread %d because core %d does not exist\n", tid.to_int(), tid.to_int());
+    dbgassert(core[tid]->ctrl.sleep == true, "Core %d is already running\n", tid.to_int());
+    core[tid]->ctrl.sleep = false;
+    core[tid]->pc = fnptr;
+    for(int i(0); i < 32; ++i)      // copy registers
+        core[tid]->REG[i] = core[currentcore]->REG[i];
+    core[tid]->REG[1] = exit;       // set proper return address for thread
+    core[tid]->REG[2] = core[currentcore]->REG[2]-0x1000; //we must move it to different address, otherwise stacks are overlapping
+    core[tid]->REG[10] = fnargs;    // function arguments?
+    // copy stack as well
+    for(int ad(core[currentcore]->REG[2]-0x800); ad < core[currentcore]->REG[2]+0x800; ++ad)
+    {
+        dm[(ad-0x1000)/4] = this->ldw(ad);
+    }
+
+    return 0;
+}
+
+ac_int<32, true> Simulator::doNbcore()
+{
+    return 2;
+}
+
+ac_int<32, true> Simulator::doExit(ac_int<32, false> retcode, bool& sys_status)
+{
+    if(currentcore == 0)
+        sys_status = 1;
+
+    if(retcode)
+        dbgsys("SYS_exit with code \033[1;31m%d\033[0m", retcode.to_int());
+    else
+        dbgsys("SYS_exit with code \033[32m0\033[0m");
+
+    return 0;
+}
+
 ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    dbgsys("SYS_read %d bytes from file %d\n", size.to_int(), file.to_int());
+    dbgsys("SYS_read %d bytes from file %d", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     ac_int<32, true> result;
 
@@ -562,7 +610,7 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
 
 ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    //dbgsys("SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
+    //dbgsys("SYS_write %d bytes to file %d", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     for (int i=0; i<size; i++)
         localBuffer[i] = this->ldb(bufferAddr + i);
@@ -576,7 +624,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
     else
     {
         if(file == 1)
-            fflush(stdout); //  prevent mixed output
+            fflush(stdout); // prevent mixed output
         result = write(file, localBuffer, size);
     }
     delete[] localBuffer;
@@ -585,7 +633,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
 
 ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
-    dbgsys("SYS_fstat on file %d\n", file.to_int());
+    dbgsys("SYS_fstat on file %d", file.to_int());
     ac_int<32, true> result = 0;
     struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
 
@@ -722,7 +770,7 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
         riscvflags ^= SYS_O_NOCTTY;
         str += "NOCTTY";
     }
-    dbgsys("SYS_open on file %s with flags %s (%x) and mode %o\n", localPath, str.c_str(), unixflags, mode.to_int());
+    dbgsys("SYS_open on file %s with flags %s (%x) and mode %o", localPath, str.c_str(), unixflags, mode.to_int());
     dbgassert(riscvflags == 0, "Some flags were not translated!\n");
     int result  = open(localPath, unixflags, mode.to_int());
 
@@ -734,12 +782,12 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
 ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
 {
     fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
-    exit(-1);
+    std::exit(-1);
 }
 
 ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 {
-    dbgsys("SYS_close on file %d\n", file.to_int());
+    dbgsys("SYS_close on file %d", file.to_int());
     if(file > 2)    // don't close simulator's stdin, stdout & stderr
     {
         return close(file);
@@ -751,7 +799,7 @@ ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
 {
     int result = lseek(file, ptr, dir);
-    dbgsys("SYS_lseek on file %d    ptr %d      dir %d\n", file.to_int(), ptr.to_int(), dir.to_int());
+    dbgsys("SYS_lseek on file %d    ptr %d      dir %d", file.to_int(), ptr.to_int(), dir.to_int());
     return result;
 }
 
@@ -771,7 +819,7 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(filename + i);
     localPath[pathSize] = '\0';
-    dbgsys("SYS_stat on %s\n", localPath);
+    dbgsys("SYS_stat on %s", localPath);
 
     struct stat filestat;
     int result = stat(localPath, &filestat);
@@ -803,7 +851,7 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
 
 ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
 {
-    dbgsys("SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
+    dbgsys("SYS_brk  heap @0x%x -> @0x%x (%+d)", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
 
     ac_int<32, true> result;
     if (value == 0)
@@ -816,14 +864,14 @@ ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    dbgassert(core->REG[2].to_uint() > heapAddress, "Stack and heap overlaps (%08x > %08x)!!\n", core->REG[2].to_uint(), heapAddress);
+    dbgassert(core[0]->REG[2].to_uint() > heapAddress, "Stack and heap overlaps (%08x > %08x)!!\n", core[0]->REG[2].to_uint(), heapAddress);
     
     return result;
 }
 
 ac_int<32, true> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
 {
-    dbgsys("SYS_gettimeofday\n");
+    dbgsys("SYS_gettimeofday");
     struct timeval oneTimeVal;
     int result = gettimeofday(&oneTimeVal, NULL);
 
@@ -849,7 +897,7 @@ ac_int<32, true> Simulator::doUnlink(ac_int<32, false> path)
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(path + i);
     localPath[pathSize] = '\0';
-    dbgsys("SYS_unlink on file %s\n", localPath);
+    dbgsys("SYS_unlink on file %s", localPath);
 
     int result = unlink(localPath);
 
