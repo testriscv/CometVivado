@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <qsort.h>
+
+#include "qsort.h"
 int partition(int low, int hi)
 {
     TYPE pivot = A[hi];

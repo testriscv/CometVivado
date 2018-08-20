@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <matmul.h>
+#include "matmul.h"
 
 int main(void)
 {
