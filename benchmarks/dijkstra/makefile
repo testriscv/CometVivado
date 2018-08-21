@@ -4,7 +4,7 @@ CFLAGS=-Wno-overflow
 BUILDDIR=build
 RESDIR=res
 TYPES = schar uchar short ushort int uint int64 uint64 float
-size = 10 100 300
+size = 10 100 # 300 takes around 6 hours...
 
 all: dijkstra.riscv
 	

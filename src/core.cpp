@@ -193,9 +193,6 @@ void DC(Core& core
     ac_int<7, false> opCode = instruction.slc<7>(0);    // reduced to 5 bits because 1:0 is always 11
     // cannot reduce opCode to 5 bits with modelsim (x propagation...)
 
-    dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
-              pc.to_int(), instruction.to_int());
-
     ac_int<32, true> rhs = 0;
     ac_int<32, true> lhs = 0;
     ac_int<32, true> datac = 0;
@@ -284,6 +281,9 @@ void DC(Core& core
     }
     else        // do normal switch
     {
+        dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
+                  pc.to_int(), instruction.to_int());
+
         // share immediate for all type of instruction
         // this should simplify the hardware (or not apparently, althouh we test less bits)
         // refer to the Table 22.1: RISC-V base opcode map, p133 in Instruction set listings of the spec
