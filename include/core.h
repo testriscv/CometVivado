@@ -9,9 +9,7 @@ struct FtoDC
 {
     FtoDC()
     : pc(0), instruction(0x13), realInstruction(false), nextpc(0)
-    {
-        printf("Init ftodc\n");
-    }
+    {}
     ac_int<32, false> pc;           // used for JAL, AUIPC & BR
     ac_int<32, false> instruction;  // Instruction to execute
     bool realInstruction;           // Increment for minstret
@@ -144,7 +142,6 @@ struct CoreCtrl
     CoreCtrl()
     : lock(0), freeze_fetch(false), cachelock(false), init(false), sleep(true)
     {
-        printf("Init CoreCtrl\n");
         #pragma hls_unroll yes
         for(int i(0); i < 3; ++i)
         {
