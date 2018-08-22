@@ -2,10 +2,16 @@
 #define CORE_H
 
 #include "portability.h"
+#include "riscvISA.h"
 #include "simulator.h"
 
 struct FtoDC
 {
+    FtoDC()
+    : pc(0), instruction(0x13), realInstruction(false), nextpc(0)
+    {
+        printf("Init ftodc\n");
+    }
     ac_int<32, false> pc;           // used for JAL, AUIPC & BR
     ac_int<32, false> instruction;  // Instruction to execute
     bool realInstruction;           // Increment for minstret
@@ -14,6 +20,19 @@ struct FtoDC
 
 struct DCtoEx
 {
+    DCtoEx()
+    : pc(0),
+  #ifndef __HLS__
+      instruction(0),
+  #endif
+      opCode(RISCV_OPI), funct7(0), funct3(RISCV_OPI_ADDI), rd(0), realInstruction(false),
+      lhs(0), rhs(0), datac(0), forward_lhs(false), forward_rhs(false), forward_datac(false),
+      forward_mem_lhs(false), forward_mem_rhs(false), forward_mem_datac(false)
+  #ifndef __HLS__
+      , datad(0), datae(0), memValue(0)
+  #endif
+    {}
+
     ac_int<32, false> pc;       // used for branch
 #ifndef __HLS__
     ac_int<32, false> instruction;
@@ -49,6 +68,14 @@ struct DCtoEx
 
 struct ExtoMem
 {
+    ExtoMem()
+    : pc(0),
+  #ifndef __HLS__
+      instruction(0x13),
+  #endif
+      result(0), rd(0), opCode(RISCV_OPI), funct3(RISCV_OPI_ADDI), realInstruction(false),
+      datac(0)
+    {}
     ac_int<32, false> pc;
 #ifndef __HLS__
     ac_int<32, false> instruction;
@@ -65,6 +92,13 @@ struct ExtoMem
 
 struct MemtoWB
 {
+    MemtoWB()
+    : pc(0),
+  #ifndef __HLS__
+      instruction(0x13),
+  #endif
+      result(0), rd(0), realInstruction(false), rescsr(0), CSRid(0), csrwb(false)
+    {}
     ac_int<32, false> pc;
 #ifndef __HLS__
     ac_int<32, false> instruction;
@@ -81,6 +115,10 @@ struct MemtoWB
 
 struct CSR
 {
+    CSR()
+    : mcycle(0), minstret(0), mstatus(0)
+    // some should probably be initialized to some special value
+    {}
     static const ac_int<32, false> mvendorid;   // RO shared by all cores
     static const ac_int<32, false> marchid;     // RO shared by all cores
     static const ac_int<32, false> mimpid;      // RO shared by all cores
@@ -103,6 +141,25 @@ struct CSR
 
 struct CoreCtrl
 {
+    CoreCtrl()
+    : lock(0), freeze_fetch(false), cachelock(false), init(false), sleep(true)
+    {
+        printf("Init CoreCtrl\n");
+        #pragma hls_unroll yes
+        for(int i(0); i < 3; ++i)
+        {
+            prev_rds[i] = 0;
+            prev_opCode[i] = RISCV_OPI;
+            prev_res[i] = 0;
+            branch[i] = false;
+        }
+        #pragma hls_unroll yes
+        for(int i(0); i < 2; ++i)
+        {
+            jump_pc[i] = 0;
+        }
+    }
+
     ac_int<5, false> prev_rds[3];
     ac_int<7, false> prev_opCode[3];
     ac_int<2, false> lock;          // used to lock dc stage after JAL & JALR
@@ -122,6 +179,18 @@ struct CoreCtrl
 
 struct Core
 {
+    Core()
+    : ftoDC(), dctoEx(), extoMem(), memtoWB(), csrs(), ctrl(), pc(0),
+      irequest(), ireply(), drequest(), dreply()
+    {
+        #pragma hls_unroll yes
+        for(int i(0); i < 32; ++i)
+        {
+            REG[i] = 0;
+        }
+        REG[2] = STACK_INIT;
+    }
+
     FtoDC ftoDC;
     DCtoEx dctoEx;
     ExtoMem extoMem;

@@ -109,6 +109,26 @@ enum DState {
 
 struct ISetControl
 {
+    ISetControl()
+    : bourrage(0)
+  #if Associativity > 1
+      , policy
+    #if Policy == RP_RANDOM
+        (0xF2D4B698)
+    #else
+        (0)
+    #endif
+  #endif
+    {
+        #pragma hls_unroll yes
+        for(int i(0); i < Associativity; ++i)
+        {
+            data[i] = 0;
+            tag[i] = 0;
+            valid[i] = false;
+        }
+    }
+
     unsigned int data[Associativity];
     ac_int<32-tagshift, false> tag[Associativity];
     bool valid[Associativity];
@@ -129,6 +149,11 @@ struct ISetControl
 
 struct ICacheControl
 {
+    ICacheControl()
+    : state(IState::Idle), workAddress(0), ctrlLoaded(false), i(0), valuetowrite(0),
+      currentset(0), currentway(0), memcnt(0), setctrl()
+    {}
+
     IState::IState state;
     ac_int<32, false> workAddress;
     bool ctrlLoaded;
@@ -149,11 +174,19 @@ struct ICacheControl
 
 struct ICacheRequest
 {
+    ICacheRequest()
+    : address(0)
+    {}
+
     ac_int<32, false> address;
 };
 
 struct ICacheReply
 {
+    ICacheReply()
+    : cachepc(0), instruction(0), insvalid(false)
+    {}
+
     ac_int<32, false> cachepc;
     int instruction;
     bool insvalid;
@@ -161,6 +194,27 @@ struct ICacheReply
 
 struct DSetControl
 {
+    DSetControl()
+    : bourrage(0)
+  #if Associativity > 1
+    , policy
+    #if Policy == RP_RANDOM
+      (0xF2D4B698)
+    #else
+      (0)
+    #endif
+  #endif
+    {
+        #pragma hls_unroll yes
+        for(int i(0); i < Associativity; ++i)
+        {
+            data[i] = 0;
+            tag[i] = 0;
+            dirty[i] = false;
+            valid[i] = false;
+        }
+    }
+
     unsigned int data[Associativity];
     ac_int<32-tagshift, false> tag[Associativity];
     bool dirty[Associativity];
@@ -182,6 +236,11 @@ struct DSetControl
 
 struct DCacheControl
 {
+    DCacheControl()
+    : state(DState::Idle), workAddress(0), i(0), valuetowrite(0),
+      currentset(0), currentway(0), memcnt(0), setctrl()
+    {}
+
     DState::DState state;
     ac_int<32, false> workAddress;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;
@@ -201,6 +260,11 @@ struct DCacheControl
 
 struct DCacheRequest
 {
+    DCacheRequest()
+    : address(0), datasize(0), signenable(false), dcacheenable(false),
+      writeenable(false), writevalue(0)
+    {}
+
     ac_int<32, false> address;
     ac_int<2, false> datasize;
     bool signenable;
@@ -211,6 +275,10 @@ struct DCacheRequest
 
 struct DCacheReply
 {
+    DCacheReply()
+    : readvalue(0), datavalid(false)
+    {}
+
     int readvalue;
     bool datavalid;
 };

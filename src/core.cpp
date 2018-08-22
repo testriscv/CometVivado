@@ -1159,18 +1159,10 @@ void coreinit(Core& core, ac_int<32, false> startpc)
     core.ctrl.init = true;
 
     core.pc = startpc;
-    core.ftoDC.instruction = simul(core.dctoEx.instruction =
-    core.extoMem.instruction = core.memtoWB.instruction =) 0x13;
-
-    core.ctrl.prev_opCode[2] = core.ctrl.prev_opCode[1] = RISCV_OPI;
-    core.dctoEx.opCode = core.extoMem.opCode = RISCV_OPI;
-
-    core.REG[2] = STACK_INIT;
-
-#if Policy == RP_RANDOM
-    core.ictrl.setctrl.policy = 0xF2D4B698;
-    core.dctrl.setctrl.policy = 0xF2D4B698;
-#endif
+    if(startpc)
+        core.ctrl.sleep = false;
+    else
+        core.ctrl.sleep = true;
 }
 
 template<unsigned int hartid>
