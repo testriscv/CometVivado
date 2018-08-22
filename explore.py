@@ -53,7 +53,7 @@ def runtestbenchmark(executable, q, cachesize, strpolicy, assoc, blocksize):
 
 def testbenchmark():
 	progs = os.listdir("benchmarks/build")
-	progs[:] = [p for p in progs if p.endswith(".riscv")]
+	progs[:] = [p for p in progs if p.endswith(".riscv32")]
 	global res
 	res = {p : [] for p in progs}
 	

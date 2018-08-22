@@ -429,7 +429,7 @@ def checkoutput(name, cache):
 def parseall(cached):
 	global a, foo, p, progs
 	progs = os.listdir("benchmarks/build")
-	progs[:] = [p for p in progs if p.endswith(".riscv")]
+	progs[:] = [p for p in progs if p.endswith(".riscv32")]
 
 	
 	a = dict()

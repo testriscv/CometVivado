@@ -58,9 +58,9 @@ CCS_MAIN(int argc, char** argv)
 
     if(binaryFile == 0)
 #ifdef __HLS__
-        binaryFile = "matmul.riscv";
+        binaryFile = "matmul.riscv32";
 #else
-        binaryFile = "benchmarks/build/matmul_int_4.riscv";
+        binaryFile = "benchmarks/build/matmul_int_4.riscv32";
 #endif
 
     //fprintf(stderr, "%d bench arguments\n", benchargc);
