@@ -283,13 +283,24 @@ struct DCacheReply
     bool datavalid;
 };
 
+#include "simulator.h"
+class Simulator;        // ???*??? = ?????????
+
 void icache(ac_int<IWidth, false> memctrl[Sets], unsigned int imem[DRAM_SIZE],  // control & memory
             unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
-            ICacheRequest irequest, ICacheReply& ireply);                       // from & to cpu
+            ICacheRequest irequest, ICacheReply& ireply                         // from & to cpu
+        #ifndef __HLS__
+            , Simulator* sim
+        #endif
+            );
 
 void dcache(ac_int<DWidth, false> memctrl[Sets], unsigned int dmem[DRAM_SIZE],  // control & memory
             unsigned int data[Sets][Blocksize][Associativity],                  // cachedata
-            DCacheRequest drequest, DCacheReply& dreply);                       // from & to cpu
+            DCacheRequest drequest, DCacheReply& dreply                         // from & to cpu
+        #ifndef __HLS__
+            , Simulator* sim
+        #endif
+            );
 
 // wrapper to synthesize caches only
 void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],

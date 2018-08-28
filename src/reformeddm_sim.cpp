@@ -11,10 +11,12 @@
 #include <iostream>
 #include <bitset>
 #include <string.h>
+
+#include "portability.h"
 #include "cache.h"
 #include "core.h"
-#include "portability.h"
 #include "simulator.h"
+
 
 using namespace std;
 
@@ -158,6 +160,24 @@ CCS_MAIN(int argc, char** argv)
             }
         }
     }
+
+#ifndef nocache
+
+    printf("Cache Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
+    printf("                   %5d   %8d   %13d   %4d   %6d   %13d    %13d\n", Size, 4*Blocksize, Associativity, Sets, Policy, ICacheControlWidth, DCacheControlWidth);
+    printf("Cache Statistics : \n");
+    printf("%15s   %17s %17s\n", "", "Instruction Cache", "Data Cache");
+    printf("%15s : %17lld %17lld\n", "Miss", sim.icachedata.miss, sim.dcachedata.miss);
+    printf("%15s : %17lld %17lld\n", "Hit", sim.icachedata.hit, sim.dcachedata.hit);
+    printf("%15s : %17lld %17lld\n", "Cachemem Read", sim.icachedata.cachememread, sim.dcachedata.cachememread);
+    printf("%15s : %17lld %17lld\n", "Cachemem Write", sim.icachedata.cachememwrite, sim.dcachedata.cachememwrite);
+    printf("%15s : %17lld %17lld\n", "Ctrlmem Read", sim.icachedata.ctrlmemread, sim.dcachedata.ctrlmemread);
+    printf("%15s : %17lld %17lld\n", "Ctrlmem Write", sim.icachedata.ctrlmemwrite, sim.dcachedata.ctrlmemwrite);
+    printf("%15s : %17lld %17lld\n", "Mainmem Read", sim.icachedata.mainmemread, sim.dcachedata.mainmemread);
+    printf("%15s : %17lld %17lld\n", "Mainmem Write", sim.icachedata.mainmemwrite, sim.dcachedata.mainmemwrite);
+
+#endif
+
 #else
     printf("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)

@@ -84,6 +84,24 @@ public:
     ac_int<32, true> doUnlink(ac_int<32, false> path);
     ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
 
+    //********************************************************
+    //Instrumentation
+
+    struct CacheData
+    {
+        CacheData()
+        : miss(0), hit(0), cachememread(0), cachememwrite(0), mainmemread(0),
+          mainmemwrite(0), ctrlmemread(0), ctrlmemwrite(0)
+        {}
+        int64_t miss;
+        int64_t hit;
+        int64_t cachememread;
+        int64_t cachememwrite;
+        int64_t mainmemread;
+        int64_t mainmemwrite;
+        int64_t ctrlmemread;
+        int64_t ctrlmemwrite;
+    } icachedata, dcachedata;
 };
 
 #endif // SIMULATOR_H

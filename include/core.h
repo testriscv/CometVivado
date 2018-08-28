@@ -4,6 +4,7 @@
 #include "portability.h"
 #include "riscvISA.h"
 #include "simulator.h"
+#include "cache.h"
 
 struct FtoDC
 {
