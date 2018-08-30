@@ -16,12 +16,14 @@
 
 #endif
 
+#ifndef COMET_NO_CSR
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mvendorid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::marchid = 0;
 //template<unsigned int hartid>
 const ac_int<32, false> CSR::mimpid = 0;
+#endif
 
 void Ft(Core& core
     #ifdef nocache
@@ -216,6 +218,7 @@ void DC(Core& core
     exit = false;
 #endif
 
+#ifndef COMET_NO_BR
     if(core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1])
     {       // a branch was taken
         core.ctrl.lock = 1;
@@ -235,7 +238,10 @@ void DC(Core& core
         rhs = 0;
         datac = 0;
     }
-    else if(core.ctrl.lock)
+    else
+#endif
+#if !defined(COMET_NO_JAL) || !defined(COMET_NO_JALR)
+    if(core.ctrl.lock)
     {       // a branch or a jump was taken
         core.ctrl.lock -= 1;
         opCode = RISCV_OPI;
@@ -254,7 +260,10 @@ void DC(Core& core
         rhs = 0;
         datac = 0;
     }
-    else if(core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
+    else
+#endif
+#ifndef COMET_NO_LD
+    if(core.ctrl.prev_opCode[1] == RISCV_LD && (core.ctrl.prev_rds[1] == rs1
             || core.ctrl.prev_rds[1] == rs2))
     {
         /// duplicate instruction to remove freeze fetch
@@ -280,6 +289,7 @@ void DC(Core& core
         datac = 0;
     }
     else        // do normal switch
+#endif
     {
         dbgassert(instruction.slc<2>(0) == 3, "Instruction lower bits are not 0b11, illegal instruction @%06x : %08x\n",
                   pc.to_int(), instruction.to_int());
@@ -298,15 +308,20 @@ void DC(Core& core
         switch(opCode)
         {
         // R-type instruction
+        #ifndef COMET_NO_OP
         case RISCV_OP:
             break;
+        #endif
+        #ifndef COMET_NO_ATOMIC
         case RISCV_ATOMIC:
             dbgassert(opCode != RISCV_ATOMIC, "Atomic operation not implemented yet @%06x   %08x\n",
                       pc.to_int(), instruction.to_int());
             break;
+        #endif
         // S-type instruction
         // use rs2 rs1 funct3 opCode from R-type
         // 12 bits immediate
+        #ifndef COMET_NO_ST
         case RISCV_ST:
             immediate.set_slc(5, instruction.slc<6>(25));
             immediate.set_slc(0, instruction.slc<5>(7));
@@ -319,9 +334,11 @@ void DC(Core& core
             forward_rs2 = false;
             rd = 0;
             break;
+        #endif
         // B-type instruction
         // use rs2 rs1 funct3 opCode from R-type
         // 13 bits immediate
+        #ifndef COMET_NO_BR
         case RISCV_BR:
             immediate.set_slc(0, (ac_int<1, true>)0);
             immediate.set_slc(1, instruction.slc<4>(8));
@@ -331,9 +348,11 @@ void DC(Core& core
             datac = immediate;
             rd = 0;
             break;
+        #endif
         // J-type instruction
         // use rd opCode from R-type
         // 20 bits immediate
+        #ifndef COMET_NO_JAL
         case RISCV_JAL:
             immediate.set_slc(0, (ac_int<1, true>)0);
             immediate.set_slc(1, instruction.slc<4>(21));
@@ -349,9 +368,11 @@ void DC(Core& core
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
             break;
+        #endif
         // U-type instruction
         // use rd opCode from R-type
         // 20 bits immediate
+        #ifndef COMET_NO_LUI
         case RISCV_LUI:
             immediate.set_slc(0, (ac_int<12, true>)0);
             immediate.set_slc(12, instruction.slc<19>(12));
@@ -359,6 +380,8 @@ void DC(Core& core
             forward_rs1 = false;
             forward_rs2 = false;
             break;
+        #endif
+        #ifndef COMET_NO_AUIPC
         case RISCV_AUIPC:
             immediate.set_slc(0, (ac_int<12, true>)0);
             immediate.set_slc(12, instruction.slc<19>(12));
@@ -367,29 +390,28 @@ void DC(Core& core
             forward_rs1 = false;
             forward_rs2 = false;
             break;
+        #endif
         // I-type instruction
         // use rs1 funct3 rd opCode from R-type
         // 12 bits immediate
+        #ifndef COMET_NO_LD
         case RISCV_LD:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
             forward_rs2 = false;
 
             break;
+        #endif
+        #ifndef COMET_NO_OPI
         case RISCV_OPI:
             immediate.set_slc(0, instruction.slc<11>(20));
-
-            // condition is useless, but catapult generates negative slack with the other one...
-            if(funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI)
-                rhs = rs2;
-            else
-                rhs = immediate;
-
             // no need to test for SLLI or SRAI because only 5 bits are used in EX stage
-            // rhs = immediate;
+            rhs = immediate;
             forward_rs2 = false;
 
             break;
+        #endif
+        #ifndef COMET_NO_JALR
         case RISCV_JALR:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
@@ -399,15 +421,18 @@ void DC(Core& core
             // lock DC for 3 cycles, until we get the real next instruction
             core.ctrl.lock = 3;
             break;
+        #endif
+        #ifndef COMET_NO_MISC_MEM
         case RISCV_MISC_MEM:
             immediate.set_slc(0, instruction.slc<11>(20));
             rhs = immediate;
             forward_rs2 = false;
             break;
+        #endif
         default:
             dbgassert(false, "Error : Unknown operation in DC stage : @%06x	%08x\n", pc.to_int(), instruction.to_int());
             break;
-
+        #ifndef COMET_NO_SYSTEM
         case RISCV_SYSTEM:
             immediate.set_slc(0, instruction.slc<11>(20));
             if(funct3 == RISCV_SYSTEM_ENV)
@@ -436,6 +461,7 @@ void DC(Core& core
                 exit = true;
             #endif
             }
+            #ifndef COMET_NO_CSR
             else simul(if(funct3 != 0x4))
             {
                 immediate &= 0x00000FFF;
@@ -555,9 +581,11 @@ void DC(Core& core
                 fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
                 //lhs will contain core.REG[rs1]
             }
+            #endif // COMET_NO_CSR
             simul(else dbgassert(false, "Unknown operation @%06x    %08x\n",
                                         pc.to_int(), instruction.to_int()));
             break;
+        #endif  // COMET_NO_SYSTEM
         }
     }
 
@@ -600,6 +628,11 @@ void Ex(Core& core
     #endif
         )
 {
+#ifndef __HLS__
+    if(core.ctrl.prev_opCode[2] == RISCV_BR && core.ctrl.branch[1])
+        return; // prevent counting operation executed after a branch is taken
+#endif
+
     core.extoMem.pc = core.dctoEx.pc;
     simul(core.extoMem.instruction = core.dctoEx.instruction;)
     core.extoMem.opCode = core.dctoEx.opCode;
@@ -634,91 +667,168 @@ void Ex(Core& core
         else
             core.extoMem.datac = core.ctrl.prev_res[2];
     else
-        core.extoMem.datac = core.dctoEx.datac;;
+        core.extoMem.datac = core.dctoEx.datac;
 
-    switch (core.dctoEx.opCode)
+    switch(core.dctoEx.opCode)
     {
+    #ifndef COMET_NO_LUI
     case RISCV_LUI:
         core.extoMem.result = lhs;
+        simul(sim->coredata.lui++;)
         break;
+    #endif
+    #ifndef COMET_NO_AUIPC
     case RISCV_AUIPC:
         core.extoMem.result = lhs + rhs;
+        simul(sim->coredata.auipc++;)
         break;
+    #endif
+    #ifndef COMET_NO_JAL
     case RISCV_JAL:
         core.ctrl.jump_pc[0] = lhs + rhs;
         core.extoMem.result = core.dctoEx.datac;   // pc + 4
+        simul(sim->coredata.jal++;)
         break;
+    #endif
+    #ifndef COMET_NO_JALR
     case RISCV_JALR:
         core.ctrl.jump_pc[0] = (lhs + rhs) & 0xfffffffe;   // lsb must be zeroed (cf spec)
         core.extoMem.result = core.dctoEx.datac;   // pc + 4
+        simul(sim->coredata.jalr++;)
         break;
+    #endif
+    #ifndef COMET_NO_BR
     case RISCV_BR:
         switch(core.dctoEx.funct3)
         {
+        #ifndef COMET_NO_BR_BEQ
         case RISCV_BR_BEQ:
             core.extoMem.result = lhs == rhs;
+            simul(sim->coredata.br[0]++;)
             break;
+        #endif
+        #ifndef COMET_NO_BR_BNE
         case RISCV_BR_BNE:
             core.extoMem.result = lhs != rhs;
+            simul(sim->coredata.br[1]++;)
             break;
+        #endif
+        #ifndef COMET_NO_BR_BLT
         case RISCV_BR_BLT:
             core.extoMem.result = lhs < rhs;
+            simul(sim->coredata.br[2]++;)
             break;
+        #endif
+        #ifndef COMET_NO_BR_BGE
         case RISCV_BR_BGE:
             core.extoMem.result = lhs >= rhs;
+            simul(sim->coredata.br[3]++;)
             break;
+        #endif
+        #ifndef COMET_NO_BR_BLTU
         case RISCV_BR_BLTU:
             core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
+            simul(sim->coredata.br[4]++;)
             break;
+        #endif
+        #ifndef COMET_NO_BR_BGEU
         case RISCV_BR_BGEU:
             core.extoMem.result = (ac_int<32, false>)lhs >= (ac_int<32, false>)rhs;
+            simul(sim->coredata.br[5]++;)
             break;
+        #endif
         EXDEFAULT();
         }
         core.ctrl.branch[0] = core.extoMem.result;
         core.ctrl.jump_pc[0] = core.dctoEx.pc + core.dctoEx.datac; // cannot be done by fetch...
         break;
+    #endif
+    #ifndef COMET_NO_LD
     case RISCV_LD:
         core.extoMem.result = lhs + rhs;
+        simul(sim->coredata.ld++;)
         break;
+    #endif
+    #ifndef COMET_NO_ST
     case RISCV_ST:
         core.extoMem.result = lhs + rhs;
+        simul(sim->coredata.st++;)
         break;
+    #endif
+    #ifndef COMET_NO_OPI
     case RISCV_OPI:
         switch(core.dctoEx.funct3)
         {
+        #ifndef COMET_NO_OPI_ADDI
         case RISCV_OPI_ADDI:
             core.extoMem.result = lhs + rhs;
+            simul(sim->coredata.addi+=core.dctoEx.realInstruction;
+                  sim->coredata.bulle++;)
+
             break;
+        #endif
+        #ifndef COMET_NO_OPI_SLTI
         case RISCV_OPI_SLTI:
             core.extoMem.result = lhs < rhs;
+            simul(sim->coredata.slti++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_SLTIU
         case RISCV_OPI_SLTIU:
             core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
+            simul(sim->coredata.sltiu++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_XORI
         case RISCV_OPI_XORI:
             core.extoMem.result = lhs ^ rhs;
+            simul(sim->coredata.xori++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_ORI
         case RISCV_OPI_ORI:
             core.extoMem.result = lhs | rhs;
+            simul(sim->coredata.ori++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_ANDI
         case RISCV_OPI_ANDI:
             core.extoMem.result = lhs & rhs;
+            simul(sim->coredata.andi++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_SLLI
         case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
             // & shift amount held in the lower 5 bits (riscv spec)
             core.extoMem.result = lhs << (ac_int<5, false>)rhs;
+            simul(sim->coredata.slli++;)
             break;
+        #endif
+        #ifndef COMET_NO_OPI_SRI
         case RISCV_OPI_SRI:
             if (core.dctoEx.funct7.slc<1>(5))    //SRAI
+            {
+            #ifndef COMET_NO_OPI_SRAI
                 core.extoMem.result = lhs >> (ac_int<5, false>)rhs;
-            else                            //SRLI
+                simul(sim->coredata.srai++;)
+            #endif
+            }
+            else                                //SRLI
+            {
+            #ifndef COMET_NO_OPI_SRLI
                 core.extoMem.result = (ac_int<32, false>)lhs >> (ac_int<5, false>)rhs;
+                simul(sim->coredata.srli++;)
+            #endif
+            }
             break;
+        #endif  // OPI_SRI
         EXDEFAULT();
         }
         break;
+    #endif      // OPI
+    #ifndef COMET_NO_OP
     case RISCV_OP:
+        #ifndef COMET_NO_M
         if(core.dctoEx.funct7.slc<1>(0))     // M Extension
         {
             ac_int<33, true> mul_reg_a = lhs;
@@ -726,140 +836,260 @@ void Ex(Core& core
             ac_int<66, true> longResult = 0;
             switch (core.dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
             {
+            #ifndef COMET_NO_OP_M_MULHSU
             case RISCV_OP_M_MULHSU:
                 mul_reg_b[32] = 0;
+                simul(sim->coredata.mul[3]++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_M_MULHU
             case RISCV_OP_M_MULHU:
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
+                simul(sim->coredata.mul[2]++;)
                 break;
+            #endif
         #ifndef __HLS__
+            #ifndef COMET_NO_OP_M_MULH
+            case RISCV_OP_M_MULH:
+                simul(sim->coredata.mul[1]++;)
+                break;
+            #endif
+            #ifndef COMET_NO_OP_M_DIVU
             case RISCV_OP_M_DIVU:
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
+                simul(sim->coredata.div[1]++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_M_REMU
             case RISCV_OP_M_REMU:
                 mul_reg_a[32] = 0;
                 mul_reg_b[32] = 0;
+                simul(sim->coredata.rem[1]++;)
                 break;
+            #endif
         #endif
             }
         #ifndef __HLS__
             switch(core.dctoEx.funct3)
             {
+            #ifndef COMET_NO_OP_M_MUL
             case RISCV_OP_M_MUL:
+                simul(sim->coredata.mul[0]++;)
+            #endif
+            #ifndef COMET_NO_OP_M_MULH
             case RISCV_OP_M_MULH:
+            #endif
+            #ifndef COMET_NO_OP_M_MULHSU
             case RISCV_OP_M_MULHSU:
+            #endif
+            #ifndef COMET_NO_OP_M_MULHU
             case RISCV_OP_M_MULHU:
+            #endif
+            #if !defined(COMET_NO_OP_M_MUL) || !defined(COMET_NO_OP_M_MULH) || !defined(COMET_NO_OP_M_MULHSU) || !defined(COMET_NO_OP_M_MULHU)
                 longResult = mul_reg_a * mul_reg_b;
                 break;
+            #endif
+
+            #ifndef COMET_NO_OP_M_DIV
             case RISCV_OP_M_DIV:
+                simul(sim->coredata.div[0]++;)
+            #endif
+            #ifndef COMET_NO_OP_M_DIVU
             case RISCV_OP_M_DIVU:
+            #endif
+            #if !defined(COMET_NO_OP_M_DIV) || !defined(COMET_NO_OP_M_DIVU)
                 if(mul_reg_b)
                     longResult = mul_reg_a / mul_reg_b;
                 else    // divide by 0 => set all bits to 1
                     longResult = -1;
                 break;
+            #endif
+
+            #ifndef COMET_NO_OP_M_REM
             case RISCV_OP_M_REM:
+                simul(sim->coredata.rem[0]++;)
+            #endif
+            #ifndef COMET_NO_OP_M_REMU
             case RISCV_OP_M_REMU:
+            #endif
+            #if !defined(COMET_NO_OP_M_REM) || !defined(COMET_NO_OP_M_REMU)
                 if(mul_reg_b)
                     longResult = mul_reg_a % mul_reg_b;
                 else    // modulo 0 => result is first operand
                     longResult = mul_reg_a;
                 break;
+            #endif
             EXDEFAULT();
             }
         #else
+        #if !defined(COMET_NO_OP_M_MUL) || !defined(COMET_NO_OP_M_MULH) || !defined(COMET_NO_OP_M_MULHSU) || !defined(COMET_NO_OP_M_MULHU)
             longResult = mul_reg_a * mul_reg_b;
         #endif
+        #endif  // __HLS__
+        #if !defined(COMET_NO_OP_M_MULH) || !defined(COMET_NO_OP_M_MULHSU) || !defined(COMET_NO_OP_M_MULHU)
             if(core.dctoEx.funct3 == RISCV_OP_M_MULH || core.dctoEx.funct3 == RISCV_OP_M_MULHSU || core.dctoEx.funct3 == RISCV_OP_M_MULHU)
             {
                 core.extoMem.result = longResult.slc<32>(32);
             }
             else
+        #endif
             {
                 core.extoMem.result = longResult.slc<32>(0);
             }
         }
         else
+        #endif  // COMET_NO_M
         {
             switch(core.dctoEx.funct3)
             {
+            #if !defined(COMET_NO_OP_SUB) || !defined(COMET_NO_OP_ADD)
             case RISCV_OP_ADD:
-                if (core.dctoEx.funct7.slc<1>(5))    // SUB
+                if (core.dctoEx.funct7.slc<1>(5))   // SUB
+                {
+                #ifndef COMET_NO_OP_SUB
                     core.extoMem.result = lhs - rhs;
-                else                            // ADD
+                    simul(sim->coredata.sub++;)
+                #endif
+                }
+                else                                // ADD
+                {
+                #ifndef COMET_NO_OP_ADD
                     core.extoMem.result = lhs + rhs;
+                    simul(sim->coredata.add++;)
+                #endif
+                }
                 break;
+            #endif
+            #ifndef COMET_NO_OP_SLL
             case RISCV_OP_SLL:
                 core.extoMem.result = lhs << (ac_int<5, false>)rhs;
+                simul(sim->coredata.sll++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_SLT
             case RISCV_OP_SLT:
                 core.extoMem.result = lhs < rhs;
+                simul(sim->coredata.slt++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_SLTU
             case RISCV_OP_SLTU:
                 core.extoMem.result = (ac_int<32, false>)lhs < (ac_int<32, false>)rhs;
+                simul(sim->coredata.sltu++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_XOR
             case RISCV_OP_XOR:
                 core.extoMem.result = lhs ^ rhs;
+                simul(sim->coredata.opxor++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_SR
             case RISCV_OP_SR:
-                if(core.dctoEx.funct7.slc<1>(5))     // SRA
+                if(core.dctoEx.funct7.slc<1>(5))    // SRA
+                {
+                #ifndef COMET_NO_OP_SRA
                     core.extoMem.result = lhs >> (ac_int<5, false>)rhs;
-                else                            // SRL
+                    simul(sim->coredata.sra++;)
+                #endif
+                }
+                else                                // SRL
+                {
+                #ifndef COMET_NO_OP_SRL
                     core.extoMem.result = (ac_int<32, false>)lhs >> (ac_int<5, false>)rhs;
+                    simul(sim->coredata.srl++;)
+                #endif
+                }
                 break;
+            #endif
+            #ifndef COMET_NO_OP_OR
             case RISCV_OP_OR:
                 core.extoMem.result = lhs | rhs;
+                simul(sim->coredata.opor++;)
                 break;
+            #endif
+            #ifndef COMET_NO_OP_AND
             case RISCV_OP_AND:
                 core.extoMem.result = lhs & rhs;
+                simul(sim->coredata.opand++;)
                 break;
+            #endif
             EXDEFAULT();
             }
         }
         break;
+    #endif  // COMET_NO_OP
+    #ifndef COMET_NO_MISC_MEM
     case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
+        simul(sim->coredata.misc_mem++;)
         break;
+    #endif
+    #ifndef COMET_NO_SYSTEM
     case RISCV_SYSTEM:
         switch(core.dctoEx.funct3)
         { // case 0: mret instruction, core.dctoEx.memValue should be 0x302
+        #ifndef COMET_NO_SYSTEM_ENV
         case RISCV_SYSTEM_ENV:
         #ifndef __HLS__
             dbglog("Syscall @%06x (%lld)\n", core.dctoEx.pc.to_int(), core.csrs.mcycle.to_int64());
             core.extoMem.result = sim->solveSyscall(lhs, rhs, core.dctoEx.datac, core.dctoEx.datad, core.dctoEx.datae, exit);
+            simul(sim->coredata.ecall++;)
         #endif
             break;
-            // lhs is from rs1, rhs is from csr
-        case RISCV_SYSTEM_CSRRW:
+        #endif
+        #ifndef COMET_NO_CSR
+        #ifndef COMET_NO_SYSTEM_CSRRW
+        case RISCV_SYSTEM_CSRRW:    // lhs is from rs1, rhs is from csr
             core.extoMem.datac = rhs;       // written back to csr
             core.extoMem.result = lhs;      // written back to rd
+            simul(sim->coredata.csrrw++;)
             break;
+        #endif
+        #ifndef COMET_NO_SYSTEM_CSRRS
         case RISCV_SYSTEM_CSRRS:
             core.extoMem.datac = lhs | rhs;
             core.extoMem.result = lhs;
+            simul(sim->coredata.csrrs++;)
             break;
+        #endif
+        #ifndef COMET_NO_SYSTEM_CSRRC
         case RISCV_SYSTEM_CSRRC:
             core.extoMem.datac = lhs & ((ac_int<32, false>)~rhs);
             core.extoMem.result = lhs;
+            simul(sim->coredata.csrrc++;)
             break;
+        #endif
+        #ifndef COMET_NO_SYSTEM_CSRRWI
         case RISCV_SYSTEM_CSRRWI:
             core.extoMem.datac = rhs;
             core.extoMem.result = lhs;
+            simul(sim->coredata.csrrwi++;)
             break;
+        #endif
+        #ifndef COMET_NO_SYSTEM_CSRRSI
         case RISCV_SYSTEM_CSRRSI:
             core.extoMem.datac = lhs | rhs;
             core.extoMem.result = lhs;
+            simul(sim->coredata.csrrsi++;)
             break;
+        #endif
+        #ifndef COMET_NO_SYSTEM_CSRRCI
         case RISCV_SYSTEM_CSRRCI:
             core.extoMem.datac = lhs & ((ac_int<32, false>)~rhs);
             core.extoMem.result = lhs;
+            simul(sim->coredata.csrrci++;)
             break;
+        #endif
+        #endif // COMET_NO_CSR
         EXDEFAULT();
         }
         break;
+    #endif  // COMET_NO_SYSTEM
     EXDEFAULT();
     }
+
 
     core.ctrl.prev_res[0] = core.extoMem.result;
 
@@ -1040,6 +1270,7 @@ void doWB(Core& core)
         core.REG[core.memtoWB.rd] = core.memtoWB.result;
     }
 
+#if !defined(COMET_NO_SYSTEM) && !defined(COMET_NO_CSR)
     if(core.memtoWB.csrwb)     // condition should be more precise
     {
         fprintf(stderr, "Writing %08x in CSR @%03x   @%06x\n", core.memtoWB.rescsr.to_int(), core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
@@ -1138,6 +1369,7 @@ void doWB(Core& core)
             dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
         }
     }
+#endif
 
     core.csrs.minstret += core.memtoWB.realInstruction;
     simul(

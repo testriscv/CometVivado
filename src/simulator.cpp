@@ -15,7 +15,7 @@
 #endif
 
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
-    : core(0), dctrl(0), ddata(0), icachedata(), dcachedata()
+    : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
 {
     ins_memory = new ac_int<32, true>[DRAM_SIZE];
     data_memory = new ac_int<32, true>[DRAM_SIZE];

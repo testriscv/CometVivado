@@ -115,15 +115,18 @@ struct MemtoWB
 struct CSR
 {
     CSR()
-    : mcycle(0), minstret(0), mstatus(0)
+    : mcycle(0), minstret(0)
     // some should probably be initialized to some special value
     {}
+
+    ac_int<64, false> mcycle;                   // could be shared according to specification
+    ac_int<64, false> minstret;
+
+#ifndef COMET_NO_CSR
     static const ac_int<32, false> mvendorid;   // RO shared by all cores
     static const ac_int<32, false> marchid;     // RO shared by all cores
     static const ac_int<32, false> mimpid;      // RO shared by all cores
     //const ac_int<32, false> mhartid;                  // RO but private to core (and i don't want to template everything)
-    ac_int<64, false> mcycle;                   // could be shared according to specification
-    ac_int<64, false> minstret;
     ac_int<32, false> mstatus;
     ac_int<32, false> misa;     // writable...
     ac_int<32, false> medeleg;
@@ -136,6 +139,7 @@ struct CSR
     ac_int<32, false> mcause;
     ac_int<32, false> mtval;
     ac_int<32, false> mip;
+#endif
 };
 
 struct CoreCtrl

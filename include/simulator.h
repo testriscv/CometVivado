@@ -87,9 +87,9 @@ public:
     //********************************************************
     //Instrumentation
 
-    struct CacheData
+    struct CacheInstrumentation
     {
-        CacheData()
+        CacheInstrumentation()
         : miss(0), hit(0), cachememread(0), cachememwrite(0), mainmemread(0),
           mainmemwrite(0), ctrlmemread(0), ctrlmemwrite(0)
         {}
@@ -102,6 +102,64 @@ public:
         int64_t ctrlmemread;
         int64_t ctrlmemwrite;
     } icachedata, dcachedata;
+
+    struct CoreInstrumentation
+    {
+        CoreInstrumentation()
+        {
+            int64_t* ptr = &lui;
+            for(int i(0); i < sizeof(CoreInstrumentation)/8; ++i)
+                ptr[i] = 0;
+        }
+        int64_t lui;
+        int64_t auipc;
+        int64_t jal;
+        int64_t jalr;
+        int64_t br[6];
+        int64_t ld;
+        int64_t st;
+        int64_t addi;
+        int64_t slti;
+        int64_t sltiu;
+        int64_t xori;
+        int64_t ori;
+        int64_t andi;
+        int64_t slli;
+        int64_t srai;
+        int64_t srli;
+        int64_t mul[4];
+        int64_t div[2];
+        int64_t rem[2];
+        int64_t add;
+        int64_t sub;
+        int64_t sll;
+        int64_t slt;
+        int64_t sltu;
+        int64_t opxor;  // xor is c++ keyword
+        int64_t opor;   // or  is c++ keyword
+        int64_t opand;  // and is c++ keyword
+        int64_t sra;
+        int64_t srl;
+        int64_t misc_mem;
+        int64_t ecall;
+        int64_t csrrw;
+        int64_t csrrs;
+        int64_t csrrc;
+        int64_t csrrwi;
+        int64_t csrrsi;
+        int64_t csrrci;
+
+        int64_t bulle;
+
+        int64_t total()
+        {
+            int64_t* ptr = &lui;
+            int64_t t = 0;
+            for(int i(0); i < sizeof(CoreInstrumentation)/8; ++i)
+                t += ptr[i];
+            return t-bulle;
+        }
+    } coredata;
 };
 
 #endif // SIMULATOR_H

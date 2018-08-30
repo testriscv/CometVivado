@@ -161,6 +161,53 @@ CCS_MAIN(int argc, char** argv)
         }
     }
 
+#define printcd(x) printf("%-15s : %17lld\n", #x, sim.coredata.x)
+    printf("%-15s : %17lld instructions executed\n", "Core Statistics", sim.coredata.total());
+    printcd(lui);
+    printcd(auipc);
+    printcd(jal);
+    printcd(jalr);
+    printf("%-15s : %lld (%lld, %lld, %lld, %lld, %lld, %lld)\n", "br (eq, neq, lt, ge, ltu, geu)",
+           sim.coredata.br[0]+sim.coredata.br[1]+sim.coredata.br[2]+sim.coredata.br[3]+sim.coredata.br[4]+sim.coredata.br[5],
+           sim.coredata.br[0],sim.coredata.br[1],sim.coredata.br[2],sim.coredata.br[3],sim.coredata.br[4],sim.coredata.br[5]);
+    printcd(ld);
+    printcd(st);
+    printcd(addi);
+    printcd(bulle);
+    printcd(slti);
+    printcd(sltiu);
+    printcd(xori);
+    printcd(ori);
+    printcd(andi);
+    printcd(slli);
+    printcd(srai);
+    printcd(srli);
+    printf("%-15s : %lld (%lld, %lld, %lld, %lld)\n", "mul (mul, mulh, mulhu, mulhsu)",
+           sim.coredata.mul[0]+sim.coredata.mul[1]+sim.coredata.mul[2]+sim.coredata.mul[3],
+           sim.coredata.mul[0],sim.coredata.mul[1],sim.coredata.mul[2],sim.coredata.mul[3]);
+    printf("%-15s : %17lld (%lld, %lld)\n", "div (div, divu)", sim.coredata.div[0]+sim.coredata.div[1],
+            sim.coredata.div[0], sim.coredata.div[1]);
+    printf("%-15s : %17lld (%lld, %lld)\n", "rem (rem, remu)", sim.coredata.rem[0]+sim.coredata.rem[1],
+            sim.coredata.rem[0], sim.coredata.rem[1]);
+    printcd(add);
+    printcd(sub);
+    printcd(sll);
+    printcd(slt);
+    printcd(sltu);
+    printcd(opxor);
+    printcd(opor);
+    printcd(opand);
+    printcd(sra);
+    printcd(srl);
+    printcd(misc_mem);
+    printcd(ecall);
+    printcd(csrrw);
+    printcd(csrrs);
+    printcd(csrrc);
+    printcd(csrrwi);
+    printcd(csrrsi);
+    printcd(csrrci);
+
 #ifndef nocache
 
     printf("Cache Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
