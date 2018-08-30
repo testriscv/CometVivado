@@ -468,6 +468,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 dctrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
                 dctrl.setctrl.dirty[i] = setctrl.slc<1>(Associativity*(32-tagshift+1) + i);
             }
+            simul(sim->dcachedata.cachememread+=Associativity;)
         #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             dctrl.setctrl.policy = setctrl.slc<DPolicyWidth>(Associativity*(32-tagshift+2));
         #endif
@@ -495,7 +496,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 }
                 update_policy(dctrl);
                 datavalid = true;
-                simul(sim->dcachedata.cachememread+=Associativity;)
             }
             else    // not found or invalid
             {

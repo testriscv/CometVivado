@@ -265,7 +265,7 @@ def mediabenchmark():
 						except:
 							pass
 						sleep(1)
-					break			
+								
 			if assoc == 1:
 				break
 				
