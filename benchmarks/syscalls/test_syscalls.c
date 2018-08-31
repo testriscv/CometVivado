@@ -144,7 +144,7 @@ int main(int argc, char** argv)
     long result = fread(content, 1, taille, fichier);
     content[taille] = '\0';
 
-    printf("%d  %d\n", taille, result);
+    printf("%ld  %ld\n", taille, result);
 
     printf("Read %d bytes of file :\n", strlen(content));
     printf("%s\n", content);
@@ -226,6 +226,10 @@ int main(int argc, char** argv)
     int64_t b = 0x987654321;
     printf("%lld x %lld = %lld\n", a, b, a*b);
 
+    for(char* i = (char*)&a; i < (char*)&a+sizeof(a); ++i)
+        printf("%02x ", (int)*i);
+    printf("\n");
+    
     testthread();
 
     printf("End of program");

@@ -167,7 +167,7 @@ CCS_MAIN(int argc, char** argv)
     printcd(auipc);
     printcd(jal);
     printcd(jalr);
-    printf("%-15s : %lld (%lld, %lld, %lld, %lld, %lld, %lld)\n", "br (eq, neq, lt, ge, ltu, geu)",
+    printf("%-15s : %lld (%lld, %lld, %lld, %lld, %lld, %lld)\n", "br (beq, bne, blt, bge, bltu, bgeu)",
            sim.coredata.br[0]+sim.coredata.br[1]+sim.coredata.br[2]+sim.coredata.br[3]+sim.coredata.br[4]+sim.coredata.br[5],
            sim.coredata.br[0],sim.coredata.br[1],sim.coredata.br[2],sim.coredata.br[3],sim.coredata.br[4],sim.coredata.br[5]);
     printcd(ld);
