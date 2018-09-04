@@ -161,14 +161,16 @@ CCS_MAIN(int argc, char** argv)
         }
     }
 
-#define printcd(x) printf("%-15s : %17lld\n", #x, sim.coredata.x)
+#define printcd(x) printf("%-15s : %17lld (%2.2f%%)\n", #x, sim.coredata.x, sim.coredata.x/total)
+    double total = sim.coredata.total()/100.0;
     printf("%-15s : %17lld instructions executed\n", "Core Statistics", sim.coredata.total());
     printcd(lui);
     printcd(auipc);
     printcd(jal);
     printcd(jalr);
-    printf("%-15s : %lld (%lld, %lld, %lld, %lld, %lld, %lld)\n", "br (beq, bne, blt, bge, bltu, bgeu)",
+    printf("%-15s : %lld (%2.2f%%) (%lld, %lld, %lld, %lld, %lld, %lld)\n", "br (beq, bne, blt, bge, bltu, bgeu)",
            sim.coredata.br[0]+sim.coredata.br[1]+sim.coredata.br[2]+sim.coredata.br[3]+sim.coredata.br[4]+sim.coredata.br[5],
+           (sim.coredata.br[0]+sim.coredata.br[1]+sim.coredata.br[2]+sim.coredata.br[3]+sim.coredata.br[4]+sim.coredata.br[5])/total,
            sim.coredata.br[0],sim.coredata.br[1],sim.coredata.br[2],sim.coredata.br[3],sim.coredata.br[4],sim.coredata.br[5]);
     printcd(ld);
     printcd(st);
@@ -182,12 +184,12 @@ CCS_MAIN(int argc, char** argv)
     printcd(slli);
     printcd(srai);
     printcd(srli);
-    printf("%-15s : %lld (%lld, %lld, %lld, %lld)\n", "mul (mul, mulh, mulhu, mulhsu)",
-           sim.coredata.mul[0]+sim.coredata.mul[1]+sim.coredata.mul[2]+sim.coredata.mul[3],
+    printf("%-15s : %lld (%2.2f%%) (%lld, %lld, %lld, %lld)\n", "mul (mul, mulh, mulhu, mulhsu)",
+           sim.coredata.mul[0]+sim.coredata.mul[1]+sim.coredata.mul[2]+sim.coredata.mul[3], (sim.coredata.mul[0]+sim.coredata.mul[1]+sim.coredata.mul[2]+sim.coredata.mul[3])/total,
            sim.coredata.mul[0],sim.coredata.mul[1],sim.coredata.mul[2],sim.coredata.mul[3]);
-    printf("%-15s : %17lld (%lld, %lld)\n", "div (div, divu)", sim.coredata.div[0]+sim.coredata.div[1],
+    printf("%-15s : %17lld (%2.2f%%) (%lld, %lld)\n", "div (div, divu)", sim.coredata.div[0]+sim.coredata.div[1], (sim.coredata.div[0]+sim.coredata.div[1])/total,
             sim.coredata.div[0], sim.coredata.div[1]);
-    printf("%-15s : %17lld (%lld, %lld)\n", "rem (rem, remu)", sim.coredata.rem[0]+sim.coredata.rem[1],
+    printf("%-15s : %17lld (%2.2f%%) (%lld, %lld)\n", "rem (rem, remu)", sim.coredata.rem[0]+sim.coredata.rem[1], (sim.coredata.rem[0]+sim.coredata.rem[1])/total,
             sim.coredata.rem[0], sim.coredata.rem[1]);
     printcd(add);
     printcd(sub);
