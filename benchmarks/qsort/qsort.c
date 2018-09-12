@@ -40,7 +40,7 @@ int main()
 {
     int i;
     qsort(0,SIZE-1);
-
+#ifndef __HLS__
 #define STR1(X) #X
 #define STR(X)  STR1(X)
     for(i = 0; i < SIZE; ++i)
@@ -52,4 +52,5 @@ int main()
         else
             printf("%d\n", A[i]);                    
     }
+#endif
 }

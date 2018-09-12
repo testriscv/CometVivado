@@ -304,7 +304,7 @@ def mediabenchmark():
 				print(b, *el, file=output)
 
 def spikemedia():
-	benchmarks = ["adpcm", "epic", "g721", "jpeg", "mesa", "mpeg2", "rasta"]
+	benchmarks = ["epic", "g721", "jpeg", "mesa", "mpeg2", "rasta"] # adpcm write file to stdout... cant parse this shit
 	benchs = []
 	
 	for b in benchmarks:
@@ -313,7 +313,7 @@ def spikemedia():
 		benchs.extend(scripts)
 	
 	global temps
-	temps = {b : (0,0) for b in benchs}
+	temps = {b : ("comet",0,0,0,"spike",0,0,0) for b in benchs}
 	
 	os.chdir("../Mediabench/"+benchmarks[0]+"/exec")
 	for b in benchmarks:
@@ -324,29 +324,48 @@ def spikemedia():
 			for s in scripts:
 				print("trying", b+"/exec/"+s, "in", os.getcwd())
 				start = resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime
-				with subprocess.Popen(["./"+s], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as foo:
-					pass					
+				with subprocess.Popen(["./"+s], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,universal_newlines=True) as foo:
+					out = ""
+					for line in foo.stdout:
+						out += line
 				end = resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime
 				t = end-start
-				print("Done Comet", b+"/"+s, "     in", timetostr(end-start))
+				
+				out = out.splitlines()
+				cinstructions = 0
+				ccycles = 0
+				for line in out:
+					if line.startswith("Successfully executed "):
+						 l = line.split()
+						 cinstructions = int(l[2])
+						 ccycles = int(l[-2])
+				
+				print("Done Comet", b+"/"+s, "     in", timetostr(end-start), "in", ccycles, "cycles")
 				
 				start = resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime
-				with subprocess.Popen(["./"+s[:-2]+"spikesh"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as foo:
-					pass					
+				with subprocess.Popen(["./"+s[:-2]+"spikesh"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,universal_newlines=True) as foo:
+					out = ""
+					for line in foo.stdout:
+						out += line
+											
 				end = resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime
-				print("Done Spike", b+"/"+s[:-2]+"spikesh", "in", timetostr(end-start))
-				
-				temps[b+"/"+s] = (t, end-start)
-				
+				out = out.splitlines()
+				sinstructions = int(out[-2].split()[0])
+				scycles = int(out[-3].split()[0])
+						 
+				print("Done Spike", b+"/"+s[:-2]+"spikesh", "in", timetostr(end-start), "in", scycles, "cycles")
 			
+				temps[b+"/"+s] = ("comet",t,cinstructions,ccycles,"spike",end-start,sinstructions,scycles)
+				
 		except BaseException as e:
 			print("Error for", b, ":", e)
 			os.chdir("../../../comet/")
 			raise e
+		
 	
 	os.chdir("../../../comet/")
 	
 	with open("times_med_spike.txt", "w") as t:
-		print("Benchmarks Comet Spike", file=t)
+		print("Benchmarks	Comet Temps Instructions Cycles Spike Temps Instructions Cycles", file=t)
 		for b in temps:
 			print(b, *temps[b], file=t)
