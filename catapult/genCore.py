@@ -141,7 +141,17 @@ go architect
 //cycle add /{top}/core/core:rlp/main/loadidata:read_mem(cim:rsc(0)(0).@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
 //cycle add /{top}/core/core:rlp/main/dcache:case-4:if:read_mem(cdm:rsc(0)(0).@) -from /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -equal 0
 //cycle add /{top}/core/core:rlp/main/dcache:case-0:if:setctrl:read_mem(memdctrl:rsc.@) -from /{top}/core/core:rlp/main/icache:case-0:if:setctrl:read_mem(memictrl:rsc.@) -equal 0
+//if {{ {associativity} != 1 }} {{
+set memconstraint [cycle find_op "*mem(cdm*" -all true]
+set memconstraint [concat $memconstraint [cycle find_op "*mem(cim*" -all true]]
+set memconstraint [concat $memconstraint [cycle find_op "*mem(mem*" -all true]]
+for {{ set i 1 }} {{ $i < [llength $memconstraint] }} {{ incr i }} {{
+	cycle add [lindex $memconstraint $i-1] -from [lindex $memconstraint $i] -equal 0
+}}
+//}}
 """
+
+
 
 genCacheonly = """if {{ {cachesize} == 65536 }} {{
 	directive set /{top}/cim:rsc -MAP_TO_MODULE ST_singleport_16384x32.ST_SPHD_BB_16384x32m32_aTdol_wrapper
