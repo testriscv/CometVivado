@@ -35,6 +35,7 @@ To verify the simulator behavior, you can run a benchmark through it and check t
 ```
 git clone --recursive https://github.com/riscv/riscv-tools 
 export RISCV=/where/you/want/the/compilation/to/install
+cd riscv-tools
 ./build-rv32ima.sh
 export PATH=$PATH:$RISCV/bin
 ```
