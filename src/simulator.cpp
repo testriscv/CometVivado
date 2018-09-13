@@ -7,6 +7,8 @@
 #include <sys/time.h>
 
 #include "simulator.h"
+#include "elfFile.h"
+#include "core.h"
 
 #if 1
 #define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
