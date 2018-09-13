@@ -2,7 +2,7 @@
 RISC-V ISA based 32-bit processor written in C++ for High Level Synthesis (HLS).
 
 ## Pre-requisites
-1. [RISC-V toolchain](https://github.com/riscv/riscv-gnu-toolchain)
+1. [RISC-V toolchain](https://github.com/riscv/riscv-tools)
 2. [Catapult HLS](https://www.mentor.com/hls-lp/catapult-high-level-synthesis/)
 
 ## Components of the project
@@ -10,7 +10,7 @@ Vivado HLS is used for FPGA IP synthesis and Catapult HLS is used for ASIC synth
 
 * Run `make` to generate the simulator `comet.sim`.
 * To build it as an FPGA IP, run `script.tcl` in Vivado HLS. (not maintained)
-* To synthesize it to rtl for ASIC, run [genCore.py](catapult/genCore.py) in `catapult` folder. See `genCore.py -h` for argument list. Don't forget to `mkdir memories` at the top before trying to run genCore.py.
+* To synthesize it to rtl for ASIC, run [genCore.py](catapult/genCore.py) in `catapult` folder. See `genCore.py -h` for argument list.
 
 ## Documentation 
 The primary design goal behind using High Level Synthesis (HLS) is that for simulating the functionality on a host machine,
@@ -19,9 +19,8 @@ and tools involved are different in nature, these differences have to be account
 functionality.
 
 ## Architecture
-The 5 stage pipelined architecture currently has 4MB of instruction memory and 4MB of data memory. 32 bit
-Arithmetic and logical integer operations are supported. Currently there is no support for DIV instructions because of the 
-complexity of synthesizing division operators. 
+The 5 stage pipelined architecture currently has 64MB of instruction memory and 64MB of data memory. 32 bit
+Arithmetic and logical integer operations are supported. We support M extension but the division and the modulo operation are external to the core because they take more than one cycle to execute at the synthesis. 
 
 ## Simulator
 In order to execute an elf file compiled by `riscv32-unknown-elf-gcc`, it is necessary to have a process which reads the 
