@@ -4,6 +4,7 @@ RISC-V ISA based 32-bit processor written in C++ for High Level Synthesis (HLS).
 ## Pre-requisites
 1. [RISC-V toolchain](https://github.com/riscv/riscv-tools)
 2. [Catapult HLS](https://www.mentor.com/hls-lp/catapult-high-level-synthesis/)
+3. [Python 3](https://www.python.org/downloads/)
 
 ## Components of the project
 Vivado HLS is used for FPGA IP synthesis and Catapult HLS is used for ASIC synthesis.
