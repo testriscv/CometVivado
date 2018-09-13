@@ -33,13 +33,9 @@ To verify the simulator behavior, you can run a benchmark through it and check t
 
 ## Benchmarks
 ```
-git clone --recursive https://github.com/riscv/riscv-gnu-toolchain 
+git clone --recursive https://github.com/riscv/riscv-tools 
 export RISCV=/where/you/want/the/compilation/to/install
-mkdir build
-cd build
-../configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
-make
-make install
+./build-rv32ima.sh
 export PATH=$PATH:$RISCV/bin
 ```
 Now that you have compiled the compiler, you can compile the benchmarks:
@@ -47,4 +43,4 @@ Now that you have compiled the compiler, you can compile the benchmarks:
 cd benchmarks
 make
 ```
-After this, you can `./comet.sim benchmarks/build/matmul_int_4.riscv` and this will run the benchmarks through the simulator.
+After this, you can `./comet.sim -f benchmarks/build/matmul_int_4.riscv32` and this will run the benchmarks through the simulator.
