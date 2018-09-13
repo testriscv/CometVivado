@@ -16,7 +16,9 @@
 #include "cache.h"
 #include "core.h"
 #include "simulator.h"
+#include "multicycleoperator.h"
 
+#define ptrtocache(mem) (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(mem))
 
 using namespace std;
 
@@ -90,13 +92,16 @@ CCS_MAIN(int argc, char** argv)
     }
 
     sim.setDM(dm);
-    sim.setIM(im);   
+    sim.setIM(im);
 
     unsigned int* cim = new unsigned int[Sets*Blocksize*Associativity];
     unsigned int* cdm = new unsigned int[Sets*Blocksize*Associativity];
 
     ac_int<IWidth, false>* memictrl = new ac_int<IWidth, false>[Sets];
     ac_int<DWidth, false>* memdctrl = new ac_int<DWidth, false>[Sets];
+
+    MultiCycleOp* mcop = new MultiCycleOp;
+    MultiCycleRes* mcres = new MultiCycleRes;
 
     // zero the control (although only the valid bit should be zeroed, rest is don't care)
     for(int i(0); i < Sets; ++i)
@@ -134,13 +139,19 @@ CCS_MAIN(int argc, char** argv)
     while(!exit)
     {
         CCS_DESIGN(doStep(sim.getPC(), exit,
+                          *mcop, *mcres,
 /* main memories */       im, dm,
-/** cache memories **/    (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cim)), (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cdm)),
+/** cache memories **/    ptrtocache(cim), ptrtocache(cdm),
 /* control memories */    memictrl, memdctrl
                   #ifndef __HLS__
                       , &sim
                   #endif
                   ));
+        multicyclecontroller(*mcop, *mcres
+                        #ifndef __HLS__
+                             , &sim
+                        #endif
+                             );
     }
 
     sim.writeBack();
@@ -160,6 +171,8 @@ CCS_MAIN(int argc, char** argv)
             }
         }
     }
+
+    printf("End of memory\n");
 
 #define printcd(x) printf("%-15s : %17lld (%2.2f%%)\n", #x, sim.coredata.x, sim.coredata.x/total)
     double total = sim.coredata.total()/100.0;
@@ -250,5 +263,7 @@ CCS_MAIN(int argc, char** argv)
     delete[] cdm;
     delete[] memictrl;
     delete[] memdctrl;
+    delete mcop;
+    delete mcres;
     CCS_RETURN(0);
 }

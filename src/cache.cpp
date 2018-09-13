@@ -1,5 +1,9 @@
 #include "cache.h"
 
+#ifndef __HLS__
+#include "simulator.h"
+#endif
+
 void cacheWrapper(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], unsigned int cim[Sets][Blocksize][Associativity],
                   ICacheRequest irequest, ICacheReply& ireply,
                   ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], unsigned int cdm[Sets][Blocksize][Associativity],
@@ -251,7 +255,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
     if(ictrl.state != IState::Fetch && ictrl.currentset != getSet(irequest.address))  // different way but same set keeps same control, except for data......
     {
         ictrl.state = IState::StoreControl;
-        gdebug("irequest.address %06x storecontrol\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
+        gdebug("storecontrol irequest.address %06x\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
     }
 
     switch(ictrl.state)

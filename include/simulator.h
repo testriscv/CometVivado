@@ -7,9 +7,6 @@ struct Core;
 
 #include "portability.h"
 #include "cache.h"
-#include "core.h"
-#include "elfFile.h"
-#include "riscvISA.h"
 
 class Simulator
 {

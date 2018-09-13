@@ -164,7 +164,7 @@ def readpreambule(fichier, prog):
 	
 	line = fichier.readline()
 	i += 1
-	N = 2**22
+	N = 2**26
 	imem = [0] * N
 	while not line.startswith("data"):
 		l = line.split()
@@ -198,7 +198,7 @@ def parsefile(fichier, prog, cache=True):
 		fichier = fichier.stdout
 	
 	reg = [0] * 32
-	reg[2] = 0x003FF000
+	reg[2] = 0x003FFF000
 	global ipath, dpath, rpath
 	rpath = [[0]*32]
 	ipath = list()	
@@ -396,6 +396,8 @@ def parsefile(fichier, prog, cache=True):
 	assert line == "memory : \n"
 	for line in fichier:					# read end memory
 		i += 1
+		if line.startswith("End"):
+			break
 		l = line.split()
 		ad = int(l[0], 16)
 		val = int(l[2], 16)

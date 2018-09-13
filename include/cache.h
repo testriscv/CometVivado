@@ -283,8 +283,7 @@ struct DCacheReply
     bool datavalid;
 };
 
-#include "simulator.h"
-class Simulator;        // ???*??? = ?????????
+class Simulator;
 
 void icache(ac_int<IWidth, false> memctrl[Sets], unsigned int imem[DRAM_SIZE],  // control & memory
             unsigned int data[Sets][Blocksize][Associativity],                  // cachedata

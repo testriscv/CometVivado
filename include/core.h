@@ -3,8 +3,8 @@
 
 #include "portability.h"
 #include "riscvISA.h"
-#include "simulator.h"
 #include "cache.h"
+#include "multicycleoperator.h"
 
 struct FtoDC
 {
@@ -57,6 +57,9 @@ struct DCtoEx
     bool forward_mem_rhs;
     bool forward_mem_datac;
 
+    bool external;      // used for external operation
+    MultiCycleOperation::MultiCycleOperation op;
+
 #ifndef __HLS__
     // syscall only
     ac_int<32, true> datad;
@@ -85,6 +88,7 @@ struct ExtoMem
     ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
     ac_int<3, false> funct3;    // datasize and sign extension bit
     bool realInstruction;
+    bool external;
 
     ac_int<32, true> datac;     // data to be stored in memory (if needed)
 };
@@ -204,6 +208,10 @@ struct Core
     ac_int<32, true> REG[32];
     ac_int<32, false> pc;
 
+    /// Multicycle operation
+    MultiCycleOp mcop;
+    MultiCycleRes mcres;
+
     /// Instruction cache
     //unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
     ICacheRequest irequest;
@@ -218,6 +226,7 @@ struct Core
 class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
+            MultiCycleOp& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
