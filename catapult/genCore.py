@@ -72,6 +72,7 @@ solution file add ../src/cache.cpp -type C++
 solution file add ../src/simulator.cpp -type C++ -exclude True
 solution file add ../src/elfFile.cpp -type C++ -exclude True
 solution file add ../src/portability.cpp -type C++
+solution file add ../src/multicycleoperator.cpp -type C++
 go new
 directive set -DESIGN_GOAL area
 directive set -OLD_SCHED false
