@@ -579,6 +579,8 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
     {
         if(file == 1)
             fflush(stdout); //  prevent mixed output
+        else if(file == 2)
+            fflush(stderr);
         result = write(file, localBuffer, size);
     }
     delete[] localBuffer;

@@ -26,7 +26,8 @@ struct DCtoEx
   #endif
       opCode(RISCV_OPI), funct7(0), funct3(RISCV_OPI_ADDI), rd(0), realInstruction(false),
       lhs(0), rhs(0), datac(0), forward_lhs(false), forward_rhs(false), forward_datac(false),
-      forward_mem_lhs(false), forward_mem_rhs(false), forward_mem_datac(false)
+      forward_mem_lhs(false), forward_mem_rhs(false), forward_mem_datac(false),
+      csr(false), CSRid(0), external(false), op(MultiCycleOperation::NONE)
   #ifndef __HLS__
       , datad(0), datae(0), memValue(0)
   #endif
@@ -57,6 +58,9 @@ struct DCtoEx
     bool forward_mem_rhs;
     bool forward_mem_datac;
 
+    bool csr;
+    ac_int<12, false> CSRid;
+
     bool external;      // used for external operation
     MultiCycleOperation::MultiCycleOperation op;
 
@@ -76,7 +80,7 @@ struct ExtoMem
       instruction(0x13),
   #endif
       result(0), rd(0), opCode(RISCV_OPI), funct3(RISCV_OPI_ADDI), realInstruction(false),
-      datac(0)
+      datac(0), csr(false), CSRid(0)
     {}
     ac_int<32, false> pc;
 #ifndef __HLS__
@@ -90,7 +94,10 @@ struct ExtoMem
     bool realInstruction;
     bool external;
 
-    ac_int<32, true> datac;     // data to be stored in memory (if needed)
+    bool csr;
+    ac_int<12, false> CSRid;
+
+    ac_int<32, true> datac;     // data to be stored in memory or csr result
 };
 
 struct MemtoWB
@@ -100,7 +107,7 @@ struct MemtoWB
   #ifndef __HLS__
       instruction(0x13),
   #endif
-      result(0), rd(0), realInstruction(false), rescsr(0), CSRid(0), csrwb(false)
+      result(0), rd(0), realInstruction(false), csr(false), CSRid(0), rescsr(0)
     {}
     ac_int<32, false> pc;
 #ifndef __HLS__
@@ -111,9 +118,10 @@ struct MemtoWB
     ac_int<5, false> rd;        // destination register
     bool realInstruction;       // increment minstret ?
 
-    ac_int<32, false> rescsr;   // Result for CSR instruction
+    bool csr;
     ac_int<12, false> CSRid;    // CSR to be written back
-    bool csrwb;
+    ac_int<32, false> rescsr;   // Result for CSR instruction
+
 };
 
 struct CSR
