@@ -193,6 +193,9 @@ void DC(Core& core
     ac_int<7, false> opCode = instruction.slc<7>(0);    // could be reduced to 5 bits because 1:0 is always 11
     // cannot reduce opCode to 5 bits with modelsim (x propagation...)
 
+    bool csr = false;
+    ac_int<12, false> CSRid = instruction.slc<12>(20);
+
     ac_int<32, true> lhs = 0;
     ac_int<32, true> rhs = 0;
     ac_int<32, true> datac = 0;
@@ -515,122 +518,144 @@ void DC(Core& core
             #ifndef COMET_NO_CSR
             else simul(if(funct3 != 0x4))
             {
-                immediate &= 0x00000FFF;
-                if(funct3.slc<1>(2))
+                if(funct3.slc<1>(2))    // CSR + CSRid
                     rhs = rs1;
+                else                    // CSR + reg[rs1]
+                    rhs = lhs;
                 // handle the case for rd = 0 for CSRRW
                 // handle WIRI/WARL/etc.
-                fprintf(stderr, "%03x :     %x  %x  %x  %x\n", (int)immediate, (int)immediate.slc<2>(10), (int)immediate.slc<2>(8),
-                        (int)immediate.slc<1>(6), (int)immediate.slc<3>(0));
-                if(immediate.slc<2>(8) == 3)
+                fprintf(stderr, "%03x :     %x  %x  %x  %x\n", (int)CSRid, (int)CSRid.slc<2>(10), (int)CSRid.slc<2>(8),
+                        (int)CSRid.slc<1>(6), (int)CSRid.slc<3>(0));
+                csr = true;
+                if(CSRid.slc<2>(8) == 3)
                 {
-                    if(immediate.slc<2>(10) == 0)
+                    if(CSRid.slc<2>(10) == 0)
                     {
-                        if(immediate.slc<1>(6) == 0)  // 0x30X
+                        if(CSRid.slc<1>(6) == 0)  // 0x30X
                         {
-                            switch(immediate.slc<3>(0))
+                            switch(CSRid.slc<3>(0))
                             {
                             case 0:
                                 lhs = core.csrs.mstatus;
+                                fprintf(stderr, "CSR read mstatus @%06x  %08x\n", pc.to_int(), core.csrs.mstatus.to_int());
                                 break;
                             case 1:
                                 lhs = core.csrs.misa;
+                                fprintf(stderr, "CSR read misa @%06x  %08x\n", pc.to_int(), core.csrs.misa.to_int());
                                 break;
                             case 2:
                                 lhs = core.csrs.medeleg;
+                                fprintf(stderr, "CSR read medeleg @%06x  %08x\n", pc.to_int(), core.csrs.medeleg.to_int());
                                 break;
                             case 3:
                                 lhs = core.csrs.mideleg;
+                                fprintf(stderr, "CSR read mideleg @%06x  %08x\n", pc.to_int(), core.csrs.mideleg.to_int());
                                 break;
                             case 4:
                                 lhs = core.csrs.mie;
+                                fprintf(stderr, "CSR read mie @%06x  %08x\n", pc.to_int(), core.csrs.mie.to_int());
                                 break;
                             case 5:
                                 lhs = core.csrs.mtvec;
+                                fprintf(stderr, "CSR read mtvec @%06x  %08x\n", pc.to_int(), core.csrs.mtvec.to_int());
                                 break;
                             case 6:
                                 lhs = core.csrs.mcounteren;
+                                fprintf(stderr, "CSR read mcounteren @%06x  %08x\n", pc.to_int(), core.csrs.mcounteren.to_int());
                                 break;
                             default:
-                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", CSRid.to_int(), pc.to_int());
                                 break;
                             }
                         }
                         else                        // 0x34X
                         {
-                            switch(immediate.slc<3>(0))
+                            switch(CSRid.slc<3>(0))
                             {
                             case 0:
                                 lhs = core.csrs.mscratch;
+                                fprintf(stderr, "CSR read mscratch @%06x  %08x\n", pc.to_int(), core.csrs.mscratch.to_int());
                                 break;
                             case 1:
                                 lhs = core.csrs.mepc;
+                                fprintf(stderr, "CSR read mepc @%06x  %08x\n", pc.to_int(), core.csrs.mepc.to_int());
                                 break;
                             case 2:
                                 lhs = core.csrs.mcause;
+                                fprintf(stderr, "CSR read mcause @%06x  %08x\n", pc.to_int(), core.csrs.mcause.to_int());
                                 break;
                             case 3:
                                 lhs = core.csrs.mtval;
+                                fprintf(stderr, "CSR read mtval @%06x  %08x\n", pc.to_int(), core.csrs.mtval.to_int());
                                 break;
                             case 4:
                                 lhs = core.csrs.mip;
+                                fprintf(stderr, "CSR read mip @%06x  %08x\n", pc.to_int(), core.csrs.mip.to_int());
                                 break;
                             default:
-                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", CSRid.to_int(), pc.to_int());
                                 break;
                             }
                         }
                     }
-                    else if(immediate.slc<2>(10) == 2)
+                    else if(CSRid.slc<2>(10) == 2)
                     {
                         ac_int<2, false> foo = 0;
-                        foo.set_slc(0, immediate.slc<1>(1));
-                        foo.set_slc(1, immediate.slc<1>(7));
+                        foo.set_slc(0, CSRid.slc<1>(1));
+                        foo.set_slc(1, CSRid.slc<1>(7));
                         switch(foo)
                         {
                         case 0:
                             lhs = core.csrs.mcycle.slc<32>(0);
+                            fprintf(stderr, "CSR read mcycle @%06x  %08x\n", pc.to_int(), core.csrs.mcycle.to_int());
                             break;
                         case 1:
                             lhs = core.csrs.minstret.slc<32>(0);
+                            fprintf(stderr, "CSR read minstret @%06x  %08x\n", pc.to_int(), core.csrs.minstret.to_int());
                             break;
                         case 2:
                             lhs = core.csrs.mcycle.slc<32>(32);
+                            fprintf(stderr, "CSR read mcycle @%06x  %08x\n", pc.to_int(), core.csrs.mcycle.to_int());
                             break;
                         case 3:
                             lhs = core.csrs.minstret.slc<32>(32);
+                            fprintf(stderr, "CSR read minstret @%06x  %08x\n", pc.to_int(), core.csrs.minstret.to_int());
                             break;
                         }
                     }
-                    else if(immediate.slc<2>(10) == 3)
+                    else if(CSRid.slc<2>(10) == 3)
                     {
-                        switch(immediate.slc<2>(0))
+                        switch(CSRid.slc<2>(0))
                         {
                         case 1:
                             lhs = core.csrs.mvendorid;
+                            fprintf(stderr, "CSR read mvendorid @%06x  %08x\n", pc.to_int(), core.csrs.mvendorid.to_int());
                             break;
                         case 2:
                             lhs = core.csrs.marchid;
+                            fprintf(stderr, "CSR read marchid @%06x  %08x\n", pc.to_int(), core.csrs.marchid.to_int());
                             break;
                         case 3:
                             lhs = core.csrs.mimpid;
+                            fprintf(stderr, "CSR read mimpid @%06x  %08x\n", pc.to_int(), core.csrs.mimpid.to_int());
                             break;
                         case 0:
                             lhs = hartid;
+                            fprintf(stderr, "CSR read mhartid @%06x  %08x\n", pc.to_int(), hartid);
                             break;
                         }
                     }
                     else
                     {
-                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", CSRid.to_int(), pc.to_int());
                     }
                 }
                 else
                 {
-                    dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", immediate.to_int(), pc.to_int());
+                    dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", CSRid.to_int(), pc.to_int());
                 }
-                fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", rhs.to_int(), immediate.to_int(), pc.to_int());
-                //lhs will contain core.REG[rs1]
+                fprintf(stderr, "Reading %08x in CSR @%03x    @%06x\n", lhs.to_int(), CSRid.to_int(), pc.to_int());
+                //rhs will contain core.REG[rs1]
             }
             #endif // COMET_NO_CSR
             simul(else dbgassert(false, "Unknown operation @%06x    %08x\n",
@@ -665,6 +690,9 @@ void DC(Core& core
     core.dctoEx.external = external;
     core.dctoEx.op = op;
 
+    core.dctoEx.csr = csr;
+    core.dctoEx.CSRid = CSRid;
+
     simul(if(pc)
     {
         coredebug("Dc   @%06x   %08x\n", pc.to_int(), instruction.to_int());
@@ -693,6 +721,10 @@ void Ex(Core& core
 
     core.extoMem.realInstruction = core.dctoEx.realInstruction;
     core.extoMem.funct3 = core.dctoEx.funct3;
+
+    core.extoMem.csr = core.dctoEx.csr;
+    core.extoMem.CSRid = core.dctoEx.CSRid;
+
     core.ctrl.branch[0] = false;
 
     ac_int<32, true> lhs = 0;
@@ -722,25 +754,20 @@ void Ex(Core& core
     else
         core.extoMem.datac = core.dctoEx.datac;
 
+    
     core.mcop.op = core.dctoEx.op;
     core.extoMem.external = core.dctoEx.external;
+    core.mcop.lhs = lhs;
+    core.mcop.rhs = rhs;
+    //core.mcop.rd = core.dctoEx.rd;
+    core.mcop.pc = core.dctoEx.pc;
     if(core.dctoEx.external)
     {
-        core.mcop.lhs = lhs;
-        core.mcop.rhs = rhs;
-        //core.mcop.rd = core.dctoEx.rd;
-        core.mcop.pc = core.dctoEx.pc;
-
-        dbglog("Starting external op @%06x (%lld %lld)\n", core.dctoEx.pc.to_int(),
+        gdebug("Starting external op @%06x (%lld %lld)\n", core.dctoEx.pc.to_int(),
                core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
     }
     else
     {
-        core.mcop.lhs = 0;
-        core.mcop.rhs = 0;
-        //core.mcop.rd = 0;
-        core.mcop.pc = 0;
-
         // switch must be in the else, otherwise external op may trigger default case
         switch(core.dctoEx.opCode)
         {
@@ -1052,7 +1079,7 @@ void Ex(Core& core
             #endif
             #ifndef COMET_NO_CSR
             #ifndef COMET_NO_SYSTEM_CSRRW
-            case RISCV_SYSTEM_CSRRW:    // lhs is from rs1, rhs is from csr
+            case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
                 core.extoMem.datac = rhs;       // written back to csr
                 core.extoMem.result = lhs;      // written back to rd
                 simul(sim->coredata.csrrw++;)
@@ -1133,7 +1160,10 @@ void do_Mem(Core& core
             core.memtoWB.result = core.mcres.res;
             core.memtoWB.rd = core.extoMem.rd;
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            dbglog("external operation finished @%06x\n", core.extoMem.pc.to_int());
+            core.memtoWB.csr = core.extoMem.csr;
+            core.memtoWB.CSRid = core.extoMem.CSRid;
+            core.memtoWB.rescsr = core.extoMem.datac;
+            gdebug("external operation finished @%06x\n", core.extoMem.pc.to_int());
         }
         else
         {
@@ -1142,7 +1172,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
-            dbglog("waiting external @%06x\n", core.extoMem.pc.to_int());
+            core.memtoWB.csr = false;
         }
     }
     else if(core.ctrl.cachelock)
@@ -1159,6 +1189,8 @@ void do_Mem(Core& core
             core.ctrl.cachelock = false;
             core.drequest.dcacheenable = false;
             core.drequest.writeenable = false;
+            core.memtoWB.rescsr = core.extoMem.datac;
+            core.memtoWB.csr = core.extoMem.csr;
         }
         else
         {
@@ -1166,6 +1198,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
+            core.memtoWB.csr = false;
         }
 #else
         data_memory[core.drequest.address >> 2] = core.drequest.writevalue;
@@ -1175,6 +1208,7 @@ void do_Mem(Core& core
         simul(core.memtoWB.pc = core.extoMem.pc;
         core.memtoWB.instruction = core.extoMem.instruction;)
         core.memtoWB.rd = core.extoMem.rd;
+        core.memtoWB.csr = core.extoMem.csr;
 #endif
     }
     else if(core.ctrl.branch[2])
@@ -1187,6 +1221,7 @@ void do_Mem(Core& core
 
         core.memtoWB.rd = 0;
         core.memtoWB.realInstruction = false;
+        core.memtoWB.csr = false;
     }
     else
     {
@@ -1206,6 +1241,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
+            core.memtoWB.csr = false;
 #else
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
             simul(core.memtoWB.pc = core.extoMem.pc;
@@ -1250,6 +1286,7 @@ void do_Mem(Core& core
             simul(core.memtoWB.instruction = 0;)
             core.memtoWB.rd = 0;
             core.memtoWB.realInstruction = false;
+            core.memtoWB.csr = false;
 #else
             core.memtoWB.pc = 0;
             simul(core.memtoWB.instruction = 0;)
@@ -1279,9 +1316,12 @@ void do_Mem(Core& core
             core.memtoWB.result = core.extoMem.result;
             //core.memtoWB.CSRid = core.extoMem.memValue;
             core.memtoWB.rescsr = core.extoMem.datac;
-            core.memtoWB.csrwb = false;
             core.memtoWB.realInstruction = core.extoMem.realInstruction;
             core.memtoWB.rd = core.extoMem.rd;
+
+            core.memtoWB.csr = core.extoMem.csr;
+            core.memtoWB.CSRid = core.extoMem.CSRid;
+            core.memtoWB.rescsr = core.extoMem.datac;
             break;
         }
     }
@@ -1302,11 +1342,12 @@ void doWB(Core& core)
     {
         core.REG[core.memtoWB.rd] = core.memtoWB.result;
     }
+    core.csrs.minstret += core.memtoWB.realInstruction;
 
 #if !defined(COMET_NO_SYSTEM) && !defined(COMET_NO_CSR)
-    if(core.memtoWB.csrwb)     // condition should be more precise
+    if(core.memtoWB.csr)     // condition should be more precise
     {
-        fprintf(stderr, "Writing %08x in CSR @%03x   @%06x\n", core.memtoWB.rescsr.to_int(), core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
+        fprintf(stderr, "Writing %08x in CSR @%03x    @%06x\n", core.memtoWB.rescsr.to_int(), core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
 
         if(core.memtoWB.CSRid.slc<2>(8) == 3)
         {
@@ -1318,24 +1359,31 @@ void doWB(Core& core)
                     {
                     case 0:
                         core.csrs.mstatus = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mstatus @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 1:
                         core.csrs.misa = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write misa @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 2:
                         core.csrs.medeleg = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write medeleg @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 3:
                         core.csrs.mideleg = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mideleg @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 4:
                         core.csrs.mie = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mie @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 5:
                         core.csrs.mtvec = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mtvec @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 6:
                         core.csrs.mcounteren = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mcounteren @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     default:
                         dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
@@ -1348,18 +1396,23 @@ void doWB(Core& core)
                     {
                     case 0:
                         core.csrs.mscratch = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mscratch @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 1:
                         core.csrs.mepc = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mepc @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 2:
                         core.csrs.mcause = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mcause @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 3:
                         core.csrs.mtval = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mtval @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     case 4:
                         core.csrs.mip = core.memtoWB.rescsr;
+                        fprintf(stderr, "CSR write mip @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                         break;
                     default:
                         dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
@@ -1375,22 +1428,26 @@ void doWB(Core& core)
                 switch(foo)
                 {
                 case 0:
-                    core.csrs.mcycle.slc<32>(0) = core.memtoWB.rescsr;
+                    core.csrs.mcycle.set_slc(0, core.memtoWB.rescsr);
+                    fprintf(stderr, "CSR write mcycle low @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                     break;
                 case 1:
-                    core.csrs.minstret.slc<32>(0) = core.memtoWB.rescsr;
+                    core.csrs.minstret.set_slc(0, core.memtoWB.rescsr);
+                    fprintf(stderr, "CSR write minstret low @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                     break;
                 case 2:
-                    core.csrs.mcycle.slc<32>(32) = core.memtoWB.rescsr;
+                    core.csrs.mcycle.set_slc(32, core.memtoWB.rescsr);
+                    fprintf(stderr, "CSR write mcycle high @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                     break;
                 case 3:
-                    core.csrs.minstret.slc<32>(32) = core.memtoWB.rescsr;
+                    core.csrs.minstret.set_slc(32, core.memtoWB.rescsr);
+                    fprintf(stderr, "CSR write minstret high @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
                     break;
                 }
             }
             else if(core.memtoWB.CSRid.slc<2>(10) == 3)
             {
-                dbgassert(false, "Read only CSR %03x", core.memtoWB.CSRid);
+                fprintf(stderr, "Read only CSR %03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
             }
             else
             {
@@ -1404,7 +1461,7 @@ void doWB(Core& core)
     }
 #endif
 
-    core.csrs.minstret += core.memtoWB.realInstruction;
+    
     simul(
     if(core.memtoWB.realInstruction)
     {
@@ -1462,8 +1519,6 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
     //if(!core.ctrl.sleep)
     {
-        core.csrs.mcycle += 1;
-
         doWB(core);
         simul(coredebug("%lld ", core.csrs.mcycle.to_int64());
         for(int i=0; i<32; i++)
@@ -1530,6 +1585,8 @@ void doCore(ac_int<32, false> startpc, bool &exit,
             }
             core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
         }
+        
+        core.csrs.mcycle += 1;
 
     #ifdef nocache
         simul(
