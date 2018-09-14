@@ -754,25 +754,20 @@ void Ex(Core& core
     else
         core.extoMem.datac = core.dctoEx.datac;
 
+    
     core.mcop.op = core.dctoEx.op;
     core.extoMem.external = core.dctoEx.external;
+    core.mcop.lhs = lhs;
+    core.mcop.rhs = rhs;
+    //core.mcop.rd = core.dctoEx.rd;
+    core.mcop.pc = core.dctoEx.pc;
     if(core.dctoEx.external)
     {
-        core.mcop.lhs = lhs;
-        core.mcop.rhs = rhs;
-        //core.mcop.rd = core.dctoEx.rd;
-        core.mcop.pc = core.dctoEx.pc;
-
         gdebug("Starting external op @%06x (%lld %lld)\n", core.dctoEx.pc.to_int(),
                core.csrs.minstret.to_int64(), core.csrs.mcycle.to_int64());
     }
     else
     {
-        core.mcop.lhs = 0;
-        core.mcop.rhs = 0;
-        //core.mcop.rd = 0;
-        core.mcop.pc = 0;
-
         // switch must be in the else, otherwise external op may trigger default case
         switch(core.dctoEx.opCode)
         {
@@ -1347,6 +1342,7 @@ void doWB(Core& core)
     {
         core.REG[core.memtoWB.rd] = core.memtoWB.result;
     }
+    core.csrs.minstret += core.memtoWB.realInstruction;
 
 #if !defined(COMET_NO_SYSTEM) && !defined(COMET_NO_CSR)
     if(core.memtoWB.csr)     // condition should be more precise
@@ -1465,7 +1461,7 @@ void doWB(Core& core)
     }
 #endif
 
-    core.csrs.minstret += core.memtoWB.realInstruction;
+    
     simul(
     if(core.memtoWB.realInstruction)
     {
@@ -1523,8 +1519,6 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 
     //if(!core.ctrl.sleep)
     {
-        core.csrs.mcycle += 1;
-
         doWB(core);
         simul(coredebug("%lld ", core.csrs.mcycle.to_int64());
         for(int i=0; i<32; i++)
@@ -1591,6 +1585,8 @@ void doCore(ac_int<32, false> startpc, bool &exit,
             }
             core.ctrl.jump_pc[1] = core.ctrl.jump_pc[0];
         }
+        
+        core.csrs.mcycle += 1;
 
     #ifdef nocache
         simul(
