@@ -27,7 +27,7 @@ struct DCtoEx
       opCode(RISCV_OPI), funct7(0), funct3(RISCV_OPI_ADDI), rd(0), realInstruction(false),
       lhs(0), rhs(0), datac(0), forward_lhs(false), forward_rhs(false), forward_datac(false),
       forward_mem_lhs(false), forward_mem_rhs(false), forward_mem_datac(false),
-      csr(false), CSRid(0), external(false), op(MultiCycleOperation::NONE)
+      csr(false), CSRid(0), external(false), op(MultiCycleOperator::NONE)
   #ifndef __HLS__
       , datad(0), datae(0), memValue(0)
   #endif
@@ -62,7 +62,7 @@ struct DCtoEx
     ac_int<12, false> CSRid;
 
     bool external;      // used for external operation
-    MultiCycleOperation::MultiCycleOperation op;
+    MultiCycleOperator::MultiCycleOperation op;
 
 #ifndef __HLS__
     // syscall only
@@ -217,7 +217,7 @@ struct Core
     ac_int<32, false> pc;
 
     /// Multicycle operation
-    MultiCycleOp mcop;
+    MultiCycleOperator mcop;
     MultiCycleRes mcres;
 
     /// Instruction cache
@@ -234,7 +234,7 @@ struct Core
 class Simulator;
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOp& mcop, MultiCycleRes mcres,
+            MultiCycleOperator& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]

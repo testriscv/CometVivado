@@ -209,7 +209,7 @@ void DC(Core& core
     bool forward_ex_or_mem_datac = false;
 
     bool external = false;
-    MultiCycleOperation::MultiCycleOperation op = MultiCycleOperation::NONE;
+    MultiCycleOperator::MultiCycleOperation op = MultiCycleOperator::NONE;
 
 
     // prev_rds[1] is ex, prev_rds[2] is mem
@@ -343,16 +343,16 @@ void DC(Core& core
                     switch(funct3.slc<2>(0))
                     {
                     case 0: // DIV
-                        op = MultiCycleOperation::DIV;
+                        op = MultiCycleOperator::DIV;
                         break;
                     case 1: // DIVU
-                        op = MultiCycleOperation::DIVU;
+                        op = MultiCycleOperator::DIVU;
                         break;
                     case 2: // REM
-                        op = MultiCycleOperation::REM;
+                        op = MultiCycleOperator::REM;
                         break;
                     case 3: // REMU
-                        op = MultiCycleOperation::REMU;
+                        op = MultiCycleOperator::REMU;
                         break;
                     default:
                         dbgassert(false, "Impossible case @%06x\n", pc.to_int());
@@ -1487,7 +1487,7 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 template<unsigned int hartid>
 void doCore(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOp& mcop, MultiCycleRes mcres,
+            MultiCycleOperator& mcop, MultiCycleRes mcres,
         #ifdef nocache
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE]
         #else
@@ -1613,7 +1613,7 @@ void doCore(ac_int<32, false> startpc, bool &exit,
 }
 
 void doStep(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOp& mcop, MultiCycleRes mcres,
+            MultiCycleOperator& mcop, MultiCycleRes mcres,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]

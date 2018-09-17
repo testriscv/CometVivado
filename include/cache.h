@@ -86,27 +86,6 @@
 #define DWidth               128
 #endif
 
-namespace IState {
-enum IState {
-    Idle            ,
-    StoreControl    ,
-    Fetch           ,
-    IStates
-};
-}
-
-namespace DState {
-enum DState {
-    Idle            ,
-    StoreControl    ,
-    StoreData       ,
-    FirstWriteBack  ,
-    WriteBack       ,
-    Fetch           ,
-    DStates
-};
-}
-
 struct ISetControl
 {
     ISetControl()
@@ -150,11 +129,17 @@ struct ISetControl
 struct ICacheControl
 {
     ICacheControl()
-    : state(IState::Idle), workAddress(0), ctrlLoaded(false), i(0), valuetowrite(0),
+    : state(ICacheControl::Idle), workAddress(0), ctrlLoaded(false), i(0), valuetowrite(0),
       currentset(0), currentway(0), memcnt(0), setctrl()
     {}
 
-    IState::IState state;
+    enum IState
+    {
+        Idle            ,
+        StoreControl    ,
+        Fetch           ,
+        IStates
+    } state;
     ac_int<32, false> workAddress;
     bool ctrlLoaded;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;
@@ -237,11 +222,20 @@ struct DSetControl
 struct DCacheControl
 {
     DCacheControl()
-    : state(DState::Idle), workAddress(0), i(0), valuetowrite(0),
+    : state(DCacheControl::Idle), workAddress(0), i(0), valuetowrite(0),
       currentset(0), currentway(0), memcnt(0), setctrl()
     {}
 
-    DState::DState state;
+    enum DState
+    {
+        Idle            ,
+        StoreControl    ,
+        StoreData       ,
+        FirstWriteBack  ,
+        WriteBack       ,
+        Fetch           ,
+        DStates
+    } state;
     ac_int<32, false> workAddress;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;
     ac_int<32, false> valuetowrite;

@@ -100,7 +100,7 @@ CCS_MAIN(int argc, char** argv)
     ac_int<IWidth, false>* memictrl = new ac_int<IWidth, false>[Sets];
     ac_int<DWidth, false>* memdctrl = new ac_int<DWidth, false>[Sets];
 
-    MultiCycleOp* mcop = new MultiCycleOp;
+    MultiCycleOperator* mcop = new MultiCycleOperator;
     MultiCycleRes* mcres = new MultiCycleRes;
 
     // zero the control (although only the valid bit should be zeroed, rest is don't care)

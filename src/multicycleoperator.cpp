@@ -4,14 +4,14 @@
 #include "simulator.h"
 #endif
 
-void multicyclecontroller(MultiCycleOp op, MultiCycleRes& res
+void multicyclecontroller(MultiCycleOperator op, MultiCycleRes& res
                         #ifndef __HLS__
                           , Simulator* sim
                         #endif
                           )
 {
     static int multicycle = 0;
-    MultiCycleOp mcop = op;
+    MultiCycleOperator mcop = op;
     static MultiCycleRes mcres;
     if(multicycle)
     {
@@ -19,7 +19,7 @@ void multicyclecontroller(MultiCycleOp op, MultiCycleRes& res
         if(multicycle == 0)
             mcres.done = true;
     }
-    else if(mcop.op != MultiCycleOperation::NONE)
+    else if(mcop.op != MultiCycleOperator::NONE)
     {   // put this in a function that can be synthesized
         mcres.done = false;
         ac_int<33, true> lhs = 0;
@@ -28,36 +28,36 @@ void multicyclecontroller(MultiCycleOp op, MultiCycleRes& res
         rhs.set_slc(0, mcop.rhs);
         switch(mcop.op)
         {
-        case MultiCycleOperation::DIVU:
+        case MultiCycleOperator::DIVU:
             lhs[32] = 0;
             rhs[32] = 0;
             simul(sim->coredata.div[1]++;)
             multicycle = 3;
             break;
-        case MultiCycleOperation::REMU:
+        case MultiCycleOperator::REMU:
             lhs[32] = 0;
             rhs[32] = 0;
             simul(sim->coredata.rem[1]++;)
             multicycle = 4;
             break;
-        case MultiCycleOperation::DIV:
+        case MultiCycleOperator::DIV:
             simul(sim->coredata.div[0]++;)
             multicycle = 3;
             break;
-        case MultiCycleOperation::REM:
+        case MultiCycleOperator::REM:
             simul(sim->coredata.rem[0]++;)
             multicycle = 4;
             break;
         }
         
-        if(mcop.op == MultiCycleOperation::DIV || mcop.op == MultiCycleOperation::DIVU)
+        if(mcop.op == MultiCycleOperator::DIV || mcop.op == MultiCycleOperator::DIVU)
         {   
             if(rhs)
                 mcres.res = lhs / rhs;
             else
                 mcres.res = -1;
         }
-        else if(mcop.op == MultiCycleOperation::REM || mcop.op == MultiCycleOperation::REMU)
+        else if(mcop.op == MultiCycleOperator::REM || mcop.op == MultiCycleOperator::REMU)
         {
             if(rhs)
                 mcres.res = lhs % rhs;
