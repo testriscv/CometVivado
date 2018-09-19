@@ -15,8 +15,9 @@ struct MultiCycleOperator
         DIV     ,
         DIVU    ,
         REM     ,
-        REMU
-    } op;
+        REMU    ,
+        NUMOPERATOR
+    } op : ac::log2_ceil<NUMOPERATOR>::val;
     ac_int<32, true> lhs;
     ac_int<32, true> rhs;
     //ac_int<5, false> rd;

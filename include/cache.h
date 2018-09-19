@@ -139,7 +139,7 @@ struct ICacheControl
         StoreControl    ,
         Fetch           ,
         IStates
-    } state;
+    } state : ac::log2_ceil<IStates>::val;
     ac_int<32, false> workAddress;
     bool ctrlLoaded;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;
@@ -235,7 +235,7 @@ struct DCacheControl
         WriteBack       ,
         Fetch           ,
         DStates
-    } state;
+    } state : ac::log2_ceil<DStates>::val;
     ac_int<32, false> workAddress;
     ac_int<ac::log2_ceil<Blocksize>::val, false> i;
     ac_int<32, false> valuetowrite;
