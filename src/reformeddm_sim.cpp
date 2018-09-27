@@ -119,7 +119,7 @@ CCS_MAIN(int argc, char** argv)
     for(int i = 0; i < DRAM_SIZE; i++)
     {
         if(im[i])
-            coredebug("%06x : %08x (%d)\n", 4*i, im[i], im[i]);
+            coredebug("%06x : %08x\n", 4*i, im[i]);
     }
     coredebug("data memory :\n");
     for(int i = 0; i < DRAM_SIZE; i++)
