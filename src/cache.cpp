@@ -472,7 +472,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 dctrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
                 dctrl.setctrl.dirty[i] = setctrl.slc<1>(Associativity*(32-tagshift+1) + i);
             }
-            simul(sim->dcachedata.cachememread+=Associativity;)
+            simul(sim->dcachedata.cachememread+=Associativity;) // we have A bank, so + Associativity
         #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             dctrl.setctrl.policy = setctrl.slc<DPolicyWidth>(Associativity*(32-tagshift+2));
         #endif
@@ -688,7 +688,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         if(writeenable)
             coredebug("dW%d  @%06x   %08x   %08x   %08x   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DCacheControl::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
                                                                       writevalue, dctrl.valuetowrite.to_int(), dctrl.currentset.to_int(), dctrl.currentway.to_int());
-        else
+        else        // datasize address  data in mem     formatted data  sign extension  set, way
             coredebug("dR%d  @%06x   %08x   %08x   %5s   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DCacheControl::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
                                                                     read, signenable?"true":"false", dctrl.currentset.to_int(), dctrl.currentway.to_int());
     })

@@ -154,7 +154,7 @@ CCS_MAIN(int argc, char** argv)
                              );
     }
 
-    sim.writeBack();
+    sim.writeBack();    // writeback dirty data from cache to main mem
 
 #ifndef __HLS__
     printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
