@@ -1,15 +1,11 @@
 AC=./include/catapult
 INC=$(AC) ./include
-LINC=./include
 INC_PARAMS=$(foreach d, $(INC), -I$d)
 VARS_CAT=-D__CATAPULT__=1
 VARS_VIV=-D__VIVADO__=1
 DEFINES=
-FILES=cache.cpp core.cpp elfFile.cpp multicycleoperator.cpp portability.cpp reformeddm_sim.cpp simulator.cpp 
-S=./src
-S_FILES=$(foreach f, $(FILES), $(S)/$f)
-HEADER=cache.h core.h elf.h elfFile.h multicycleoperator.h portability.h riscvISA.h simulator.h
-I_HEADER=$(foreach f, $(HEADER), $(INC)/$f)
+S_FILES:=$(wildcard src/*.cpp)
+I_HEADER:=$(wildcard include/*.h)
 GENERIC=$(INC_PARAMS) $(S_FILES) $(VARS_CAT) $(DEFINES) -std=c++98
 
 all: $(S_FILES) $(I_HEADER)
