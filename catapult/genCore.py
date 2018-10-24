@@ -114,7 +114,7 @@ directive set -DESIGN_HIERARCHY {top}
 
 libraries = """go analyze
 solution library remove *
-solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
+solution library add C28SOI_SC_12_CORE_LL_ccs -file {{$MGC_HOME/pkgs/siflibs/designcompiler/C28SOI_SC_12_CORE_LL_ccs.lib}} -- -rtlsyntool DesignCompiler -vendor STMicroelectronics -technology {{28nm FDSOI}}
 solution library add ST_singleport_4096x128
 solution library add ST_singleport_16384x32
 solution library add ST_singleport_8192x32
