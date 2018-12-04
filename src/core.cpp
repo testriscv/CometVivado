@@ -209,8 +209,6 @@ void Execute(struct DCtoEx dctoEx,
     extoMem.opCode = dctoEx.opCode;
     extoMem.rd = dctoEx.rd;
     extoMem.funct3 = dctoEx.funct3;
-    extoMem.csr = dctoEx.csr;
-    extoMem.CSRid = dctoEx.CSRid;
     extoMem.we = dctoEx.we;
     extoMem.isBranch = 0;
 
@@ -406,273 +404,43 @@ void Execute(struct DCtoEx dctoEx,
 	}
 }
 
-void do_Mem(struct ExtoMem extoMem,
-			struct MemToWB memtoWB,
+void Memory(struct ExtoMem extoMem,
+                        struct MemToWB &memtoWB,
             ac_int<32, true> data_memory[DRAM_SIZE])
 {
-    if(core.extoMem.external)
-    {
-        if(core.mcres.done)
-        {
-            core.ctrl.cachelock = false;
-            core.memtoWB.pc = core.extoMem.pc;
-            simul(core.memtoWB.instruction = core.extoMem.instruction;)
-            core.memtoWB.result = core.mcres.res;
-            core.memtoWB.rd = core.extoMem.rd;
-            core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            core.memtoWB.csr = core.extoMem.csr;
-            core.memtoWB.CSRid = core.extoMem.CSRid;
-            core.memtoWB.rescsr = core.extoMem.datac;
-            gdebug("external operation finished @%06x\n", core.extoMem.pc.to_int());
-        }
-        else
-        {
-            core.ctrl.cachelock = true;
-            core.memtoWB.pc = 0;
-            simul(core.memtoWB.instruction = 0;)
-            core.memtoWB.rd = 0;
-            core.memtoWB.realInstruction = false;
-            core.memtoWB.csr = false;
-        }
-    }
-    else if(core.ctrl.cachelock)
-    {
 
-        data_memory[core.drequest.address >> 2] = core.drequest.writevalue;
-        core.ctrl.cachelock = false;
-
-        core.memtoWB.realInstruction = core.extoMem.realInstruction;
-        simul(core.memtoWB.pc = core.extoMem.pc;
-        core.memtoWB.instruction = core.extoMem.instruction;)
-        core.memtoWB.rd = core.extoMem.rd;
-        core.memtoWB.csr = core.extoMem.csr;
-    }
-    else if(core.ctrl.branch[2])
-    {
-        gdebug("I    @%06x\n", core.extoMem.pc.to_int());
-        core.memtoWB.pc = 0;
-        core.extoMem.pc = 0;
-        simul(core.memtoWB.instruction = 0;
-              core.extoMem.instruction = 0;)
-
-        core.memtoWB.rd = 0;
-        core.memtoWB.realInstruction = false;
-        core.memtoWB.csr = false;
-    }
-    else
-    {
-        switch(core.extoMem.opCode)
+    ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
+    ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
+    memtoWB.we = extoMem.we;
+        switch(extoMem.opCode)
         {
         case RISCV_LD:
-        {
-            ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
-            ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
-
-            memtoWB.instruction = extoMem.instruction
             memtoWB.rd = extoMem.rd;
-
-            ac_int<32, false> mem_read = data_memory[core.extoMem.result >> 2];
-            simul(cycles += MEMORY_READ_LATENCY;)
-            formatread(core.extoMem.result, core.drequest.datasize, core.drequest.signenable, mem_read);
-            core.memtoWB.result = mem_read;
-
-            // data                                             size                @address
-            coredebug("dR%d  @%06x   %08x   %08x   %s\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], mem_read.to_int(), core.drequest.signenable?"true":"false");
-                   // what is in memory                  what is actually read    sign extension
-            simul(if(core.extoMem.result >= 0x11040 && core.extoMem.result < 0x11048)
-            {
-                fprintf(stderr, "end here? %lld   @%06x   @%06x R%d\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
-                          core.drequest.datasize.to_int());
-                core.ctrl.cachelock = false;
-                core.memtoWB.result = 1;
-            })
+            ac_int<32, false> mem_read = data_memory[extoMem.result >> 2];
+            formatread(extoMem.result, datasize, signenable, mem_read);
+            memtoWB.result = mem_read;
             break;
-        }
         case RISCV_ST:
-        {
-            core.drequest.datasize = core.extoMem.funct3.slc<2>(0);
-            core.drequest.signenable = core.extoMem.funct3.slc<1>(2);
-
-            simul(if(core.extoMem.result >= 0x11000 && core.extoMem.result < 0x11040)
-                  fprintf(stderr, "end here? %lld   @%06x   @%06x W%d  %08x\n", core.csrs.mcycle.to_int64(), core.extoMem.pc.to_int(), core.extoMem.result.to_int(),
-                          core.drequest.datasize.to_int(), core.extoMem.datac.to_int());)
-
-            core.memtoWB.pc = 0;
-            simul(core.memtoWB.instruction = 0;)
-            core.memtoWB.rd = 0;
-            core.memtoWB.realInstruction = false;
-
-            ac_int<32, false> memory_val = data_memory[core.extoMem.result >> 2];
-            simul(cycles += MEMORY_READ_LATENCY;)
-            formatwrite(core.extoMem.result, core.drequest.datasize, memory_val, core.extoMem.datac);
-
-            core.drequest.address = core.extoMem.result;
-            core.drequest.writevalue = memory_val;   // dctrl is not used anyway
-
-            // data                                         size                    @address
-            coredebug("dW%d  @%06x   %08x   %08x   %08x\n", core.drequest.datasize.to_int(), core.extoMem.result.to_int(),
-                      data_memory[core.extoMem.result >> 2], core.extoMem.datac.to_int(), memory_val.to_int());
-                   // what was there before                 what we want to write       what is actually written
-
-            core.ctrl.cachelock = true;     // we need one more cycle to write the formatted data
+            memtoWB.rd = 0;
+            ac_int<32, false> memory_val = data_memory[extoMem.result >> 2];
+            if(extoMem.we)
+                formatwrite(extoMem.result, datasize, memory_val, extoMem.datac);
+            address = extoMem.result;
+            writevalue = memory_val;   // dctrl is not used anyway
             break;
-        }
         default:
-            core.memtoWB.pc = core.extoMem.pc;
-            simul(core.memtoWB.instruction = core.extoMem.instruction;)
-
-            core.memtoWB.result = core.extoMem.result;
-            //core.memtoWB.CSRid = core.extoMem.memValue;
-            core.memtoWB.rescsr = core.extoMem.datac;
-            core.memtoWB.realInstruction = core.extoMem.realInstruction;
-            core.memtoWB.rd = core.extoMem.rd;
-
-            core.memtoWB.csr = core.extoMem.csr;
-            core.memtoWB.CSRid = core.extoMem.CSRid;
-            core.memtoWB.rescsr = core.extoMem.datac;
+            memtoWB.result = extoMem.result;
+            memtoWB.rd = extoMem.rd;
             break;
         }
     }
-
 }
 
-void doWB(Core& core)
+void Writeback(struct MemToWB memtoWB,
+               ac_int<32, false> registerFile)
 {
-    if(core.memtoWB.rd != 0)
-    {
-        core.REG[core.memtoWB.rd] = core.memtoWB.result;
-    }
-    core.csrs.minstret += core.memtoWB.realInstruction;
-
-#if !defined(COMET_NO_SYSTEM) && !defined(COMET_NO_CSR)
-    if(core.memtoWB.csr)     // condition should be more precise
-    {
-        fprintf(stderr, "Writing %08x in CSR @%03x    @%06x\n", core.memtoWB.rescsr.to_int(), core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-
-        if(core.memtoWB.CSRid.slc<2>(8) == 3)
-        {
-            if(core.memtoWB.CSRid.slc<2>(10) == 0)
-            {
-                if(core.memtoWB.CSRid.slc<1>(6) == 0)  // 0x30X
-                {
-                    switch(core.memtoWB.CSRid.slc<3>(0))
-                    {
-                    case 0:
-                        core.csrs.mstatus = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mstatus @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 1:
-                        core.csrs.misa = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write misa @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 2:
-                        core.csrs.medeleg = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write medeleg @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 3:
-                        core.csrs.mideleg = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mideleg @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 4:
-                        core.csrs.mie = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mie @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 5:
-                        core.csrs.mtvec = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mtvec @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 6:
-                        core.csrs.mcounteren = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mcounteren @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    default:
-                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-                        break;
-                    }
-                }
-                else                        // 0x34X
-                {
-                    switch(core.memtoWB.CSRid.slc<3>(0))
-                    {
-                    case 0:
-                        core.csrs.mscratch = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mscratch @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 1:
-                        core.csrs.mepc = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mepc @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 2:
-                        core.csrs.mcause = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mcause @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 3:
-                        core.csrs.mtval = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mtval @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    case 4:
-                        core.csrs.mip = core.memtoWB.rescsr;
-                        fprintf(stderr, "CSR write mip @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                        break;
-                    default:
-                        dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-                        break;
-                    }
-                }
-            }
-            else if(core.memtoWB.CSRid.slc<2>(10) == 2)
-            {
-                ac_int<2, false> foo = 0;
-                foo.set_slc(0, core.memtoWB.CSRid.slc<1>(1));
-                foo.set_slc(1, core.memtoWB.CSRid.slc<1>(7));
-                switch(foo)
-                {
-                case 0:
-                    core.csrs.mcycle.set_slc(0, core.memtoWB.rescsr);
-                    fprintf(stderr, "CSR write mcycle low @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                    break;
-                case 1:
-                    core.csrs.minstret.set_slc(0, core.memtoWB.rescsr);
-                    fprintf(stderr, "CSR write minstret low @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                    break;
-                case 2:
-                    core.csrs.mcycle.set_slc(32, core.memtoWB.rescsr);
-                    fprintf(stderr, "CSR write mcycle high @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                    break;
-                case 3:
-                    core.csrs.minstret.set_slc(32, core.memtoWB.rescsr);
-                    fprintf(stderr, "CSR write minstret high @%06x  %08x\n", core.memtoWB.pc.to_int(), core.memtoWB.rescsr.to_int());
-                    break;
-                }
-            }
-            else if(core.memtoWB.CSRid.slc<2>(10) == 3)
-            {
-                fprintf(stderr, "Read only CSR %03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-            }
-            else
-            {
-                dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-            }
-        }
-        else
-        {
-            dbgassert(false, "Unknown CSR id : @%03x     @%06x\n", core.memtoWB.CSRid.to_int(), core.memtoWB.pc.to_int());
-        }
-    }
-#endif
-
-    
-    simul(
-    if(core.memtoWB.realInstruction)
-    {
-        coredebug("\nWB   @%06x   %08x   (%lld)\n", core.memtoWB.pc.to_int(), core.memtoWB.instruction.to_int(), core.csrs.minstret.to_int64());
-    }
-    else
-    {
-        coredebug("\nWB   \n");
-    })
-
+    if((memtoWB.rd != 0) && (memtoWB.we))
+        registerFile[memtoWB.rd] = memtoWB.result;
 }
 
 void coreinit(Core& core, ac_int<32, false> startpc)
@@ -857,7 +625,4 @@ void doStep(ac_int<32, false> startpc, bool &exit,
 
     // doCore<1>(...)
     // directory cache control
-
-
-
 }

@@ -35,30 +35,13 @@ struct DCtoEx
     ac_int<7, false> funct7;    // funct7 = instruction[31:25]
     ac_int<3, false> funct3;    // funct3 = instruction[14:12]
 
-
-    ac_int<1, false> realInstruction;
-
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac; // ST, BR, JAL/R,
 
-    ac_int<1, false> forward_lhs;
-    ac_int<1, false> forward_rhs;
-    ac_int<1, false> forward_datac;
-    ac_int<1, false> forward_mem_lhs;
-    ac_int<1, false> forward_mem_rhs;
-    ac_int<1, false> forward_mem_datac;
-
-    ac_int<1, false> csr;
-    ac_int<12, false> CSRid;
-
-    ac_int<1, false> external;      // used for external operation
-    MultiCycleOperator::MultiCycleOperation op;
-
     // syscall only
     ac_int<32, true> datad;
     ac_int<32, true> datae;
-    ac_int<32, true> memValue; //Second data, from register file or immediate value
 
     //For branch unit
     ac_int<32, false> nextPCDC;
@@ -74,15 +57,11 @@ struct DCtoEx
 
     //Register for all stages
     ac_int<1, false> we;
-    ac_int<1, false> stall;
+    ac_int<1, false> stall; //TODO add that
 };
 
 struct ExtoMem
 {
-    ExtoMem()
-    {
-
-    }
     ac_int<32, false> pc;
     ac_int<32, false> instruction;
 
@@ -90,11 +69,6 @@ struct ExtoMem
     ac_int<5, false> rd;        // destination register
     ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
     ac_int<3, false> funct3;    // datasize and sign extension bit
-    bool realInstruction;
-    bool external;
-
-    bool csr;
-    ac_int<12, false> CSRid;
 
     ac_int<32, true> datac;     // data to be stored in memory or csr result
 
@@ -104,98 +78,18 @@ struct ExtoMem
 
     //Register for all stages
     ac_int<1, false> we;
-    ac_int<1, false> stall;
+    ac_int<1, false> stall; //TODO add that
 };
 
 struct MemtoWB
 {
-    MemtoWB()
-    : pc(0),
-  #ifndef __HLS__
-      instruction(0x13),
-  #endif
-      result(0), rd(0), realInstruction(false), csr(false), CSRid(0), rescsr(0)
-    {}
-    ac_int<32, false> pc;
-#ifndef __HLS__
-    ac_int<32, false> instruction;
-#endif
-
     ac_int<32, true> result;    // Result to be written back
     ac_int<5, false> rd;        // destination register
-    bool realInstruction;       // increment minstret ?
 
-    bool csr;
-    ac_int<12, false> CSRid;    // CSR to be written back
-    ac_int<32, false> rescsr;   // Result for CSR instruction
+    //Register for all stages
+    ac_int<1, false> we;
+    ac_int<1, false> stall;
 
-};
-
-struct CSR
-{
-    CSR()
-    : mcycle(0), minstret(0)
-    // some should probably be initialized to some special value
-    {}
-
-    ac_int<64, false> mcycle;                   // could be shared according to specification
-    ac_int<64, false> minstret;
-
-#ifndef COMET_NO_CSR
-    static const ac_int<32, false> mvendorid;   // RO shared by all cores
-    static const ac_int<32, false> marchid;     // RO shared by all cores
-    static const ac_int<32, false> mimpid;      // RO shared by all cores
-    //const ac_int<32, false> mhartid;                  // RO but private to core (and i don't want to template everything)
-    ac_int<32, false> mstatus;
-    ac_int<32, false> misa;     // writable...
-    ac_int<32, false> medeleg;
-    ac_int<32, false> mideleg;
-    ac_int<32, false> mie;
-    ac_int<32, false> mtvec;
-    ac_int<32, false> mcounteren;
-    ac_int<32, false> mscratch;
-    ac_int<32, false> mepc;
-    ac_int<32, false> mcause;
-    ac_int<32, false> mtval;
-    ac_int<32, false> mip;
-#endif
-};
-
-struct CoreCtrl
-{
-    CoreCtrl()
-    : lock(0), freeze_fetch(false), cachelock(false), init(false), sleep(true)
-    {
-        #pragma hls_unroll yes
-        for(int i(0); i < 3; ++i)
-        {
-            prev_rds[i] = 0;
-            prev_opCode[i] = RISCV_OPI;
-            prev_res[i] = 0;
-            branch[i] = false;
-        }
-        #pragma hls_unroll yes
-        for(int i(0); i < 2; ++i)
-        {
-            jump_pc[i] = 0;
-        }
-    }
-
-    ac_int<5, false> prev_rds[3];
-    ac_int<7, false> prev_opCode[3];
-    ac_int<2, false> lock;          // used to lock dc stage after JAL & JALR
-
-    bool freeze_fetch;              // used for LD dependencies
-    bool cachelock;                 // stall Ft, DC & Ex when cache is working
-    bool init;                      // is core initialized?
-    bool sleep;                     // sleep core, can be waken up by other core
-
-    // used to break dependencies, because using extoMem or memtoWB
-    // implies a dependency from stage ex or mem to dc (i.e. they
-    // are not completely independent)...
-    ac_int<32, true> prev_res[3];
-    bool branch[3];
-    ac_int<32, true> jump_pc[2];
 };
 
 struct Core
