@@ -6,86 +6,85 @@
 #include "cache.h"
 #include "multicycleoperator.h"
 
+
+/******************************************************************************************
+ * Definition of all pipeline registers
+ *
+ * ****************************************************************************************
+ */
+
 struct FtoDC
 {
-    FtoDC()
-    : pc(0), instruction(0x13), realInstruction(false), nextpc(0)
+    FtoDC() : pc(0), instruction(0x13), we(1), stall(0)
     {}
-    ac_int<32, false> pc;           // used for JAL, AUIPC & BR
-    ac_int<32, false> instruction;  // Instruction to execute
-    bool realInstruction;           // Increment for minstret
-    ac_int<32, false> nextpc;       // Next pc to store for JAL & JALR
+    ac_int<32, false> pc;           	// PC where to fetch
+    ac_int<32, false> instruction;  	// Instruction to execute
+    ac_int<32, false> nextPCFetch;      // Next pc according to fetch
+
+    //Register for all stages
+    ac_int<1, false> we;
+    ac_int<1, false> stall;
 };
 
 struct DCtoEx
 {
-    DCtoEx()
-    : pc(0),
-  #ifndef __HLS__
-      instruction(0),
-  #endif
-      opCode(RISCV_OPI), funct7(0), funct3(RISCV_OPI_ADDI), rd(0), realInstruction(false),
-      lhs(0), rhs(0), datac(0), forward_lhs(false), forward_rhs(false), forward_datac(false),
-      forward_mem_lhs(false), forward_mem_rhs(false), forward_mem_datac(false),
-      csr(false), CSRid(0), external(false), op(MultiCycleOperator::NONE)
-  #ifndef __HLS__
-      , datad(0), datae(0), memValue(0)
-  #endif
-    {}
-
     ac_int<32, false> pc;       // used for branch
-#ifndef __HLS__
     ac_int<32, false> instruction;
-#endif
 
     ac_int<7, false> opCode;    // opCode = instruction[6:0]
     ac_int<7, false> funct7;    // funct7 = instruction[31:25]
     ac_int<3, false> funct3;    // funct3 = instruction[14:12]
- // ac_int<5, false> rs1;       // rs1    = instruction[19:15]
- // ac_int<5, false> rs2;       // rs2    = instruction[24:20]
-    ac_int<5, false> rd;        // rd     = instruction[11:7]
 
-    bool realInstruction;
+
+    ac_int<1, false> realInstruction;
 
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac; // ST, BR, JAL/R,
 
-    bool forward_lhs;
-    bool forward_rhs;
-    bool forward_datac;
-    bool forward_mem_lhs;
-    bool forward_mem_rhs;
-    bool forward_mem_datac;
+    ac_int<1, false> forward_lhs;
+    ac_int<1, false> forward_rhs;
+    ac_int<1, false> forward_datac;
+    ac_int<1, false> forward_mem_lhs;
+    ac_int<1, false> forward_mem_rhs;
+    ac_int<1, false> forward_mem_datac;
 
-    bool csr;
+    ac_int<1, false> csr;
     ac_int<12, false> CSRid;
 
-    bool external;      // used for external operation
+    ac_int<1, false> external;      // used for external operation
     MultiCycleOperator::MultiCycleOperation op;
 
-#ifndef __HLS__
     // syscall only
     ac_int<32, true> datad;
     ac_int<32, true> datae;
     ac_int<32, true> memValue; //Second data, from register file or immediate value
-#endif
+
+    //For branch unit
+    ac_int<32, false> nextPCDC;
+    ac_int<1, false> isBranch;
+
+    //Information for forward/stall unit
+    ac_int<1, false> useRs1;
+    ac_int<1, false> useRs2;
+    ac_int<1, false> useRd;
+    ac_int<5, false> rs1;       // rs1    = instruction[19:15]
+    ac_int<5, false> rs2;       // rs2    = instruction[24:20]
+    ac_int<5, false> rd;        // rd     = instruction[11:7]
+
+    //Register for all stages
+    ac_int<1, false> we;
+    ac_int<1, false> stall;
 };
 
 struct ExtoMem
 {
     ExtoMem()
-    : pc(0),
-  #ifndef __HLS__
-      instruction(0x13),
-  #endif
-      result(0), rd(0), opCode(RISCV_OPI), funct3(RISCV_OPI_ADDI), realInstruction(false),
-      datac(0), csr(false), CSRid(0)
-    {}
+    {
+
+    }
     ac_int<32, false> pc;
-#ifndef __HLS__
     ac_int<32, false> instruction;
-#endif
 
     ac_int<32, true> result;    // result of the EX stage
     ac_int<5, false> rd;        // destination register
@@ -98,6 +97,14 @@ struct ExtoMem
     ac_int<12, false> CSRid;
 
     ac_int<32, true> datac;     // data to be stored in memory or csr result
+
+    //For branch unit
+    ac_int<32, false> nextPC;
+    ac_int<1, false> isBranch;
+
+    //Register for all stages
+    ac_int<1, false> we;
+    ac_int<1, false> stall;
 };
 
 struct MemtoWB
