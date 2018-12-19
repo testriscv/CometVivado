@@ -3,9 +3,10 @@
 
 #include "portability.h"
 #include "riscvISA.h"
-#include "cache.h"
 #include "multicycleoperator.h"
 
+#define INSTR_MEMORY_WIDTH 32
+#define DATA_MEMORY_WIDTH
 
 /******************************************************************************************
  * Definition of all pipeline registers
@@ -99,7 +100,7 @@ struct Core
     ExtoMem extoMem;
     MemtoWB memtoWB;
 
-    CoreCtrl ctrl;
+    //CoreCtrl ctrl;
 
     ac_int<32, true> REG[32];
     ac_int<32, false> pc;
@@ -110,26 +111,23 @@ struct Core
 
     /// Instruction cache
     //unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
-    ICacheRequest irequest;
-    ICacheReply ireply;
+
 
     /// Data cache
     //unsigned int ddata[Sets][Blocksize][Associativity];   // made external for modelsim
-    DCacheRequest drequest;
-    DCacheReply dreply;
+
 };
+
+//Functions for copying values
+void copyFtoDC(struct FtoDC &dest, struct FtoDC src);
+void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src);
+void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
+void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
+
+
 
 class Simulator;
 
-void doStep(ac_int<32, false> startpc, bool &exit,
-            MultiCycleOperator& mcop, MultiCycleRes mcres,
-            unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
-            unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
-            ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
-            #ifndef __HLS__
-            , Simulator* syscall
-            #endif
-            );
 
 
 #endif  // CORE_H

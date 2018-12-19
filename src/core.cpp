@@ -1,4 +1,4 @@
-#include "core.h"
+#include <core.h>
 
 #ifndef __HLS__
 #include "simulator.h"
@@ -354,7 +354,8 @@ void execute(struct DCtoEx dctoEx,
         { // case 0: mret instruction, dctoEx.memValue should be 0x302
         case RISCV_SYSTEM_ENV:
 #ifndef __HLS__
-            extoMem.result = sim->solveSyscall(dctoEx.lhs, dctoEx.rhs, dctoEx.datac, dctoEx.datad, dctoEx.datae, exit);
+        	//TODO handling syscall correctly
+            //extoMem.result = sim->solveSyscall(dctoEx.lhs, dctoEx.rhs, dctoEx.datac, dctoEx.datad, dctoEx.datae, exit);
 #endif
             break;
         case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
@@ -387,28 +388,29 @@ void execute(struct DCtoEx dctoEx,
 }
 
 void memory(struct ExtoMem extoMem,
-            struct MemToWB &memtoWB,
+            struct MemtoWB &memtoWB,
             ac_int<32, true> data_memory[DRAM_SIZE])
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
     ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
     memtoWB.we = extoMem.we;
+
+    ac_int<32, false> mem_read;
+
     switch(extoMem.opCode)
     {
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
-        ac_int<32, false> mem_read = data_memory[extoMem.result >> 2];
+        mem_read = data_memory[extoMem.result >> 2];
         formatread(extoMem.result, datasize, signenable, mem_read);
         memtoWB.result = mem_read;
         break;
     case RISCV_ST:
         memtoWB.rd = 0;
-        ac_int<32, false> memory_val = data_memory[extoMem.result >> 2];
-        if(extoMem.we)
-            formatwrite(extoMem.result, datasize, memory_val, extoMem.datac);
-        address = extoMem.result;
-        writevalue = memory_val;   // dctrl is not used anyway
+        mem_read = data_memory[extoMem.result >> 2];
+        if(extoMem.we) //TODO0: We do not handle non 32bit writes
+        	data_memory[extoMem.result >> 2] = extoMem.datac;
         break;
     default:
         memtoWB.result = extoMem.result;
@@ -416,9 +418,9 @@ void memory(struct ExtoMem extoMem,
         break;
     }
 }
-}
 
-void writeback(struct MemToWB memtoWB,
+
+void writeback(struct MemtoWB memtoWB,
                ac_int<32, true> registerFile[32])
 {
     if((memtoWB.rd != 0) && (memtoWB.we))
@@ -436,15 +438,9 @@ void coreinit(Core& core, ac_int<32, false> startpc)
         core.ctrl.sleep = true;
 }
 
-void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
-{
-    //declare a core
-    Core core;
 
-    while(1) {
-        doCycle(core, startpc, exit, im, dm);
-    }
-}
+ac_int<1, false> stallSignals[5];
+ac_int<1, false> globalStall;
 
 void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE])
 {
@@ -456,7 +452,7 @@ void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[
     //declare temporary register file
     ac_int<32, true> tempRegisterFile[32];
 
-    fetch(startpc, &ftoDC_temp, im);
+    fetch(startpc, ftoDC_temp, im);
     decode(core.ftoDC, dctoEx_temp, core.REG);
     execute(core.dctoEx, extoMem_temp);
     memory(core.extoMem, memtoWB_temp, dm);
@@ -465,4 +461,26 @@ void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[
     //resolve stalls, forwards
 
     //commit the changes to the pipeline register
+    if (!stallSignals[0] && !globalStall)
+    	copyFtoDC(core.ftoDC, ftoDC_temp);
+
+    if (!stallSignals[1] && !globalStall)
+    	copyDCtoEx(core.dctoEx, dctoEx_temp);
+
+    if (!stallSignals[2] && !globalStall)
+    	copyExtoMem(core.extoMem, extoMem_temp);
+
+    if (!stallSignals[3] && !globalStall)
+    	copyMemtoWB(core.memtoWB, memtoWB_temp);
+
+}
+
+void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
+{
+    //declare a core
+    Core core;
+
+    while(1) {
+        doCycle(core, startpc, exit, im, dm);
+    }
 }
