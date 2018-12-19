@@ -7,7 +7,7 @@
 
 void fetch(ac_int<32, false> pc,
            struct FtoDC &ftoDC,
-           ac_int<32, false> instructionMemory[])
+           ac_int<32, false> instructionMemory[DRAM_SIZE])
 {
     ftoDC.instruction = instructionMemory[pc/4];
     ftoDC.pc = pc;
@@ -19,7 +19,7 @@ void fetch(ac_int<32, false> pc,
 
 void decode(struct FtoDC ftoDC,
             struct DCtoEx &dctoEx,
-            ac_int<32, false> registerFile)
+            ac_int<32, true> registerFile[32])
 {
     ac_int<32, false> pc = ftoDC.pc;
     ac_int<32, false> instruction = ftoDC.instruction;
@@ -419,7 +419,7 @@ void memory(struct ExtoMem extoMem,
 }
 
 void writeback(struct MemToWB memtoWB,
-               ac_int<32, false> registerFile)
+               ac_int<32, true> registerFile[32])
 {
     if((memtoWB.rd != 0) && (memtoWB.we))
         registerFile[memtoWB.rd] = memtoWB.result;
@@ -438,20 +438,31 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 
 void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
 {
+    //declare a core
+    Core core;
+
     while(1) {
-        doCycle(startpc, exit, im, dm);
+        doCycle(core, startpc, exit, im, dm);
     }
 }
 
-void doCycle(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
+void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE])
 {
     //declare temporary structs
+    struct FtoDC ftoDC_temp;
+    struct DCtoEx dctoEx_temp;
+    struct ExtoMem extoMem_temp;
+    struct MemtoWB memtoWB_temp;
+    //declare temporary register file
+    ac_int<32, true> tempRegisterFile[32];
 
-    fetch();
-    decode();
-    execute();
-    memory();
-    writeback();
+    fetch(startpc, &ftoDC_temp, im);
+    decode(core.ftoDC, dctoEx_temp, core.REG);
+    execute(core.dctoEx, extoMem_temp);
+    memory(core.extoMem, memtoWB_temp, dm);
+    writeback(core.memtoWB, tempRegisterFile);
 
-    //resolve stalls, forwards and comits
+    //resolve stalls, forwards
+
+    //commit the changes to the pipeline register
 }

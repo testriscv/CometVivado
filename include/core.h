@@ -94,23 +94,10 @@ struct MemtoWB
 
 struct Core
 {
-    Core()
-    : ftoDC(), dctoEx(), extoMem(), memtoWB(), csrs(), ctrl(), pc(0),
-      irequest(), ireply(), drequest(), dreply()
-    {
-        #pragma hls_unroll yes
-        for(int i(0); i < 32; ++i)
-        {
-            REG[i] = 0;
-        }
-        REG[2] = STACK_INIT;
-    }
-
     FtoDC ftoDC;
     DCtoEx dctoEx;
     ExtoMem extoMem;
     MemtoWB memtoWB;
-    CSR csrs;
 
     CoreCtrl ctrl;
 
@@ -139,9 +126,9 @@ void doStep(ac_int<32, false> startpc, bool &exit,
             unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE],
             unsigned int cim[Sets][Blocksize][Associativity], unsigned int cdm[Sets][Blocksize][Associativity],
             ac_int<IWidth, false> memictrl[Sets], ac_int<DWidth, false> memdctrl[Sets]
-        #ifndef __HLS__
+            #ifndef __HLS__
             , Simulator* syscall
-        #endif
+            #endif
             );
 
 
