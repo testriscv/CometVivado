@@ -181,6 +181,10 @@ void decode(struct FtoDC ftoDC,
 
     }
 
+    //If the instruction was dropped, we ensure that isBranch is at zero
+    if (!ftoDC.we)
+    	dctoEx.isBranch = 0;
+
 }
 
 void execute(struct DCtoEx dctoEx,
@@ -385,6 +389,10 @@ void execute(struct DCtoEx dctoEx,
         }
         break;
     }
+
+    //If the instruction was dropped, we ensure that isBranch is at zero
+    if (!dctoEx.we)
+    	extoMem.isBranch = 0;
 }
 
 void memory(struct ExtoMem extoMem,
@@ -427,6 +435,81 @@ void writeback(struct MemtoWB memtoWB,
         registerFile[memtoWB.rd] = memtoWB.result;
 }
 
+void branchUnit(ac_int<32, false> nextPC_fetch,
+		ac_int<32, false> nextPC_decode,
+		ac_int<1, false> isBranch_decode,
+		ac_int<32, false> nextPC_execute,
+		ac_int<1, false> isBranch_execute,
+		ac_int<32, false> &pc,
+		ac_int<1, false> &we_fetch,
+		ac_int<1, false> &we_decode){
+
+	if (isBranch_execute){
+		we_fetch = 0;
+		we_decode = 0;
+		pc = nextPC_execute;
+	}
+	else if (isBranch_decode){
+		we_fetch = 0;
+		pc = nextPC_decode;
+	}
+	else {
+		pc = nextPC_fetch;
+	}
+}
+
+void forwardUnit(ac_int<32, false> decodeRs1,
+		ac_int<1, false> decodeUseRs1,
+		ac_int<32, false> decodeRs2,
+		ac_int<1, false> decodeUseRs2,
+		ac_int<32, false> executeRd,
+		ac_int<1, false> executeUseRd,
+		ac_int<1, false> isLongComputation,
+		ac_int<32, false> memoryRd,
+		ac_int<1, false> memoryUseRd,
+		ac_int<32, false> writebackRd,
+		ac_int<1, false> writebackUseRd,
+
+		ac_int<1, false> &stallFetch,
+		ac_int<1, false> &stallDecode,
+		ac_int<32, false> &decodeValue1,
+		ac_int<32, false> &decodeValue2){
+
+	if (decodeUseRs1){
+		if (writebackUseRd && decodeRs1 == writebackRd)
+			decodeValue1 = 0;
+		else if (memoryUseRd && decodeRs1 == memoryRd)
+			decodeValue1 = 0;
+		else if (executeUseRd && decodeRs1 == executeRd){
+			if (isLongComputation){
+				stallFetch = 1;
+				stallDecode = 1;
+			}
+			else {
+				decodeValue1 = 0;
+			}
+		}
+	}
+
+	if (decodeUseRs2){
+		if (writebackUseRd && decodeRs2 == writebackRd)
+			decodeValue2 = 0;
+		else if (memoryUseRd && decodeRs2 == memoryRd)
+			decodeValue2 = 0;
+		else if (executeUseRd && decodeRs2 == executeRd){
+			if (isLongComputation){
+				stallFetch = 1;
+				stallDecode = 1;
+			}
+			else {
+				decodeValue2 = 0;
+			}
+		}
+	}
+
+}
+
+
 void coreinit(Core& core, ac_int<32, false> startpc)
 {
     core.ctrl.init = true;
@@ -442,7 +525,10 @@ void coreinit(Core& core, ac_int<32, false> startpc)
 ac_int<1, false> stallSignals[5];
 ac_int<1, false> globalStall;
 
-void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE])
+void doCycle(struct Core &core, 		 //Core containing all values
+		ac_int<32, false> startpc, 		 //StartPC (FIXME: do we need it ?)
+		ac_int<32, false> im[DRAM_SIZE], //Instruction memory
+		ac_int<32, true> dm[DRAM_SIZE])  //Data memory
 {
     //declare temporary structs
     struct FtoDC ftoDC_temp;
@@ -452,7 +538,7 @@ void doCycle(struct Core &core, ac_int<32, false> startpc, ac_int<32, false> im[
     //declare temporary register file
     ac_int<32, true> tempRegisterFile[32];
 
-    fetch(startpc, ftoDC_temp, im);
+    fetch(core.pc, ftoDC_temp, im);
     decode(core.ftoDC, dctoEx_temp, core.REG);
     execute(core.dctoEx, extoMem_temp);
     memory(core.extoMem, memtoWB_temp, dm);
