@@ -510,16 +510,16 @@ void forwardUnit(ac_int<32, false> decodeRs1,
 }
 
 
-void coreinit(Core& core, ac_int<32, false> startpc)
-{
-    core.ctrl.init = true;
-
-    core.pc = startpc;
-    if(startpc)
-        core.ctrl.sleep = false;
-    else
-        core.ctrl.sleep = true;
-}
+//void coreinit(Core& core, ac_int<32, false> startpc)
+//{
+//    core.ctrl.init = true;
+//
+//    core.pc = startpc;
+//    if(startpc)
+//        core.ctrl.sleep = false;
+//    else
+//        core.ctrl.sleep = true;
+//}
 
 
 ac_int<1, false> stallSignals[5];
@@ -559,14 +559,16 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (!stallSignals[3] && !globalStall)
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
 
+    branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
+
 }
 
-void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
-{
-    //declare a core
-    Core core;
-
-    while(1) {
-        doCycle(core, startpc, exit, im, dm);
-    }
-}
+//void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
+//{
+//    //declare a core
+//    Core core;
+//
+//    while(1) {
+//        doCycle(core, startpc, exit, im, dm);
+//    }
+//}
