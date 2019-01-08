@@ -1,4 +1,5 @@
 #include <core.h>
+#include <ac_int.h>
 
 #ifndef __HLS__
 #include "simulator.h"
@@ -411,13 +412,13 @@ void memory(struct ExtoMem extoMem,
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
         mem_read = data_memory[extoMem.result >> 2];
-        formatread(extoMem.result, datasize, signenable, mem_read);
+    //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         memtoWB.result = mem_read;
         break;
     case RISCV_ST:
         memtoWB.rd = 0;
-        mem_read = data_memory[extoMem.result >> 2];
-        if(extoMem.we) //TODO0: We do not handle non 32bit writes
+//        mem_read = data_memory[extoMem.result >> 2];
+       // if(extoMem.we) //TODO0: We do not handle non 32bit writes
         	data_memory[extoMem.result >> 2] = extoMem.datac;
         break;
     default:
@@ -509,6 +510,75 @@ void forwardUnit(ac_int<32, false> decodeRs1,
 
 }
 
+void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
+    dest.pc = src.pc;           	
+    dest.instruction = src.instruction;  
+    dest.nextPCFetch = src.nextPCFetch;      
+    dest.we = src.we;
+    dest.stall = src.stall;
+}
+
+void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
+    dest.pc = src.pc;       // used for branch
+    dest.instruction = src.instruction;
+
+    dest.opCode = src.opCode;    // opCode = instruction[6:0]
+    dest.funct7 = src.funct7;    // funct7 = instruction[31:25]
+    dest.funct3 = src.funct3;    // funct3 = instruction[14:12]
+
+    dest.lhs = src.lhs;   //  left hand side : operand 1
+    dest.rhs = src.rhs;   // right hand side : operand 2
+    dest.datac = src.datac; // ST, BR, JAL/R,
+
+    // syscall only
+    dest.datad = src.datad;
+    dest.datae = src.datae;
+
+    //For branch unit
+    dest.nextPCDC = src.nextPCDC;
+    dest.isBranch = src.isBranch;
+
+    //Information for forward/stall unit
+    dest.useRs1 = src.useRs1;
+    dest.useRs2 = src.useRs2;
+    dest.useRd = src.useRd;
+    dest.rs1 = src.rs1;       // rs1    = instruction[19:15]
+    dest.rs2 = src.rs2;       // rs2    = instruction[24:20]
+    dest.rd = src.rd;        // rd     = instruction[11:7]
+
+    //Register for all stages
+    dest.we = src.we;
+    dest.stall = src.stall; //TODO add that
+}
+
+void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
+    dest.pc = src.pc;
+    dest.instruction = src.instruction;
+
+    dest.result = src.result;    // result of the EX stage
+    dest.rd = src.rd;        // destination register
+    dest.opCode = src.opCode;    // LD or ST (can be reduced to 2 bits)
+    dest.funct3 = src.funct3;    // datasize and sign extension bit
+
+    dest.datac = src.datac;     // data to be stored in memory or csr result
+
+    //For branch unit
+    dest.nextPC = src.nextPC;
+    dest.isBranch = src.isBranch;
+
+    //Register for all stages
+    dest.we = src.we;
+    dest.stall = src.stall; //TODO add that
+}
+
+void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
+    dest.result = src.result;    // Result to be written back
+    dest.rd = src.rd;        // destination register
+
+    //Register for all stages
+    dest.we = src.we;
+    dest.stall = src.stall;
+}
 
 //void coreinit(Core& core, ac_int<32, false> startpc)
 //{
@@ -523,26 +593,28 @@ void forwardUnit(ac_int<32, false> decodeRs1,
 
 
 ac_int<1, false> stallSignals[5];
-ac_int<1, false> globalStall;
+
 
 void doCycle(struct Core &core, 		 //Core containing all values
-		ac_int<32, false> startpc, 		 //StartPC (FIXME: do we need it ?)
 		ac_int<32, false> im[DRAM_SIZE], //Instruction memory
-		ac_int<32, true> dm[DRAM_SIZE])  //Data memory
+		ac_int<32, true> dm[DRAM_SIZE],  //Data memory
+		ac_int<1, false> globalStall)  
 {
+
+
     //declare temporary structs
     struct FtoDC ftoDC_temp;
     struct DCtoEx dctoEx_temp;
     struct ExtoMem extoMem_temp;
     struct MemtoWB memtoWB_temp;
     //declare temporary register file
-    ac_int<32, true> tempRegisterFile[32];
+
 
     fetch(core.pc, ftoDC_temp, im);
     decode(core.ftoDC, dctoEx_temp, core.REG);
     execute(core.dctoEx, extoMem_temp);
     memory(core.extoMem, memtoWB_temp, dm);
-    writeback(core.memtoWB, tempRegisterFile);
+    writeback(core.memtoWB, core.REG);
 
     //resolve stalls, forwards
 
@@ -563,12 +635,18 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 }
 
-//void doCore(ac_int<32, false> startpc, unsigned int im[DRAM_SIZE], unsigned int dm[DRAM_SIZE])
-//{
-//    //declare a core
-//    Core core;
-//
-//    while(1) {
-//        doCycle(core, startpc, exit, im, dm);
-//    }
-//}
+void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE], ac_int<1, false> globalStall)
+{
+    //declare a core
+    Core core;
+    core.pc = 0;
+
+	stallSignals[0] = 0;
+	stallSignals[1] = 0;
+	stallSignals[2] = 0;
+	stallSignals[3] = 0;
+	stallSignals[4] = 0;
+    while(1) {
+        doCycle(core, im, dm, globalStall);
+    }
+}

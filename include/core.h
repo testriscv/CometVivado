@@ -1,12 +1,13 @@
 #ifndef CORE_H
 #define CORE_H
 
-#include "portability.h"
+#include <ac_int.h>
 #include "riscvISA.h"
-#include "multicycleoperator.h"
+
 
 #define INSTR_MEMORY_WIDTH 32
 #define DATA_MEMORY_WIDTH
+#define DRAM_SIZE 8192
 
 /******************************************************************************************
  * Definition of all pipeline registers
@@ -106,8 +107,6 @@ struct Core
     ac_int<32, false> pc;
 
     /// Multicycle operation
-    MultiCycleOperator mcop;
-    MultiCycleRes mcres;
 
     /// Instruction cache
     //unsigned int idata[Sets][Blocksize][Associativity];   // made external for modelsim
