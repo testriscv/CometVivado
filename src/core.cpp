@@ -581,9 +581,11 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
     //Information for forward/stall unit
     dest.useRs1 = src.useRs1;
     dest.useRs2 = src.useRs2;
+    dest.useRs3 = src.useRs3;
     dest.useRd = src.useRd;
     dest.rs1 = src.rs1;       // rs1    = instruction[19:15]
     dest.rs2 = src.rs2;       // rs2    = instruction[24:20]
+    dest.rs3 = src.rs3;
     dest.rd = src.rd;        // rd     = instruction[11:7]
 
     //Register for all stages
@@ -597,6 +599,8 @@ void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
 
     dest.result = src.result;    // result of the EX stage
     dest.rd = src.rd;        // destination register
+    dest.useRd = src.useRd;
+    dest.isLongInstruction = src.isLongInstruction;
     dest.opCode = src.opCode;    // LD or ST (can be reduced to 2 bits)
     dest.funct3 = src.funct3;    // datasize and sign extension bit
 
@@ -614,6 +618,13 @@ void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
     dest.result = src.result;    // Result to be written back
     dest.rd = src.rd;        // destination register
+    dest.useRd = src.useRd;
+
+    dest.address = src.address;
+    dest.valueToWrite = src.valueToWrite;
+    dest.byteEnable = src.byteEnable;
+    dest.isStore = src.isStore;
+
 
     //Register for all stages
     dest.we = src.we;
