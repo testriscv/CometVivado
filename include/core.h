@@ -15,6 +15,20 @@
  * ****************************************************************************************
  */
 
+struct ForwardReg {
+	ac_int<1, false> forwardWBtoVal1;
+	ac_int<1, false> forwardWBtoVal2;
+	ac_int<1, false> forwardWBtoVal3;
+
+	ac_int<1, false> forwardMemtoVal1;
+	ac_int<1, false> forwardMemtoVal2;
+	ac_int<1, false> forwardMemtoVal3;
+
+	ac_int<1, false> forwardExtoVal1;
+	ac_int<1, false> forwardExtoVal2;
+	ac_int<1, false> forwardExtoVal3;
+};
+
 struct FtoDC
 {
     FtoDC() : pc(0), instruction(0x13), we(1), stall(0)
@@ -52,9 +66,11 @@ struct DCtoEx
     //Information for forward/stall unit
     ac_int<1, false> useRs1;
     ac_int<1, false> useRs2;
+    ac_int<1, false> useRs3;
     ac_int<1, false> useRd;
     ac_int<5, false> rs1;       // rs1    = instruction[19:15]
     ac_int<5, false> rs2;       // rs2    = instruction[24:20]
+    ac_int<5, false> rs3;
     ac_int<5, false> rd;        // rd     = instruction[11:7]
 
     //Register for all stages
@@ -69,6 +85,8 @@ struct ExtoMem
 
     ac_int<32, true> result;    // result of the EX stage
     ac_int<5, false> rd;        // destination register
+    ac_int<1, false> useRd;
+    ac_int<1, false> isLongInstruction;
     ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
     ac_int<3, false> funct3;    // datasize and sign extension bit
 
@@ -87,11 +105,25 @@ struct MemtoWB
 {
     ac_int<32, true> result;    // Result to be written back
     ac_int<5, false> rd;        // destination register
+    ac_int<1, false> useRd;
+
+    ac_int<32, true> address;
+    ac_int<32, true> valueToWrite;
+    ac_int<4, false> byteEnable;
+    ac_int<1, true> isStore;
 
     //Register for all stages
     ac_int<1, false> we;
     ac_int<1, false> stall;
 
+};
+
+struct WBOut
+{
+	ac_int<32, false> value;
+	ac_int<5, false> rd;
+	ac_int<1, false> useRd;
+    ac_int<1, false> we;
 };
 
 struct Core
