@@ -429,7 +429,6 @@ void memory(struct ExtoMem extoMem,
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
-        memtoWB.rd = 0;
 //        mem_read = data_memory[extoMem.result >> 2];
        // if(extoMem.we) //TODO0: We do not handle non 32bit writes
 //        	data_memory[extoMem.result >> 2] = extoMem.datac;
@@ -674,8 +673,30 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (!stallSignals[0] && !globalStall)
     	copyFtoDC(core.ftoDC, ftoDC_temp);
 
-    if (!stallSignals[1] && !globalStall)
+    if (!stallSignals[1] && !globalStall){
     	copyDCtoEx(core.dctoEx, dctoEx_temp);
+
+    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
+    		core.dctoEx.lhs = extoMem_temp.result;
+    	else if (forwardRegisters.forwardMemtoVal1 && memtoWB_temp.we)
+    		core.dctoEx.lhs = memtoWB_temp.result;
+    	else if (forwardRegisters.forwardWBtoVal1 && wbOut_temp.we)
+    		core.dctoEx.lhs = wbOut_temp.value;
+
+    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we)
+    		core.dctoEx.rhs = extoMem_temp.result;
+    	else if (forwardRegisters.forwardMemtoVal2 && memtoWB_temp.we)
+    		core.dctoEx.rhs = memtoWB_temp.result;
+    	else if (forwardRegisters.forwardWBtoVal2 && wbOut_temp.we)
+    		core.dctoEx.rhs = wbOut_temp.value;
+
+    	if (forwardRegisters.forwardExtoVal3 && extoMem_temp.we)
+    		core.dctoEx.datac = extoMem_temp.result;
+    	else if (forwardRegisters.forwardMemtoVal3 && memtoWB_temp.we)
+    		core.dctoEx.datac = memtoWB_temp.result;
+    	else if (forwardRegisters.forwardWBtoVal3 && wbOut_temp.we)
+    		core.dctoEx.datac = wbOut_temp.value;
+    }
 
     if (!stallSignals[2] && !globalStall)
     	copyExtoMem(core.extoMem, extoMem_temp);
