@@ -499,10 +499,7 @@ void forwardUnit(
 		ac_int<1, false> writebackUseRd,
 
 		ac_int<1, false> stall[5],
-		struct ForwardReg &forwardRegisters,
-
-		ac_int<32, false> &decodeValue1,
-		ac_int<32, false> &decodeValue2){
+		struct ForwardReg &forwardRegisters){
 
 	if (decodeUseRs1){
 		if (writebackUseRd && decodeRs1 == writebackRd)
@@ -624,7 +621,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 }
 
 
-ac_int<1, false> stallSignals[5];
+
 
 
 void doCycle(struct Core &core, 		 //Core containing all values
@@ -633,14 +630,15 @@ void doCycle(struct Core &core, 		 //Core containing all values
 		ac_int<1, false> globalStall)  
 {
 
-
+    ac_int<1, false> stallSignals[5] = {0, 0, 0, 0, 0};
+    
     //declare temporary structs
-    struct FtoDC ftoDC_temp = {.pc = 0, .instruction = 0, .nextPCFetch = 0, .we = 0, .stall = 0};
-    struct DCtoEx dctoEx_temp = {.isBranch = 0, .useRs1 = 0, .useRs2 = 0, .useRs3 = 0, .useRd = 0, .we = 0, .stall = 0};
-    struct ExtoMem extoMem_temp = {.useRd = 0, .isBranch = 0, .we = 0, .stall = 0};
-    struct MemtoWB memtoWB_temp = {.useRd = 0, .isStore = 0, .we = 0, .stall = 0};
-    struct WBOut wbOut_temp = {.useRd = 0, .we = 0};
-    struct ForwardReg forwardRegisters = {.forwardExtoVal1 = 0, .forwardExtoVal2 = 0, .forwardExtoVal3 = 0, .forwardMemtoVal1 = 0, .forwardMemtoVal2 = 0, .forwardMemtoVal3 = 0, .forwardWBtoVal1 = 0, .forwardWBtoVal2 = 0, .forwardWBtoVal3 = 0};
+    struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
+    struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
+    struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0; extoMem_temp.stall = 0;
+    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0;
+    struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0;
+    struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
     //declare temporary register file
 
@@ -691,11 +689,6 @@ void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE], ac_
     Core core;
     core.pc = 0;
 
-	stallSignals[0] = 0;
-	stallSignals[1] = 0;
-	stallSignals[2] = 0;
-	stallSignals[3] = 0;
-	stallSignals[4] = 0;
     while(1) {
         doCycle(core, im, dm, globalStall);
     }
