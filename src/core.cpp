@@ -635,12 +635,12 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary structs
-    struct FtoDC ftoDC_temp = {0, 0, 0, 0, 0};
-    struct DCtoEx dctoEx_temp = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    struct ExtoMem extoMem_temp = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    struct MemtoWB memtoWB_temp = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-    struct WBOut wbOut_temp = {0, 0, 0, 0};
-    struct ForwardReg forwardRegisters = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    struct FtoDC ftoDC_temp = {.pc = 0, .instruction = 0, .nextPCFetch = 0, .we = 0, .stall = 0};
+    struct DCtoEx dctoEx_temp = {.isBranch = 0, .useRs1 = 0, .useRs2 = 0, .useRs3 = 0, .useRd = 0, .we = 0, .stall = 0};
+    struct ExtoMem extoMem_temp = {.useRd = 0, .isBranch = 0, .we = 0, .stall = 0};
+    struct MemtoWB memtoWB_temp = {.useRd = 0, .isStore = 0, .we = 0, .stall = 0};
+    struct WBOut wbOut_temp = {.useRd = 0, .we = 0};
+    struct ForwardReg forwardRegisters = {.forwardExtoVal1 = 0, .forwardExtoVal2 = 0, .forwardExtoVal3 = 0, .forwardMemtoVal1 = 0, .forwardMemtoVal2 = 0, .forwardMemtoVal3 = 0, .forwardWBtoVal1 = 0, .forwardWBtoVal2 = 0, .forwardWBtoVal3 = 0};
 
     //declare temporary register file
 
