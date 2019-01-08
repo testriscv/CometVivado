@@ -242,10 +242,10 @@ void execute(struct DCtoEx dctoEx,
         extoMem.result = dctoEx.pc+4;
         break;
     case RISCV_BR:
+        extoMem.nextPC = extoMem.pc + imm13_signed;
+        
         switch(dctoEx.funct3)
         {
-        extoMem.nextPC = extoMem.pc + imm13_signed;
-
         case RISCV_BR_BEQ:
             extoMem.isBranch = (dctoEx.lhs == dctoEx.rhs);
             break;
@@ -423,9 +423,10 @@ void memory(struct ExtoMem extoMem,
     {
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
-        mem_read = data_memory[extoMem.result >> 2];
+        
+       	memtoWB.address = extoMem.result;
+        memtoWB.isLoad = 1;
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
-        memtoWB.result = mem_read;
         break;
     case RISCV_ST:
         memtoWB.rd = 0;
@@ -447,7 +448,7 @@ void memory(struct ExtoMem extoMem,
 
 
 void writeback(struct MemtoWB memtoWB,
-				struct WBOut wbOut)
+				struct WBOut &wbOut)
 {
 	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
@@ -624,7 +625,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
     dest.valueToWrite = src.valueToWrite;
     dest.byteEnable = src.byteEnable;
     dest.isStore = src.isStore;
-
+    dest.isLoad = src.isLoad;
 
     //Register for all stages
     dest.we = src.we;
@@ -684,6 +685,8 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     	if (memtoWB_temp.we && memtoWB_temp.isStore)
     		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
+  	 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
+  	     core.memtoWB.result = dm[memtoWB_temp.address >> 2];
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd){

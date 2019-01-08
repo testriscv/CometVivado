@@ -111,7 +111,8 @@ struct MemtoWB
     ac_int<32, true> valueToWrite;
     ac_int<4, false> byteEnable;
     ac_int<1, true> isStore;
-
+    ac_int<1, true> isLoad;
+    
     //Register for all stages
     ac_int<1, false> we;
     ac_int<1, false> stall;
