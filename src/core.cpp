@@ -449,7 +449,7 @@ void memory(struct ExtoMem extoMem,
 void writeback(struct MemtoWB memtoWB,
 				struct WBOut wbOut)
 {
-	wbOut.we = memtoWB.we
+	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
     	wbOut.rd = memtoWB.rd;
     	wbOut.useRd = 1;
