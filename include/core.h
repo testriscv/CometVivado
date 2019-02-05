@@ -1,13 +1,9 @@
-#ifndef CORE_H
-#define CORE_H
+#ifndef __CORE_H__
+#define __CORE_H__
 
 #include <ac_int.h>
 #include "riscvISA.h"
-
-
-#define INSTR_MEMORY_WIDTH 32
-#define DATA_MEMORY_WIDTH
-#define DRAM_SIZE 8192
+#include "memory.h"
 
 /******************************************************************************************
  * Definition of all pipeline registers
@@ -162,4 +158,4 @@ class Simulator;
 
 
 
-#endif  // CORE_H
+#endif  // __CORE_H__

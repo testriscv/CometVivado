@@ -5,7 +5,7 @@
 
 struct Core;
 
-#include "portability.h"
+#include "memory.h"
 #include "cache.h"
 
 class Simulator

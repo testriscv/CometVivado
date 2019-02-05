@@ -1,7 +1,7 @@
 #ifndef CACHE_H
 #define CACHE_H
 
-#include "portability.h"
+#include "memory.h"
 
 #define RP_NONE                     0
 #define RP_FIFO                     1

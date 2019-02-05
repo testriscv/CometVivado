@@ -12,7 +12,7 @@
 #include <bitset>
 #include <string.h>
 
-#include "portability.h"
+#include "memory.h"
 #include "cache.h"
 #include "core.h"
 #include "simulator.h"

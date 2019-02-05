@@ -5,7 +5,7 @@
  *      Author: simon
  */
 
-#include <portability.h>
+#include <memory.h>
 
 #define OFFSET_SIZE 4
 #define TAG_SIZE 32-3-4

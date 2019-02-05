@@ -1,7 +1,7 @@
 #ifndef MULTICYCLEOPERATOR_H
 #define MULTICYCLEOPERATOR_H
 
-#include "portability.h"
+#include "memory.h"
 
 struct MultiCycleOperator
 {

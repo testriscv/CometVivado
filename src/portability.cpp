@@ -1,4 +1,4 @@
-#include "portability.h"
+#include "memory.h"
 
 void formatread(ac_int<32, false> address, ac_int<2, false> datasize, bool sign, ac_int<32, false>& read)
 {
