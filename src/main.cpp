@@ -1,4 +1,3 @@
-#include "mc_scverify.h"
 #include "elfFile.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -22,7 +21,7 @@
 
 using namespace std;
 
-CCS_MAIN(int argc, char** argv)
+int main(int argc, char** argv)
 {
 #ifndef nocache
     printf("Parameters : %5s   %8s   %13s   %4s   %6s   %13s    %13s\n", "Size", "Blocksize", "Associativity", "Sets", "Policy", "icontrolwidth", "dcontrolwidth");
@@ -229,5 +228,6 @@ CCS_MAIN(int argc, char** argv)
     delete[] memdctrl;
     delete mcop;
     delete mcres;
-    CCS_RETURN(0);
+
+    return 0;
 }
