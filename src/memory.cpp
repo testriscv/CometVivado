@@ -19,11 +19,18 @@ CORE_UINT(128+TAG_SIZE) data_set4[256];
 
 CORE_UINT(32) ages[256*4];
 
-CORE_INT(32) readMemory(CORE_INT(32) address, CORE_UINT(4) byteEnable, CORE_UINT(32) externalMemory[65536]){
+CORE_UINT(3) miss;
+CORE_UINT(128+TAG_SIZE) newVal;
 
+void readMemory(CORE_INT(32) address, CORE_UINT(4) byteEnable, CORE_UINT(32) externalMemory[65536], CORE_UINT(32) &dataOut, CORE_UINT(1) &stall){
+
+    while (1) {
 	CORE_UINT(3) place = address.SLC(3, 4);
 	CORE_UINT(TAG_SIZE) tag = address.SLC(TAG_SIZE, 7);
 	CORE_UINT(4) offset = address.SLC(4, 0);
+
+    if (miss == 0){
+
 
 	CORE_UINT(128+TAG_SIZE) val1 = data_set1[place];
 	CORE_UINT(128+TAG_SIZE) val2 = data_set2[place];
@@ -53,36 +60,52 @@ CORE_INT(32) readMemory(CORE_INT(32) address, CORE_UINT(4) byteEnable, CORE_UINT
 		value = val4.SLC(128, TAG_SIZE);
 
 	if (hit){
-		return value.SLC(32, 8*offset);
+		dataOut = value.SLC(32, 8*offset);
 	}
 	else{
-		CORE_UINT(128+TAG_SIZE) newVal = tag;
-		CORE_UINT(32) age1 = ages[4*offset+0];
-		CORE_UINT(32) age2 = ages[4*offset+1];
-		CORE_UINT(32) age3 = ages[4*offset+2];
-		CORE_UINT(32) age4 = ages[4*offset+3];
+	    miss = 5;
+	    stall = 1;
+	}
+	}
+	else{
 
+        if (miss == 5)
+		  CORE_UINT(128+TAG_SIZE) newVal = tag;
+		//CORE_UINT(32) age1 = ages[4*offset+0];
+		//CORE_UINT(32) age2 = ages[4*offset+1];
+		//CORE_UINT(32) age3 = ages[4*offset+2];
+		//CORE_UINT(32) age4 = ages[4*offset+3];
 
+        if (miss >= 2)
+		  newVal.SET_SLC((miss-2)*8+TAG_SIZE, externalMemory[(address>>2) + (miss-2)]);
 
-		for (int oneWord = 0; oneWord < 4; oneWord++)
-			newVal.SET_SLC(oneWord*8+TAG_SIZE, externalMemory[(address>>2) + oneWord]);
-
-
-		if (age1<age2 & age1<age3 & age1<age4)
+        miss--;
+		//if (age1<age2 & age1<age3 & age1<age4)
+		if (miss == 1){
 			data_set1[place] = newVal;
 
-		if (age2<age1 & age2<age3 & age2<age4)
-			data_set2[place] = newVal;
+		      int newOffset = TAG_SIZE + 8*offset;
+		      dataOut = newVal.SLC(32, newOffset);
 
-		if (age3<age1 & age3<age2 & age3<age4)
-			data_set3[place] = newVal;
+        }
+        
+        if (miss == 0){
+		      stall = 0;
+        }
+	//	if (age2<age1 & age2<age3 & age2<age4)
+		//	data_set2[place] = newVal;
 
-		if (age4<age1 & age4<age2 & age4<age3)
-			data_set4[place] = newVal;
+	//	if (age3<age1 & age3<age2 & age3<age4)
+	//		data_set3[place] = newVal;
+
+	//	if (age4<age1 & age4<age2 & age4<age3)
+	//		data_set4[place] = newVal;
+
+    
 
 
-		int newOffset = TAG_SIZE + 8*offset;
-		return newVal.SLC(32, newOffset);
+	}
+	
 	}
 }
 
