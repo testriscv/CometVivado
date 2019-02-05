@@ -49,9 +49,9 @@ void multicyclecontroller(MultiCycleOperator op, MultiCycleRes& res
             multicycle = 4;
             break;
         }
-        
+
         if(mcop.op == MultiCycleOperator::DIV || mcop.op == MultiCycleOperator::DIVU)
-        {   
+        {
             if(rhs)
                 mcres.res = lhs / rhs;
             else
@@ -64,8 +64,9 @@ void multicyclecontroller(MultiCycleOperator op, MultiCycleRes& res
             else
                 mcres.res = lhs;
         }
-        else
-            dbgassert(false, "Unknown external operation @%06x\n", mcop.pc.to_int());
+        //else
+            //Unknown external operation @%06x\n", mcop.pc.to_int()
+            //TODO: add error message
     }
     else
     {
@@ -73,6 +74,6 @@ void multicyclecontroller(MultiCycleOperator op, MultiCycleRes& res
         mcres.res = 0;
         //mcres.rd = 0;
     }
-    
+
     res = mcres;
 }

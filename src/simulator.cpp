@@ -43,7 +43,6 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
                 setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
             }
             free(sectionContent);
-            coredebug("filling data from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
         }
 
         if(!strncmp(oneSection->getName().c_str(), ".text", 5))
@@ -54,7 +53,6 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
                 setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
             }
             free(sectionContent);
-            coredebug("filling instruction from %06x to %06x\n", oneSection->address, oneSection->address + oneSection->size -1);
         }
     }
 
@@ -79,7 +77,6 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
     setDataMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
     setDataMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
     setDataMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
-    //fprintf(stderr, "Writing %08x @%06x\n", benchargc, STACK_INIT);
 
     ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
     for (int oneArg = 0; oneArg < benchargc; oneArg++)
@@ -88,7 +85,6 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         setDataMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
         setDataMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
         setDataMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
-        //fprintf(stderr, "Writing %08x @%06x\n", (int)currentPlaceStrings, STACK_INIT+ 4*oneArg + 4);
 
         int oneCharIndex = 0;
         char oneChar = benchargv[oneArg][oneCharIndex];
@@ -96,13 +92,10 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         {
             setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
 
-            //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
-
             oneCharIndex++;
             oneChar = benchargv[oneArg][oneCharIndex];
         }
         setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
-        //fprintf(stderr, "Writing %c (%d) @%06x\n", oneChar, (int)oneChar, currentPlaceStrings.to_int() + oneCharIndex);
         oneCharIndex++;
         currentPlaceStrings += oneCharIndex;
     }
@@ -142,7 +135,6 @@ void Simulator::fillMemory()
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
     {
         ins_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
-        //gdebug("@%06x    @%06x    %d    %02x\n", it->first, (it->first/4) % DRAM_SIZE, ((it->first)%4)*8, it->second);
     }
 
     //fill data memory
@@ -241,7 +233,6 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
             formatwrite(addr, 0, mem, value);
             ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
             dctrl[i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
         }
     }
 #endif
@@ -249,7 +240,6 @@ void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     ac_int<32, false> mem = dm[addr >> 2];
     formatwrite(addr, 0, mem, value);
     dm[addr >> 2] = mem;
-    //fprintf(stderr,"Write @%06x   %02x\n", addr.to_int(), value.to_int()&0xFF);
 
 }
 
@@ -290,7 +280,6 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
         {
             ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
             formatread(addr, 0, 0, mem);
-            //fprintf(stderr, "data @%06x (%06x) is in cache\n", addr.to_int(), dctrl->tag[i][j].to_int());
             return mem;
         }
     }
@@ -300,7 +289,6 @@ ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
     ac_int<32, false> read = dm[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
-    //fprintf(stderr, "Read @%06x    %02x   %08x\n", addr.to_int(), result.to_int(), dm[addr >> 2]);
     return result;
 
 }
@@ -535,9 +523,7 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
     for (int i(0); i < result; i++)
     {
         this->stb(bufferAddr + i, localBuffer[i]);
-        //fprintf(stderr, "%02x ", localBuffer[i]&0xFF);
     }
-    //fprintf(stderr, "\n\n");
 
     delete[] localBuffer;
     return result;
@@ -616,23 +602,6 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     stw(stataddr+96 , filestat.__pad0         );  // long
     stw(stataddr+100, filestat.__pad0         );  // long
 
-    /*fprintf(stderr, "st_dev         : %lld\n", filestat.st_dev         );  // unsigned long long
-    fprintf(stderr, "st_ino         : %lld\n", filestat.st_ino         );  // unsigned long long
-    fprintf(stderr, "st_mode        : %o\n", filestat.st_mode        );  // unsigned int
-    fprintf(stderr, "st_nlink       : %d\n", filestat.st_nlink       );  // unsigned int
-    fprintf(stderr, "st_uid         : %d\n", filestat.st_uid         );  // unsigned int
-    fprintf(stderr, "st_gid         : %d\n", filestat.st_gid         );  // unsigned int
-    fprintf(stderr, "st_rdev        : %lld\n", filestat.st_rdev        );  // unsigned long long
-    fprintf(stderr, "st_size        : %lld\n", filestat.st_size        );  // long long
-    fprintf(stderr, "st_blksize     : %d\n", filestat.st_blksize     );  // int
-    fprintf(stderr, "st_blocks      : %lld\n", filestat.st_blocks      );  // long long
-    fprintf(stderr, "st_atim.sec    : %d\n", filestat.st_atim.tv_sec );  // long
-    fprintf(stderr, "st_atim.nsec   : %d\n", filestat.st_atim.tv_nsec);  // long
-    fprintf(stderr, "st_mtim.sec    : %d\n", filestat.st_mtim.tv_sec );  // long
-    fprintf(stderr, "st_mtim.nsec   : %d\n", filestat.st_mtim.tv_nsec);  // long
-    fprintf(stderr, "st_ctim.sec    : %d\n", filestat.st_ctim.tv_sec );  // long
-    fprintf(stderr, "st_ctim.nsec   : %d\n", filestat.st_ctim.tv_nsec);  // long*/
-
     return result;
 }
 
@@ -706,7 +675,6 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
         riscvflags ^= SYS_O_NOCTTY;
         str += "NOCTTY";
     }
-    dbgassert(riscvflags == 0, "Some flags were not translated!\n");
     int result  = open(localPath, unixflags, mode.to_int());
 
     delete[] localPath;
@@ -795,7 +763,7 @@ ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    
+
     return result;
 }
 

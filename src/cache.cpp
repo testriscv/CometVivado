@@ -255,7 +255,6 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
     if(ictrl.state != ICacheControl::Fetch && ictrl.currentset != getSet(irequest.address))  // different way but same set keeps same control, except for data......
     {
         ictrl.state = ICacheControl::StoreControl;
-        gdebug("storecontrol irequest.address %06x\n", (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift));
     }
 
     switch(ictrl.state)
@@ -307,7 +306,6 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         {
             simul(sim->icachedata.miss++;)
             select(ictrl);
-            coredebug("cim  @%06x   not found or invalid   ", irequest.address.to_int());
             ictrl.setctrl.tag[ictrl.currentway] = getTag(irequest.address);
 
             ictrl.state = ICacheControl::Fetch;
@@ -316,8 +314,6 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
             ac_int<32, false> wordad = 0;
             wordad.set_slc(0, irequest.address.slc<30>(2));
             wordad.set_slc(30, (ac_int<2, false>)0);
-            coredebug("starting fetching to %d %d from %06x to %06x (%06x to %06x)\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(), (wordad.to_int() << 2)&(tagmask+setmask),
-                  (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (irequest.address >> 2).to_int() & (~(blockmask >> 2)), (((irequest.address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1);
             ictrl.valuetowrite = imem[wordad];
             simul(sim->icachedata.mainmemread++;)
             ictrl.memcnt = 1;
@@ -333,10 +329,6 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         #pragma hls_unroll yes
         if(ictrl.ctrlLoaded)        // this prevent storing false control when we jump to another jump ireply.instruction
         {
-            gdebug("StoreControl for %d %d  %06x to %06x\n", ictrl.currentset.to_int(), ictrl.currentway.to_int(),
-                        (ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift),
-                        ((ictrl.setctrl.tag[ictrl.currentway].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift))+Blocksize*4-1);
-
             ac_int<IWidth, false> setctrl = 0;
             setctrl.set_slc(ICacheControlWidth, ictrl.setctrl.bourrage);
             #pragma hls_unroll yes
@@ -344,17 +336,12 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
             {
                 setctrl.set_slc(i*(32-tagshift), ictrl.setctrl.tag[i]);
                 setctrl.set_slc(Associativity*(32-tagshift) + i, (ac_int<1, false>)ictrl.setctrl.valid[i]);
-                gdebug("tag : %6x      valid : %s\n", (ictrl.setctrl.tag[i].to_int() << tagshift) | (ictrl.currentset.to_int() << setshift), ictrl.setctrl.valid[i]?"true":"false");
             }
         #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             setctrl.set_slc(Associativity*(32-tagshift+1), ictrl.setctrl.policy);
         #endif
             memictrl[ictrl.currentset] = setctrl;
             simul(sim->icachedata.ctrlmemwrite++;)
-        }
-        else
-        {
-            gdebug("StoreControl but control not loaded\n");
         }
 
         ictrl.state = ICacheControl::Idle;
@@ -408,11 +395,6 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         ictrl.ctrlLoaded = false;
         break;
     }
-
-    simul(if(ireply.insvalid)
-    {
-        coredebug("i    @%06x   %08x    %d %d\n", ireply.cachepc.to_int(), ireply.instruction, ictrl.currentset.to_int(), ictrl.currentway.to_int());
-    })
 
 }
 
@@ -505,7 +487,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             {
                 simul(sim->dcachedata.miss++;)
                 select(dctrl);
-                gdebug("cdm  @%06x   not found or invalid   ", address.to_int());
                 if(dctrl.setctrl.dirty[dctrl.currentway] && dctrl.setctrl.valid[dctrl.currentway])
                 {
                     dctrl.state = DCacheControl::FirstWriteBack;
@@ -515,7 +496,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                     setSet(dctrl.workAddress, dctrl.currentset);
                     //dctrl.valuetowrite = dctrl.setctrl.data[dctrl.currentway];    // only if same offset than requested address
                     datavalid = false;
-                    coredebug("starting writeback from %d %d from %06x to %06x\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), dctrl.workAddress.to_int(), dctrl.workAddress.to_int() + 4*Blocksize-1);
                 }
                 else
                 {
@@ -527,8 +507,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                     ac_int<32, false> wordad = 0;
                     wordad.set_slc(0, address.slc<30>(2));
                     wordad.set_slc(30, (ac_int<2, false>)0);
-                    coredebug("starting fetching to %d %d for %s from %06x to %06x (%06x to %06x)\n", dctrl.currentset.to_int(), dctrl.currentway.to_int(), writeenable?"W":"R", (wordad.to_int() << 2)&(tagmask+setmask),
-                          (((int)(wordad.to_int()+Blocksize) << 2)&(tagmask+setmask))-1, (address >> 2).to_int() & (~(blockmask >> 2)), (((address >> 2).to_int() + Blocksize) & (~(blockmask >> 2)))-1 );
                     dctrl.valuetowrite = dmem[wordad];
                     simul(sim->dcachedata.mainmemread++;)
                     dctrl.memcnt = 1;
@@ -633,7 +611,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             {
                 dctrl.state = DCacheControl::StoreControl;
                 dctrl.setctrl.dirty[dctrl.currentway] = false;
-                //gdebug("end of writeback\n");
             }
             dctrl.memcnt = 0;
         }
@@ -664,7 +641,6 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 dctrl.state = DCacheControl::StoreControl;
                 dctrl.setctrl.valid[dctrl.currentway] = true;
                 update_policy(dctrl);
-                //gdebug("end of fetch to %d %d\n", dctrl.currentset.to_int(), dctrl.currentway.to_int());
             }
             dctrl.memcnt = 0;
         }
@@ -682,15 +658,4 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
 
     dreply.readvalue = read;
     dreply.datavalid = datavalid;
-
-    simul(if(datavalid)
-    {
-        if(writeenable)
-            coredebug("dW%d  @%06x   %08x   %08x   %08x   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DCacheControl::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
-                                                                      writevalue, dctrl.valuetowrite.to_int(), dctrl.currentset.to_int(), dctrl.currentway.to_int());
-        else        // datasize address  data in mem     formatted data  sign extension  set, way
-            coredebug("dR%d  @%06x   %08x   %08x   %5s   %d %d\n", datasize.to_int(), address.to_int(), dctrl.state == DCacheControl::Fetch?dmem[address/4]:data[dctrl.currentset][dctrl.i][dctrl.currentway],
-                                                                    read, signenable?"true":"false", dctrl.currentset.to_int(), dctrl.currentway.to_int());
-    })
 }
-

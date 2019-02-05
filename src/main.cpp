@@ -66,15 +66,12 @@ int main(int argc, char** argv)
         binaryFile = "benchmarks/build/matmul_int_4.riscv32";
 #endif
 
-    //fprintf(stderr, "%d bench arguments\n", benchargc);
     benchargv[0] = new char[strlen(binaryFile)+1];
     strcpy(benchargv[0], binaryFile);
-    //fprintf(stderr, "%s\n", benchargv[0]);
     for(int i(1); i < benchargc; ++i)
     {
         benchargv[i] = new char[strlen(argv[argstart + i - 1])+1];
         strcpy(benchargv[i], argv[argstart + i - 1]);
-        //fprintf(stderr, "%s\n", benchargv[i]);
     }
 
 
@@ -120,17 +117,14 @@ int main(int argc, char** argv)
     sim.writeBack();    // writeback dirty data from cache to main mem
 
 #ifndef __HLS__
-//    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
-//    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
-
-    coredebug("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
     {
         for(int j(0); j < 4; ++j)
         {
             if(dm[i] & (0xFF << (8*j)))
             {
-                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                //coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
+                //TODO: put another debug message here ?
             }
         }
     }
