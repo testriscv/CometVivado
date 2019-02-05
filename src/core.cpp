@@ -409,7 +409,7 @@ void execute(struct DCtoEx dctoEx,
 
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB,
-            ac_int<32, true> data_memory[DRAM_SIZE])
+            ac_int<32, false> data_memory[DRAM_SIZE])
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
@@ -637,7 +637,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 
 void doCycle(struct Core &core, 		 //Core containing all values
 		ac_int<32, false> im[DRAM_SIZE], //Instruction memory
-		ac_int<32, true> dm[DRAM_SIZE],  //Data memory
+		ac_int<32, false> dm[DRAM_SIZE],  //Data memory
 		ac_int<1, false> globalStall)  
 {
 
@@ -718,7 +718,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 }
 
-void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, true> dm[DRAM_SIZE], ac_int<1, false> globalStall)
+void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall)
 {
     //declare a core
     Core core;

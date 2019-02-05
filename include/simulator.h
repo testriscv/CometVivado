@@ -20,8 +20,8 @@ private:
     ac_int<32, true>* ins_memory;
     ac_int<32, true>* data_memory;
 
-    unsigned int* im;
-    unsigned int* dm;
+    ac_int<32, false>* im;
+    ac_int<32, false>* dm;
 
     FILE* input;
     FILE* output;
@@ -38,8 +38,8 @@ public:
     void fillMemory();
     void setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value);
     void setDataMemory(ac_int<32, false> addr, ac_int<8, true> value);
-    void setDM(unsigned int* d);
-    void setIM(unsigned int* i);
+    void setDM(ac_int<32, false>* d);
+    void setIM(ac_int<32, false>* i);
     void setCore(Core* core, ac_int<DWidth, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void setCore(Core* core);
     void writeBack();

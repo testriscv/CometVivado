@@ -10,12 +10,6 @@
 #include "elfFile.h"
 #include "core.h"
 
-#if 1
-#define dbgsys(format, ...)     fprintf(stderr, "Syscall (%lld) : " format, core->csrs.minstret.to_int64(), ## __VA_ARGS__)
-#else
-#define dbgsys(...)
-#endif
-
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
     : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
 {
@@ -75,15 +69,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             setPC(symbol->offset);
         }
 
-        if(strcmp(name, "tohost") == 0)
-        {
-            dbglog("tohost @%06x\n", symbol->offset);
-        }
 
-        if(strcmp(name, "fromhost") == 0)
-        {
-            dbglog("fromhost @%06x\n", symbol->offset);
-        }
         free(sectionContent);
     }
 
@@ -181,12 +167,12 @@ void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, true> value)
         heapAddress = addr;
 }
 
-void Simulator::setDM(unsigned int *d)
+void Simulator::setDM(ac_int<32, false> *d)
 {
     dm = d;
 }
 
-void Simulator::setIM(unsigned int *i)
+void Simulator::setIM(ac_int<32, false> *i)
 {
     im = i;
 }
@@ -365,7 +351,6 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
     {
     case SYS_exit:
         sys_status = 1; //Currently we break on ECALL
-        dbgsys("SYS_exit\n");
         break;
     case SYS_read:
         result = this->doRead(arg1, arg2, arg3);
@@ -519,11 +504,9 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
 
     // Custom syscalls
     case SYS_threadstart:
-        dbgsys("SYS_threadstart id %d fn @%06x args @%06x\n", arg1.to_int(), arg2.to_int(), arg3.to_int());
         result = 0;
         break;
     case SYS_nbcore:
-        dbgsys("SYS_nbcore\n");
         result = 1;
         break;
 
@@ -541,7 +524,6 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
 
 ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    dbgsys("SYS_read %d bytes from file %d\n", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     ac_int<32, true> result;
 
@@ -564,7 +546,6 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
 
 ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
-    //dbgsys("SYS_write %d bytes to file %d\n", size.to_int(), file.to_int());
     char* localBuffer = new char[size.to_int()];
     for (int i=0; i<size; i++)
         localBuffer[i] = this->ldb(bufferAddr + i);
@@ -589,7 +570,6 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
 
 ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
-    dbgsys("SYS_fstat on file %d\n", file.to_int());
     ac_int<32, true> result = 0;
     struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
 
@@ -726,7 +706,6 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
         riscvflags ^= SYS_O_NOCTTY;
         str += "NOCTTY";
     }
-    dbgsys("SYS_open on file %s with flags %s (%x) and mode %o\n", localPath, str.c_str(), unixflags, mode.to_int());
     dbgassert(riscvflags == 0, "Some flags were not translated!\n");
     int result  = open(localPath, unixflags, mode.to_int());
 
@@ -743,7 +722,6 @@ ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> pa
 
 ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 {
-    dbgsys("SYS_close on file %d\n", file.to_int());
     if(file > 2)    // don't close simulator's stdin, stdout & stderr
     {
         return close(file);
@@ -755,7 +733,6 @@ ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
 ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
 {
     int result = lseek(file, ptr, dir);
-    dbgsys("SYS_lseek on file %d    ptr %d      dir %d\n", file.to_int(), ptr.to_int(), dir.to_int());
     return result;
 }
 
@@ -775,7 +752,6 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(filename + i);
     localPath[pathSize] = '\0';
-    dbgsys("SYS_stat on %s\n", localPath);
 
     struct stat filestat;
     int result = stat(localPath, &filestat);
@@ -807,7 +783,6 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
 
 ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
 {
-    dbgsys("SYS_brk  heap @0x%x -> @0x%x (%+d)\n", heapAddress, value?value.to_int():heapAddress, value?value.to_int()-heapAddress:0);
 
     ac_int<32, true> result;
     if (value == 0)
@@ -820,14 +795,12 @@ ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
         result = value;
     }
 
-    dbgassert(core->REG[2].to_uint() > heapAddress, "Stack and heap overlaps (%08x > %08x)!!\n", core->REG[2].to_uint(), heapAddress);
     
     return result;
 }
 
 ac_int<32, true> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
 {
-    dbgsys("SYS_gettimeofday\n");
     struct timeval oneTimeVal;
     int result = gettimeofday(&oneTimeVal, NULL);
 
@@ -853,7 +826,6 @@ ac_int<32, true> Simulator::doUnlink(ac_int<32, false> path)
     for (int i=0; i<pathSize; i++)
         localPath[i] = this->ldb(path + i);
     localPath[pathSize] = '\0';
-    dbgsys("SYS_unlink on file %s\n", localPath);
 
     int result = unlink(localPath);
 

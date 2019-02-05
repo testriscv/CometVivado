@@ -57,10 +57,10 @@ CORE_INT(32) readMemory(CORE_INT(32) address, CORE_UINT(4) byteEnable, CORE_UINT
 	}
 	else{
 		CORE_UINT(128+TAG_SIZE) newVal = tag;
-		CORE_UINT(32) age1 = ages(4*offset+0);
-		CORE_UINT(32) age2 = ages(4*offset+1);
-		CORE_UINT(32) age3 = ages(4*offset+2);
-		CORE_UINT(32) age4 = ages(4*offset+3);
+		CORE_UINT(32) age1 = ages[4*offset+0];
+		CORE_UINT(32) age2 = ages[4*offset+1];
+		CORE_UINT(32) age3 = ages[4*offset+2];
+		CORE_UINT(32) age4 = ages[4*offset+3];
 
 
 

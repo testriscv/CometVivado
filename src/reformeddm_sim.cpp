@@ -78,13 +78,11 @@ CCS_MAIN(int argc, char** argv)
         //fprintf(stderr, "%s\n", benchargv[i]);
     }
 
-    fprintf(stderr, "Simulating %s\n", binaryFile);
-    std::cout << "Simulating " << binaryFile << std::endl;
 
     Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
 
-    unsigned int* dm = new unsigned int[DRAM_SIZE];
-    unsigned int* im = new unsigned int[DRAM_SIZE];
+    ac_int<32, false>* dm = new ac_int<32, false>[DRAM_SIZE];
+    ac_int<32, false>* im = new ac_int<32, false>[DRAM_SIZE];
     for(int i = 0; i < DRAM_SIZE; i++)
     {
         dm[i] = sim.getDataMemory()[i];
@@ -115,50 +113,16 @@ CCS_MAIN(int argc, char** argv)
     /*unsigned int (&cim)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cacheim));
     unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(cachedm));*/
 
-    coredebug("instruction memory :\n");
-    for(int i = 0; i < DRAM_SIZE; i++)
-    {
-        if(im[i])
-            coredebug("%06x : %08x\n", 4*i, im[i]);
-    }
-    coredebug("data memory :\n");
-    for(int i = 0; i < DRAM_SIZE; i++)
-    {
-        for(int j(0); j < 4; ++j)
-        {
-            if(dm[i] & (0xFF << (8*j)))
-            {
-                coredebug("%06x : %02x (%d)\n", 4*i+j, (dm[i] & (0xFF << (8*j))) >> (8*j), (dm[i] & (0xFF << (8*j))) >> (8*j));
-            }
-        }
-    }
-    coredebug("end of preambule\n");
 
     bool exit = false;
     //core.pc = sim.getPC();
-    while(!exit)
-    {
-        CCS_DESIGN(doStep(sim.getPC(), exit,
-                          *mcop, *mcres,
-/* main memories */       im, dm,
-/** cache memories **/    ptrtocache(cim), ptrtocache(cdm),
-/* control memories */    memictrl, memdctrl
-                  #ifndef __HLS__
-                      , &sim
-                  #endif
-                  ));
-        multicyclecontroller(*mcop, *mcres
-                        #ifndef __HLS__
-                             , &sim
-                        #endif
-                             );
-    }
+    doCore(im, dm, 0);
 
     sim.writeBack();    // writeback dirty data from cache to main mem
 
 #ifndef __HLS__
-    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
-    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
+//    printf("Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
+//    fprintf(stderr, "Successfully executed %lld instructions in %lld cycles\n", sim.getCore()->csrs.minstret.to_int64(), sim.getCore()->csrs.mcycle.to_int64());
 
     coredebug("memory : \n");
     for(int i = 0; i < DRAM_SIZE; i++)
