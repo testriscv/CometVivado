@@ -4,5 +4,7 @@ benchmarks/*/build/
 benchmarks/*/res
 benchmarks/res
 benchmarks/*/*.riscv32
+catapult/
+!catapult/genCore.py
 #simulator binaries
-comet.sim
+*.sim
