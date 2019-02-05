@@ -22,7 +22,6 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
     }
     heapAddress = 0;
     input = output = 0;
-
     if(inputFile)
         input = fopen(inputFile, "rb");
     if(outputFile)
