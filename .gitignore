@@ -1,0 +1,8 @@
+#benchmarks build artifacts
+benchmarks/build/
+benchmarks/*/build/
+benchmarks/*/res
+benchmarks/res
+benchmarks/*/*.riscv32
+#simulator binaries
+comet.sim
