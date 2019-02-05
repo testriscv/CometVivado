@@ -13,8 +13,8 @@
 Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
     : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
 {
-    ins_memory = new ac_int<32, true>[DRAM_SIZE];
-    data_memory = new ac_int<32, true>[DRAM_SIZE];
+    ins_memory = new ac_int<32, false>[DRAM_SIZE];
+    data_memory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
     {
         ins_memory[i] = 0;
@@ -145,14 +145,14 @@ void Simulator::fillMemory()
     }
 }
 
-void Simulator::setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value)
+void Simulator::setInstructionMemory(ac_int<32, false> addr, ac_int<8, false> value)
 {
     ins_memorymap[addr] = value;
     if(addr > heapAddress)
         heapAddress = addr;
 }
 
-void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, true> value)
+void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, false> value)
 {
     data_memorymap[addr] = value;
     if(addr > heapAddress)
@@ -196,12 +196,12 @@ void Simulator::setCore(Core* c)
     core = c;
 }
 
-ac_int<32, true>* Simulator::getInstructionMemory() const
+ac_int<32, false>* Simulator::getInstructionMemory() const
 {
     return ins_memory;
 }
 
-ac_int<32, true>* Simulator::getDataMemory() const
+ac_int<32, false>* Simulator::getDataMemory() const
 {
     return data_memory;
 }
