@@ -19,7 +19,7 @@ public:
 protected:
     void fillMemory();
 
-    void printCycle(){ std::cout << "pc: " << core.pc << std::endl; }; 
+    void printCycle(){ }//printf("pc: @%06x\n",core.pc); }; 
     void printStat(){};
     void extend(){};
     void solveSyscall();
