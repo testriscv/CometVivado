@@ -1,74 +1,79 @@
-#include "elfFile.h"
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <stdio.h>
-
-#include <iostream>
-#include <bitset>
 #include <string.h>
 
 #include "memory.h"
 #include "core.h"
 #include "simulator.h"
+#include "elfFile.h"
 
-using namespace std;
+void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv);
 
 int main(int argc, char** argv)
 {
-    const char* binaryFile = 0;
-    const char* inputFile = 0;
-    const char* outputFile = 0;
+    char *binaryFile;
+    char *inputFile; 
+    char *outputFile;
+    char **benchargv;
+    int benchargc;
+
+    parseArgs(argc, argv, binaryFile, inputFile, outputFile, benchargc, &benchargv);
+
+    printf("args: %s %s %s\n", binaryFile, inputFile, outputFile);
+
+    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
+
+    //TODO: this is an infinite loop, add an end condition
+    doCore(sim.getInstructionMemory(), sim.getDataMemory(), 0);
+
+    return 0;
+}
+
+void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv)
+{
     int argstart = 0;
-    char **benchargv = 0;
-    int benchargc = 1;
+    bool binaryFile = false;
+
+    benchArgc = 1;
     for(int i = 1; i < argc; ++i)
     {
         if(strcmp("-i", argv[i]) == 0)
         {
-            inputFile = argv[i+1];
+            inFile = argv[i+1];
         }
         else if(strcmp("-o", argv[i]) == 0)
         {
-            outputFile = argv[i+1];
+            outFile = argv[i+1];
         }
         else if(strcmp("-f", argv[i]) == 0)
         {
-            binaryFile = argv[i+1];
+            binaryFile = true;
+            binFile = argv[i+1];
         }
         else if(strcmp("--", argv[i]) == 0)
         {
             argstart = i+1;
-            benchargc = argc - i;
-            benchargv = new char*[benchargc];
+            benchArgc = argc - i;
+            *benchArgv = new char*[benchArgc];
             break;
         }
     }
-    if(benchargv == 0)
-        benchargv = new char*[benchargc];
 
-    if(binaryFile == 0)
+    if(*benchArgv == 0)
+        *benchArgv = new char*[benchArgc];
+
+    if(!binaryFile)
+        // TODO: solve warning for conversion from string constant to char* 
 #ifdef __HLS__
-        binaryFile = "matmul.riscv32";
+        binFile = "matmul.riscv32";
 #else
-        binaryFile = "benchmarks/build/matmul_int_4.riscv32";
+        binFile = "benchmarks/build/matmul_int_4.riscv32";
 #endif
 
-    benchargv[0] = new char[strlen(binaryFile)+1];
-    strcpy(benchargv[0], binaryFile);
-    for(int i(1); i < benchargc; ++i)
+    *benchArgv[0] = new char[strlen(binFile)+1];
+    strcpy(*benchArgv[0], binFile);
+    for(int i = 1; i < benchArgc; ++i)
     {
-        benchargv[i] = new char[strlen(argv[argstart + i - 1])+1];
-        strcpy(benchargv[i], argv[argstart + i - 1]);
+        *benchArgv[i] = new char[strlen(argv[argstart + i - 1])+1];
+        strcpy(*benchArgv[i], argv[argstart + i - 1]);
     }
-
-    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
-
-    doCore(sim.getInstructionMemory(), sim.getDataMemory(), 0);
-
-
-    return 0;
 }
