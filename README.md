@@ -74,5 +74,7 @@ There will be RISC-V binaries (having the `.riscv32` extension) as well as nativ
 ## Simulator
 To run the simulator execute the `comet.sim` in `<repo_root>/build/bin`.
 By default the simulator will execute the `matmul_int_4.riscv32` benchmark. You can provide a specific binary to be run by the simulator using the `-f <path_to_the_binary>` switch.
-the `-i` and `-o` switches are used to specify the benchmark's standard input and output respectively.
-the `--` switch allows to pass arguments to the benchmark that is being run by the simulator.
+
+The `-i` and `-o` switches are used to specify the benchmark's standard input and output respectively.
+
+The `--` switch allows to pass arguments to the benchmark that is being run by the simulator.
