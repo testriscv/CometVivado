@@ -8,3 +8,4 @@ catapult/
 !catapult/genCore.py
 #simulator binaries
 *.sim
+/build/
