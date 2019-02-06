@@ -17,8 +17,8 @@ private:
 
     ac_int<32, false> pc;
 
-    ac_int<32, true>* ins_memory;
-    ac_int<32, true>* data_memory;
+    ac_int<32, false>* ins_memory;
+    ac_int<32, false>* data_memory;
 
     ac_int<32, false>* im;
     ac_int<32, false>* dm;
@@ -36,16 +36,16 @@ public:
     ~Simulator();
 
     void fillMemory();
-    void setInstructionMemory(ac_int<32, false> addr, ac_int<8, true> value);
-    void setDataMemory(ac_int<32, false> addr, ac_int<8, true> value);
+    void setInstructionMemory(ac_int<32, false> addr, ac_int<8, false> value);
+    void setDataMemory(ac_int<32, false> addr, ac_int<8, false> value);
     void setDM(ac_int<32, false>* d);
     void setIM(ac_int<32, false>* i);
     void setCore(Core* core, ac_int<DWidth, false>* dctrl, unsigned int cachedata[Sets][Blocksize][Associativity]);
     void setCore(Core* core);
     void writeBack();
 
-    ac_int<32, true>* getInstructionMemory() const;
-    ac_int<32, true>* getDataMemory() const;
+    ac_int<32, false>* getInstructionMemory() const;
+    ac_int<32, false>* getDataMemory() const;
     Core* getCore() const;
 
     void setPC(ac_int<32, false> pc);

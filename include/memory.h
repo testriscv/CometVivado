@@ -36,45 +36,11 @@
 #ifndef __HLS__
 #include <cstdio>
 #include <stdint.h>
-
-#ifdef __DEBUG__
-#define gdebug(...)     printf(__VA_ARGS__)     // generic debug, can be deactivated
-#else
-#define gdebug(...)
-#endif
 #define simul(...)      __VA_ARGS__
 
-#ifdef __DEBUG__
-#define coredebug(...)  printf(__VA_ARGS__)     // mandatory debug
 #else
-#define coredebug(...)
-#endif
-
-#ifdef __DEBUG__
-#define dbglog(...) do { \
-    fprintf(stderr, __VA_ARGS__); \
-    printf(__VA_ARGS__); \
-} while(0)
-#else
-#define dbglog(...)
-#endif
-
-#define dbgassert(cond, ...) do { \
-    if(!(cond)) {  \
-        fprintf(stderr, __VA_ARGS__); \
-        printf(__VA_ARGS__); \
-        assert(cond); \
-    } \
-} while(0)
-
-#else
-#define gdebug(...)
 #define simul(...)
-#undef assert
-#define assert(a)
-#define coredebug(...)
-#define dbgassert(cond, ...)
-#define dbglog(...)
+
 #endif
 
 #define INSTR_MEMORY_WIDTH 32
@@ -100,4 +66,3 @@ void formatread (ac_int<32, false> address, ac_int<2, false> datasize, bool sign
 void formatwrite(ac_int<32, false> address, ac_int<2, false> datasize, ac_int<32, false>& mem, ac_int<32, false> write);
 
 #endif /* __MEMORY_H__ */
-
