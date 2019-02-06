@@ -152,6 +152,7 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src);
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
 
+void doCycle(struct Core &core, ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall);
 void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall);
 
 class Simulator;
