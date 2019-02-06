@@ -132,7 +132,7 @@ struct Core
 
     //CoreCtrl ctrl;
 
-    ac_int<32, true> REG[32];
+    ac_int<32, true> regFile[32];
     ac_int<32, false> pc;
 
     /// Multicycle operation
