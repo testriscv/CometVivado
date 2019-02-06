@@ -9,3 +9,5 @@ catapult/
 #simulator binaries
 *.sim
 /build/
+/.cproject
+/.project
