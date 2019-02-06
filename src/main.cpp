@@ -28,7 +28,6 @@ int main(int argc, char** argv)
     return 0;
 }
 
-//void parseArgs(int argc, char** argv, std::string& binFile, std::string& inFile, std::string& outFile, int &benchArgc, char ***benchArgv)
 void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv)
 {
     int argstart = 0;
