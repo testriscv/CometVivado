@@ -655,7 +655,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     fetch(core.pc, ftoDC_temp, im);
-    decode(core.ftoDC, dctoEx_temp, core.REG);
+    decode(core.ftoDC, dctoEx_temp, core.regFile);
     execute(core.dctoEx, extoMem_temp);
     memory(core.extoMem, memtoWB_temp, dm);
     writeback(core.memtoWB, wbOut_temp);
@@ -711,7 +711,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd){
-    	core.REG[wbOut_temp.rd] = wbOut_temp.value;
+    	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
     }
 
     branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
