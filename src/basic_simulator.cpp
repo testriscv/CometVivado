@@ -6,22 +6,23 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#include "simulator.h"
+#include "basic_simulator.h"
 #include "elfFile.h"
 #include "core.h"
 
-Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* outputFile, int benchargc, char **benchargv)
-    : core(0), dctrl(0), ddata(0), icachedata(), dcachedata(), coredata()
+BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *inputFile, char *outputFile)
 {
-    ins_memory = new ac_int<32, false>[DRAM_SIZE];
-    data_memory = new ac_int<32, false>[DRAM_SIZE];
+    instructionMemory = new ac_int<32, false>[DRAM_SIZE];
+    dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
     {
-        ins_memory[i] = 0;
-        data_memory[i] = 0;
+        instructionMemory[i] = 0;
+        dataMemory[i] = 0;
     }
     heapAddress = 0;
-    input = output = 0;
+
+    input = stdin; 
+    output = stdout ;
     if(inputFile)
         input = fopen(inputFile, "rb");
     if(outputFile)
@@ -39,7 +40,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             for(unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++)
             {
                 counter++;
-                setDataMemory(oneSection->address + byteNumber, sectionContent[byteNumber]);
+                insertDataMemoryMap(oneSection->address + byteNumber, sectionContent[byteNumber]);
             }
             free(sectionContent);
         }
@@ -49,7 +50,7 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
             unsigned char* sectionContent = oneSection->getSectionCode();
             for(unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++)
             {
-                setInstructionMemory((oneSection->address + byteNumber), sectionContent[byteNumber]);
+                insertInstructionMemoryMap((oneSection->address + byteNumber), sectionContent[byteNumber]);
             }
             free(sectionContent);
         }
@@ -63,38 +64,37 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
         if(strcmp(name, "_start") == 0)
         {
             fprintf(stderr, "%s     @%06x\n", name, symbol->offset);
-            setPC(symbol->offset);
+            core.pc = symbol->offset;
         }
-
 
         free(sectionContent);
     }
 
     unsigned int heap = heapAddress;    // keep heap where it is because it will be set over stackpointer
 
-    setDataMemory(STACK_INIT, benchargc & 0xFF);
-    setDataMemory(STACK_INIT + 1, (benchargc >> 8) & 0xFF);
-    setDataMemory(STACK_INIT + 2, (benchargc >> 16) & 0xFF);
-    setDataMemory(STACK_INIT + 3, (benchargc >> 24) & 0xFF);
+    insertDataMemoryMap(STACK_INIT, argc & 0xFF);
+    insertDataMemoryMap(STACK_INIT + 1, (argc >> 8) & 0xFF);
+    insertDataMemoryMap(STACK_INIT + 2, (argc >> 16) & 0xFF);
+    insertDataMemoryMap(STACK_INIT + 3, (argc >> 24) & 0xFF);
 
-    ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*benchargc;
-    for (int oneArg = 0; oneArg < benchargc; oneArg++)
+    ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4*argc;
+    for (int oneArg = 0; oneArg < argc; oneArg++)
     {
-        setDataMemory(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
-        setDataMemory(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
-        setDataMemory(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
-        setDataMemory(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
+        insertDataMemoryMap(STACK_INIT+ 4*oneArg + 4, currentPlaceStrings.slc<8>(0));
+        insertDataMemoryMap(STACK_INIT+ 4*oneArg + 5, currentPlaceStrings.slc<8>(8));
+        insertDataMemoryMap(STACK_INIT+ 4*oneArg + 6, currentPlaceStrings.slc<8>(16));
+        insertDataMemoryMap(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
 
         int oneCharIndex = 0;
-        char oneChar = benchargv[oneArg][oneCharIndex];
+        char oneChar = argv[oneArg][oneCharIndex];
         while (oneChar != 0)
         {
-            setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+            insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
 
             oneCharIndex++;
-            oneChar = benchargv[oneArg][oneCharIndex];
+            oneChar = argv[oneArg][oneCharIndex];
         }
-        setDataMemory(currentPlaceStrings + oneCharIndex, oneChar);
+        insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
         oneCharIndex++;
         currentPlaceStrings += oneCharIndex;
     }
@@ -103,10 +103,10 @@ Simulator::Simulator(const char* binaryFile, const char* inputFile, const char* 
     heapAddress = heap;
 }
 
-Simulator::~Simulator()
+BasicSimulator::~BasicSimulator()
 {
-    delete[] ins_memory;
-    delete[] data_memory;
+    delete[] instructionMemory;
+    delete[] dataMemory;
 
     if(input)
         fclose(input);
@@ -114,141 +114,65 @@ Simulator::~Simulator()
         fclose(output);
 }
 
-void Simulator::fillMemory()
+void BasicSimulator::fillMemory()
 {
     //Check whether data memory and instruction memory from program will actually fit in processor.
-    //cout << ins_memorymap.size()<<endl;
+    //cout << imemMap.size()<<endl;
 
-    if(ins_memorymap.size() / 4 > DRAM_SIZE)
+    if(imemMap.size() / 4 > DRAM_SIZE)
     {
-        printf("Error! Instruction memory size exceeded");
+        fprintf(stderr, "Error! Instruction memory size exceeded");
         exit(-1);
     }
-    if(data_memorymap.size() / 4 > DRAM_SIZE)
+    if(dmemMap.size() / 4 > DRAM_SIZE)
     {
-        printf("Error! Data memory size exceeded");
+        fprintf(stderr, "Error! Data memory size exceeded");
         exit(-1);
     }
 
     //fill instruction memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = ins_memorymap.begin(); it!=ins_memorymap.end(); ++it)
+    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = imemMap.begin(); it!=imemMap.end(); ++it)
     {
-        ins_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+        instructionMemory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 
     //fill data memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = data_memorymap.begin(); it!=data_memorymap.end(); ++it)
+    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = dmemMap.begin(); it!=dmemMap.end(); ++it)
     {
-        //data_memory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
-        data_memory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+        //dataMemory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
+        dataMemory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 }
 
-void Simulator::setInstructionMemory(ac_int<32, false> addr, ac_int<8, false> value)
+void BasicSimulator::insertInstructionMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
 {
-    ins_memorymap[addr] = value;
+    imemMap[addr] = value;
     if(addr > heapAddress)
         heapAddress = addr;
 }
 
-void Simulator::setDataMemory(ac_int<32, false> addr, ac_int<8, false> value)
+void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
 {
-    data_memorymap[addr] = value;
+    dmemMap[addr] = value;
     if(addr > heapAddress)
         heapAddress = addr;
 }
 
-void Simulator::setDM(ac_int<32, false> *d)
-{
-    dm = d;
-}
 
-void Simulator::setIM(ac_int<32, false> *i)
+void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
-    im = i;
-}
-
-void Simulator::writeBack()
-{
-#ifndef nocache
-    unsigned int (&cdm)[Sets][Blocksize][Associativity] = (*reinterpret_cast<unsigned int (*)[Sets][Blocksize][Associativity]>(ddata));
-
-    //cache write back for simulation
-    for(unsigned int i  = 0; i < Sets; ++i)
-        for(unsigned int j = 0; j < Associativity; ++j)
-                            // dirty bit                                    // valid bit
-            if(dctrl[i].slc<1>(Associativity*(32-tagshift+1) + j) && dctrl[i].slc<1>(Associativity*(32-tagshift) + j))
-                for(unsigned int k = 0; k < Blocksize; ++k)
-                    dm[(dctrl[i].slc<32-tagshift>(j*(32-tagshift)).to_int() << (tagshift-2)) | (i << (setshift-2)) | k] = cdm[i][k][j];
-#endif
-}
-
-void Simulator::setCore(Core *c, ac_int<DWidth, false>* ctrl, unsigned int cachedata[Sets][Blocksize][Associativity])
-{
-    core = c;
-    dctrl = ctrl;
-    ddata = (unsigned int*)cachedata;
-}
-
-void Simulator::setCore(Core* c)
-{
-    core = c;
-}
-
-ac_int<32, false>* Simulator::getInstructionMemory() const
-{
-    return ins_memory;
-}
-
-ac_int<32, false>* Simulator::getDataMemory() const
-{
-    return data_memory;
-}
-
-Core* Simulator::getCore() const
-{
-    return core;
-}
-
-void Simulator::setPC(ac_int<32, false> pc)
-{
-    this->pc = pc;
-}
-
-ac_int<32, false> Simulator::getPC() const
-{
-    return pc;
-}
-
-void Simulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
-{
-#ifndef nocache     // if data is in the cache, we must write in the cache directly
-    int i = getSet(addr);
-    for(int j(0); j < Associativity; ++j)
-    {
-        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
-        {
-            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
-            formatwrite(addr, 0, mem, value);
-            ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j] = mem;
-            dctrl[i].set_slc(Associativity*(32-tagshift+1) + j, (ac_int<1, false>)true);      // mark as dirty because we wrote it
-        }
-    }
-#endif
-    // write in main memory as well
-    ac_int<32, false> mem = dm[addr >> 2];
+    ac_int<32, false> mem = dataMemory[addr >> 2];
     formatwrite(addr, 0, mem, value);
-    dm[addr >> 2] = mem;
-
+    dataMemory[addr >> 2] = mem;
 }
 
-void Simulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
+void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
 {
     this->stb(addr+1, value.slc<8>(8));
     this->stb(addr+0, value.slc<8>(0));
 }
 
-void Simulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
+void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
 {
     this->stb(addr+3, value.slc<8>(24));
     this->stb(addr+2, value.slc<8>(16));
@@ -256,7 +180,7 @@ void Simulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
     this->stb(addr+0, value.slc<8>(0));
 }
 
-void Simulator::std(ac_int<32, false> addr, ac_int<64, true> value)
+void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 {
     this->stb(addr+7, value.slc<8>(56));
     this->stb(addr+6, value.slc<8>(48));
@@ -269,32 +193,32 @@ void Simulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 }
 
 
-ac_int<8, true> Simulator::ldb(ac_int<32, false> addr)
+ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 {
-#ifndef nocache     // if data is in the cache, we must read in the cache directly
-    int i = getSet(addr);
-    for(int j(0); j < Associativity; ++j)
-    {
-        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
-        {
-            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
-            formatread(addr, 0, 0, mem);
-            return mem;
-        }
-    }
-#endif
+// if data is in the cache, we must read in the cache directly
+//#ifndef nocache     
+//    int i = getSet(addr);
+//    for(int j(0); j < Associativity; ++j)
+//    {
+//        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
+//        {
+//            ac_int<32, false> mem = ddata[i*Blocksize*Associativity + (int)getOffset(addr)*Associativity + j];
+//            formatread(addr, 0, 0, mem);
+//            return mem;
+//        }
+//    }
+//#endif
     // read main memory if it wasn't in cache
     ac_int<8, true> result;
-    ac_int<32, false> read = dm[addr >> 2];
+    ac_int<32, false> read = dataMemory[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
     return result;
-
 }
 
 
 //Little endian version
-ac_int<16, true> Simulator::ldh(ac_int<32, false> addr)
+ac_int<16, true> BasicSimulator::ldh(ac_int<32, false> addr)
 {
     ac_int<16, true> result = 0;
     result.set_slc(8, this->ldb(addr+1));
@@ -302,7 +226,7 @@ ac_int<16, true> Simulator::ldh(ac_int<32, false> addr)
     return result;
 }
 
-ac_int<32, true> Simulator::ldw(ac_int<32, false> addr)
+ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
 {
     ac_int<32, true> result = 0;
     result.set_slc(24, this->ldb(addr+3));
@@ -312,7 +236,7 @@ ac_int<32, true> Simulator::ldw(ac_int<32, false> addr)
     return result;
 }
 
-ac_int<32, true> Simulator::ldd(ac_int<32, false> addr)
+ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 {
     ac_int<32, true> result = 0;
     result.set_slc(56, this->ldb(addr+7));
@@ -327,17 +251,20 @@ ac_int<32, true> Simulator::ldd(ac_int<32, false> addr)
     return result;
 }
 
-
-
-
-
-ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &sys_status)
+void BasicSimulator::solveSyscall()
+//ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
+    ac_int<32, true> syscallId = core.regFile[17];
+    ac_int<32, true> arg1 = core.regFile[10]; 
+    ac_int<32, true> arg2 = core.regFile[11]; 
+    ac_int<32, true> arg3 = core.regFile[12]; 
+    ac_int<32, true> arg4 = core.regFile[13];
+
     ac_int<32, true> result = 0;
     switch (syscallId)
     {
     case SYS_exit:
-        sys_status = 1; //Currently we break on ECALL
+        exitFlag = 1; //Currently we break on ECALL
         break;
     case SYS_read:
         result = this->doRead(arg1, arg2, arg3);
@@ -374,119 +301,119 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         break;
     case SYS_exit_group:
         fprintf(stderr, "Syscall : SYS_exit_group\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getpid:
         fprintf(stderr, "Syscall : SYS_getpid\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_kill:
         fprintf(stderr, "Syscall : SYS_kill\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_link:
         fprintf(stderr, "Syscall : SYS_link\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_mkdir:
         fprintf(stderr, "Syscall : SYS_mkdir\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_chdir:
         fprintf(stderr, "Syscall : SYS_chdir\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getcwd:
         fprintf(stderr, "Syscall : SYS_getcwd\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_lstat:
         fprintf(stderr, "Syscall : SYS_lstat\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_fstatat:
         fprintf(stderr, "Syscall : SYS_fstatat\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_access:
         fprintf(stderr, "Syscall : SYS_access\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_faccessat:
         fprintf(stderr, "Syscall : SYS_faccessat\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_pread:
         fprintf(stderr, "Syscall : SYS_pread\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_pwrite:
         fprintf(stderr, "Syscall : SYS_pwrite\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_uname:
         fprintf(stderr, "Syscall : SYS_uname\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getuid:
         fprintf(stderr, "Syscall : SYS_getuid\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_geteuid:
         fprintf(stderr, "Syscall : SYS_geteuid\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getgid:
         fprintf(stderr, "Syscall : SYS_getgid\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getegid:
         fprintf(stderr, "Syscall : SYS_getegid\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_mmap:
         fprintf(stderr, "Syscall : SYS_mmap\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_munmap:
         fprintf(stderr, "Syscall : SYS_munmap\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_mremap:
         fprintf(stderr, "Syscall : SYS_mremap\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_time:
         fprintf(stderr, "Syscall : SYS_time\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getmainvars:
         fprintf(stderr, "Syscall : SYS_getmainvars\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_rt_sigaction:
         fprintf(stderr, "Syscall : SYS_rt_sigaction\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_writev:
         fprintf(stderr, "Syscall : SYS_writev\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_times:
         fprintf(stderr, "Syscall : SYS_times\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_fcntl:
         fprintf(stderr, "Syscall : SYS_fcntl\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_getdents:
         fprintf(stderr, "Syscall : SYS_getdents\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
     case SYS_dup:
         fprintf(stderr, "Syscall : SYS_dup\n");
-        sys_status = 1;
+        exitFlag = 1;
         break;
 
     // Custom syscalls
@@ -502,14 +429,14 @@ ac_int<32, true> Simulator::solveSyscall(ac_int<32, true> syscallId, ac_int<32, 
         fprintf(stderr, "Syscall : Unknown system call, %d (%x) with arguments :\n", syscallId.to_int(), syscallId.to_int());
         fprintf(stderr, "%d (%x)\n%d (%x)\n%d (%x)\n%d (%x)\n", arg1.to_int(), arg1.to_int(), arg2.to_int(), arg2.to_int(),
                 arg3.to_int(), arg3.to_int(), arg4.to_int(), arg4.to_int());
-        sys_status = 1;
+        exitFlag = 1;
         break;
     }
-
-    return result;
+    
+    core.regFile[10] = result;
 }
 
-ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
     char* localBuffer = new char[size.to_int()];
     ac_int<32, true> result;
@@ -529,7 +456,7 @@ ac_int<32, true> Simulator::doRead(ac_int<32, false> file, ac_int<32, false> buf
 }
 
 
-ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
     char* localBuffer = new char[size.to_int()];
     for (int i=0; i<size; i++)
@@ -553,7 +480,7 @@ ac_int<32, true> Simulator::doWrite(ac_int<32, false> file, ac_int<32, false> bu
     return result;
 }
 
-ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
+ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
     ac_int<32, true> result = 0;
     struct stat filestat = {0};     // for stdout, its easier to compare debug trace when syscalls gives same results
@@ -604,7 +531,7 @@ ac_int<32, true> Simulator::doFstat(ac_int<32, false> file, ac_int<32, false> st
     return result;
 }
 
-ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
 {
     int oneStringElement = this->ldb(path);
     int index = 0;
@@ -681,13 +608,13 @@ ac_int<32, true> Simulator::doOpen(ac_int<32, false> path, ac_int<32, false> fla
 
 }
 
-ac_int<32, true> Simulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+ac_int<32, true> BasicSimulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
 {
     fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
     exit(-1);
 }
 
-ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
+ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
 {
     if(file > 2)    // don't close simulator's stdin, stdout & stderr
     {
@@ -697,13 +624,13 @@ ac_int<32, true> Simulator::doClose(ac_int<32, false> file)
     return 0;
 }
 
-ac_int<32, true> Simulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
+ac_int<32, true> BasicSimulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
 {
     int result = lseek(file, ptr, dir);
     return result;
 }
 
-ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
+ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
 {
     int oneStringElement = this->ldb(filename);
     int index = 0;
@@ -748,7 +675,7 @@ ac_int<32, true> Simulator::doStat(ac_int<32, false> filename, ac_int<32, false>
     return result;
 }
 
-ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
+ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
 {
 
     ac_int<32, true> result;
@@ -766,7 +693,7 @@ ac_int<32, true> Simulator::doSbrk(ac_int<32, false> value)
     return result;
 }
 
-ac_int<32, true> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
+ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
 {
     struct timeval oneTimeVal;
     int result = gettimeofday(&oneTimeVal, NULL);
@@ -777,7 +704,7 @@ ac_int<32, true> Simulator::doGettimeofday(ac_int<32, false> timeValPtr)
     return result;
 }
 
-ac_int<32, true> Simulator::doUnlink(ac_int<32, false> path)
+ac_int<32, true> BasicSimulator::doUnlink(ac_int<32, false> path)
 {
     int oneStringElement = this->ldb(path);
     int index = 0;

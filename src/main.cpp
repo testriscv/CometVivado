@@ -1,10 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "memory.h"
-#include "core.h"
-#include "simulator.h"
-#include "elfFile.h"
+#include "basic_simulator.h"
 
 void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv);
 
@@ -20,10 +17,12 @@ int main(int argc, char** argv)
 
     printf("args: %s %s %s\n", binaryFile, inputFile, outputFile);
 
-    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
+    BasicSimulator sim(binaryFile, benchargc, benchargv, inputFile, outputFile);
+
+    sim.run();
 
     //TODO: this is an infinite loop, add an end condition
-    doCore(sim.getInstructionMemory(), sim.getDataMemory(), 0);
+    //doCore(sim.getInstructionMemory(), sim.getDataMemory(), 0);
 
     return 0;
 }

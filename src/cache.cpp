@@ -266,7 +266,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         if(!ictrl.ctrlLoaded)
         {
             ac_int<IWidth, false> setctrl = memictrl[ictrl.currentset];
-            simul(sim->icachedata.ctrlmemread++;)
+            ////simul(sim->icachedata.ctrlmemread++;)
             ictrl.setctrl.bourrage = setctrl.slc<ibourrage>(ICacheControlWidth);
             #pragma hls_unroll yes
             loadiset:for(int i = 0; i < Associativity; ++i)
@@ -284,14 +284,14 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         {
             ictrl.setctrl.data[i] = data[ictrl.currentset][ictrl.i][i];
         }
-        simul(sim->icachedata.cachememread+=Associativity;)
+        ////simul(sim->icachedata.cachememread+=Associativity;)
 
         ictrl.workAddress = irequest.address;
         ictrl.ctrlLoaded = true;
 
         if(find(ictrl, irequest.address))
         {
-            simul(sim->icachedata.hit++;)
+            ////simul(sim->icachedata.hit++;)
 
             ireply.instruction = ictrl.setctrl.data[ictrl.currentway];
 
@@ -304,7 +304,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         }
         else    // not found or invalid
         {
-            simul(sim->icachedata.miss++;)
+            ////simul(sim->icachedata.miss++;)
             select(ictrl);
             ictrl.setctrl.tag[ictrl.currentway] = getTag(irequest.address);
 
@@ -315,7 +315,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
             wordad.set_slc(0, irequest.address.slc<30>(2));
             wordad.set_slc(30, (ac_int<2, false>)0);
             ictrl.valuetowrite = imem[wordad];
-            simul(sim->icachedata.mainmemread++;)
+            ////simul(sim->icachedata.mainmemread++;)
             ictrl.memcnt = 1;
             // critical word first
             ireply.instruction = ictrl.valuetowrite;
@@ -341,7 +341,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
             setctrl.set_slc(Associativity*(32-tagshift+1), ictrl.setctrl.policy);
         #endif
             memictrl[ictrl.currentset] = setctrl;
-            simul(sim->icachedata.ctrlmemwrite++;)
+            ////simul(sim->icachedata.ctrlmemwrite++;)
         }
 
         ictrl.state = ICacheControl::Idle;
@@ -354,12 +354,12 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
         if(ictrl.memcnt == MEMORY_READ_LATENCY)
         {
             data[ictrl.currentset][ictrl.i][ictrl.currentway] = ictrl.valuetowrite;
-            simul(sim->icachedata.cachememwrite++;)
+            //simul(sim->icachedata.cachememwrite++;)
             ireply.instruction = ictrl.valuetowrite;
             ireply.cachepc = ictrl.workAddress;
             ireply.cachepc.set_slc(2, ictrl.i);
             ireply.insvalid = true;
-            simul(sim->icachedata.hit += ictrl.workAddress == irequest.address;)
+            //simul(sim->icachedata.hit += ictrl.workAddress == irequest.address;)
 
             if(++ictrl.i != getOffset(ictrl.workAddress))
             {
@@ -369,7 +369,7 @@ void icache(ac_int<IWidth, false> memictrl[Sets], unsigned int imem[DRAM_SIZE], 
                 setOffset(bytead, ictrl.i);
 
                 ictrl.valuetowrite = imem[bytead >> 2];
-                simul(sim->icachedata.mainmemread++;)
+                //simul(sim->icachedata.mainmemread++;)
             }
             else
             {
@@ -443,7 +443,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             dctrl.i = getOffset(address);
 
             ac_int<DWidth, false> setctrl = memdctrl[dctrl.currentset];
-            simul(sim->dcachedata.ctrlmemread++;)
+            //simul(sim->dcachedata.ctrlmemread++;)
             dctrl.setctrl.bourrage = setctrl.slc<dbourrage>(DCacheControlWidth);
             #pragma hls_unroll yes
             loaddset:for(int i = 0; i < Associativity; ++i)
@@ -454,14 +454,14 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 dctrl.setctrl.valid[i] = setctrl.slc<1>(Associativity*(32-tagshift) + i);
                 dctrl.setctrl.dirty[i] = setctrl.slc<1>(Associativity*(32-tagshift+1) + i);
             }
-            simul(sim->dcachedata.cachememread+=Associativity;) // we have A bank, so + Associativity
+            //simul(sim->dcachedata.cachememread+=Associativity;) // we have A bank, so + Associativity
         #if Associativity > 1 && (Policy == RP_FIFO || Policy == RP_LRU)
             dctrl.setctrl.policy = setctrl.slc<DPolicyWidth>(Associativity*(32-tagshift+2));
         #endif
 
             if(find(dctrl, address))
             {
-                simul(sim->dcachedata.hit++;)
+                //simul(sim->dcachedata.hit++;)
                 if(writeenable)
                 {
                     dctrl.valuetowrite = dctrl.setctrl.data[dctrl.currentway];
@@ -485,7 +485,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             }
             else    // not found or invalid
             {
-                simul(sim->dcachedata.miss++;)
+                //simul(sim->dcachedata.miss++;)
                 select(dctrl);
                 if(dctrl.setctrl.dirty[dctrl.currentway] && dctrl.setctrl.valid[dctrl.currentway])
                 {
@@ -508,7 +508,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                     wordad.set_slc(0, address.slc<30>(2));
                     wordad.set_slc(30, (ac_int<2, false>)0);
                     dctrl.valuetowrite = dmem[wordad];
-                    simul(sim->dcachedata.mainmemread++;)
+                    //simul(sim->dcachedata.mainmemread++;)
                     dctrl.memcnt = 1;
                     // critical word first
                     if(writeenable)
@@ -547,7 +547,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         setctrl.set_slc(Associativity*(32-tagshift+2), dctrl.setctrl.policy);
     #endif
 
-        simul(sim->dcachedata.ctrlmemwrite++;)
+        //simul(sim->dcachedata.ctrlmemwrite++;)
         memdctrl[dctrl.currentset] = setctrl;
         dctrl.state = DCacheControl::Idle;
         datavalid = false;
@@ -568,10 +568,10 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         setctrl.set_slc(Associativity*(32-tagshift+2), dctrl.setctrl.policy);
     #endif
         memdctrl[dctrl.currentset] = setctrl;
-        simul(sim->dcachedata.ctrlmemwrite++;)
+        //simul(sim->dcachedata.ctrlmemwrite++;)
 
         data[dctrl.currentset][getOffset(dctrl.workAddress)][dctrl.currentway] = dctrl.valuetowrite;
-        simul(sim->dcachedata.cachememwrite++;)
+        //simul(sim->dcachedata.cachememwrite++;)
 
         dctrl.state = DCacheControl::Idle;
         datavalid = false;
@@ -587,7 +587,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         setOffset(bytead, dctrl.i);
 
         dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
-        simul(sim->dcachedata.cachememread++;)
+        //simul(sim->dcachedata.cachememread++;)
         dctrl.state = DCacheControl::WriteBack;
         datavalid = false;
         break;
@@ -600,12 +600,12 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
             setSet(bytead, dctrl.currentset);
             setOffset(bytead, dctrl.i);
             dmem[bytead >> 2] = dctrl.valuetowrite;
-            simul(sim->dcachedata.mainmemwrite++;)
+            //simul(sim->dcachedata.mainmemwrite++;)
 
             if(++dctrl.i)
             {
                 dctrl.valuetowrite = data[dctrl.currentset][dctrl.i][dctrl.currentway];
-                simul(sim->dcachedata.cachememread++;)
+                //simul(sim->dcachedata.cachememread++;)
             }
             else
             {
@@ -624,7 +624,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
         if(dctrl.memcnt == MEMORY_READ_LATENCY)
         {
             data[dctrl.currentset][dctrl.i][dctrl.currentway] = dctrl.valuetowrite;
-            simul(sim->dcachedata.cachememwrite++;)
+            //simul(sim->dcachedata.cachememwrite++;)
 
             if(++dctrl.i != getOffset(dctrl.workAddress))
             {
@@ -634,7 +634,7 @@ void dcache(ac_int<DWidth, false> memdctrl[Sets], unsigned int dmem[DRAM_SIZE], 
                 setOffset(bytead, dctrl.i);
 
                 dctrl.valuetowrite = dmem[bytead >> 2];
-                simul(sim->dcachedata.mainmemread++;)
+                //simul(sim->dcachedata.mainmemread++;)
             }
             else
             {
