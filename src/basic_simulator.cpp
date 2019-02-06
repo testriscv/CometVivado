@@ -27,7 +27,8 @@ BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *in
         input = fopen(inputFile, "rb");
     if(outputFile)
         output = fopen(outputFile, "wb");
-
+    
+    printf("Reading the ELF file: %s\n", binaryFile);
     ElfFile elfFile(binaryFile);
     int counter = 0;
     for(unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
