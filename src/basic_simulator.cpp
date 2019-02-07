@@ -156,6 +156,11 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
         heapAddress = addr;
 }
 
+void BasicSimulator::printCycle(){
+    if(core.extoMem.opCode == RISCV_ST)
+        fprintf(stdout, "pc: %08x, store address: %08x\n", core.extoMem.pc, ((ac_int<32,false>)core.extoMem.result >> 2));
+}
+
 
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
