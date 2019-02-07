@@ -15,6 +15,15 @@ add_executable(comet.sim 	./src/cache.cpp
 							./src/elfFile.cpp 
 							./src/memory.cpp 
 							./src/multicycleoperator.cpp 
-							./src/portability.cpp ./src/main.cpp 
+							./src/portability.cpp 
+							./src/main.cpp 
 							./src/simulator.cpp)
 
+add_executable(atomicTests 	./src/cache.cpp 
+							./src/core.cpp 
+							./src/atomicTest.cpp
+							./src/elfFile.cpp 
+							./src/memory.cpp 
+							./src/multicycleoperator.cpp 
+							./src/portability.cpp
+							./src/simulator.cpp)
