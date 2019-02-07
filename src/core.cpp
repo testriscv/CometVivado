@@ -409,7 +409,7 @@ void execute(struct DCtoEx dctoEx,
 
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB,
-            ac_int<32, false> data_memory[DRAM_SIZE])
+            ac_int<32, false> dataMemory[DRAM_SIZE])
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
@@ -429,9 +429,9 @@ void memory(struct ExtoMem extoMem,
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
-//        mem_read = data_memory[extoMem.result >> 2];
+//        mem_read = dataMemory[extoMem.result >> 2];
        // if(extoMem.we) //TODO0: We do not handle non 32bit writes
-//        	data_memory[extoMem.result >> 2] = extoMem.datac;
+//        	dataMemory[extoMem.result >> 2] = extoMem.datac;
         	memtoWB.isStore = 1;
         	memtoWB.address = extoMem.result;
         	memtoWB.valueToWrite = extoMem.datac;
@@ -703,7 +703,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!stallSignals[3] && !globalStall){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
-
+        fprintf(stderr, "store address: %06x\n", (memtoWB_temp.address >> 2));
     	if (memtoWB_temp.we && memtoWB_temp.isStore)
     		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
   	 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
