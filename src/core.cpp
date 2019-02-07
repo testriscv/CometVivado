@@ -125,7 +125,6 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 0;
         dctoEx.useRd = 1;
-
         break;
     case RISCV_BR:
 
@@ -409,13 +408,15 @@ void execute(struct DCtoEx dctoEx,
 
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB,
-            ac_int<32, false> data_memory[DRAM_SIZE])
+            ac_int<32, false> dataMemory[DRAM_SIZE])
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
     ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
     memtoWB.we = extoMem.we;
     memtoWB.useRd = extoMem.useRd;
+    memtoWB.result = extoMem.result;
+    memtoWB.rd = extoMem.rd;
 
     ac_int<32, false> mem_read;
 
@@ -429,18 +430,14 @@ void memory(struct ExtoMem extoMem,
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
         break;
     case RISCV_ST:
-//        mem_read = data_memory[extoMem.result >> 2];
+//        mem_read = dataMemory[extoMem.result >> 2];
        // if(extoMem.we) //TODO0: We do not handle non 32bit writes
-//        	data_memory[extoMem.result >> 2] = extoMem.datac;
+//        	dataMemory[extoMem.result >> 2] = extoMem.datac;
         	memtoWB.isStore = 1;
         	memtoWB.address = extoMem.result;
         	memtoWB.valueToWrite = extoMem.datac;
         	memtoWB.byteEnable = 0xf;
 
-        break;
-    default:
-        memtoWB.result = extoMem.result;
-        memtoWB.rd = extoMem.rd;
         break;
     }
 }
@@ -449,6 +446,7 @@ void memory(struct ExtoMem extoMem,
 void writeback(struct MemtoWB memtoWB,
 				struct WBOut &wbOut)
 {
+	fprintf(stderr, "use rd is %d\n", memtoWB.useRd);
 	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
     	wbOut.rd = memtoWB.rd;
@@ -647,7 +645,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
     struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
     struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0; extoMem_temp.stall = 0;
-    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0;
+    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0; memtoWB_temp.isLoad = 0;
     struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0;
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
@@ -703,11 +701,11 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!stallSignals[3] && !globalStall){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
-
+        fprintf(stderr, "store address: %06x\n", (memtoWB_temp.address >> 2));
     	if (memtoWB_temp.we && memtoWB_temp.isStore)
     		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
-  	 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
-  	     core.memtoWB.result = dm[memtoWB_temp.address >> 2];
+		 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
+			 core.memtoWB.result = dm[memtoWB_temp.address >> 2];
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd){
@@ -715,6 +713,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
 
     branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
+
+//    fprintf(stderr, "%x instr: %x regs : ", core.pc, core.ftoDC.instruction);
+//    for (int oneReg = 0; oneReg < 32; oneReg++){
+//    	fprintf(stderr, "%x ", core.regFile[oneReg]);
+//    }
+//    fprintf(stderr, "use rd : %d %d %d \n", core.dctoEx.useRd, core.extoMem.useRd, core.memtoWB.useRd);
+//    fprintf(stderr, "\n");
 
 }
 
