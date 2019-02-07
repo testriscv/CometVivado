@@ -410,7 +410,7 @@ ElfRelocation::ElfRelocation(Elf64_Rel header)
 {
     this->offset = FIX_INT(header.r_offset);
 
-    unsigned int tempInfo = FIX_INT(header.r_info);
+    unsigned long int tempInfo = FIX_INT(header.r_info);
     this->symbol = ELF64_R_SYM(tempInfo);
     this->type = ELF64_R_TYPE(tempInfo);
     this->info = 0;
@@ -430,7 +430,7 @@ ElfRelocation::ElfRelocation(Elf64_Rela header)
 {
     this->offset = FIX_INT(header.r_offset);
 
-    unsigned int tempInfo = FIX_INT(header.r_info);
+    unsigned long int tempInfo = FIX_INT(header.r_info);
     this->symbol = ELF64_R_SYM(tempInfo);
     this->type = ELF64_R_TYPE(tempInfo);
     this->info = 0;
