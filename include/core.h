@@ -108,7 +108,7 @@ struct MemtoWB
     ac_int<4, false> byteEnable;
     ac_int<1, true> isStore;
     ac_int<1, true> isLoad;
-    
+
     //Register for all stages
     ac_int<1, false> we;
     ac_int<1, false> stall;
@@ -153,7 +153,6 @@ void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
 
 void doCycle(struct Core &core, ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall);
-void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall);
 
 class Simulator;
 

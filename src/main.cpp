@@ -1,12 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "memory.h"
-#include "core.h"
-#include "simulator.h"
-#include "elfFile.h"
+#include "basic_simulator.h"
 
-void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv);
+void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char **&benchArgv);
 
 int main(int argc, char** argv)
 {
@@ -16,23 +13,21 @@ int main(int argc, char** argv)
     char **benchargv;
     int benchargc;
 
-    parseArgs(argc, argv, binaryFile, inputFile, outputFile, benchargc, &benchargv);
+    parseArgs(argc, argv, binaryFile, inputFile, outputFile, benchargc, benchargv);
 
-    printf("args: %s %s %s\n", binaryFile, inputFile, outputFile);
+    BasicSimulator sim(binaryFile, benchargc, benchargv, inputFile, outputFile);
 
-    Simulator sim(binaryFile, inputFile, outputFile, benchargc, benchargv);
-
-    //TODO: this is an infinite loop, add an end condition
-    doCore(sim.getInstructionMemory(), sim.getDataMemory(), 0);
+    sim.run();
 
     return 0;
 }
 
-void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char ***benchArgv)
+void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& outFile, int &benchArgc, char **&benchArgv)
 {
     int argstart = 0;
     bool binaryFile = false;
-
+    inFile = NULL;
+    outFile = NULL;
     benchArgc = 1;
     for(int i = 1; i < argc; ++i)
     {
@@ -53,13 +48,13 @@ void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& o
         {
             argstart = i+1;
             benchArgc = argc - i;
-            *benchArgv = new char*[benchArgc];
+            benchArgv = new char*[benchArgc];
             break;
         }
     }
 
-    if(*benchArgv == 0)
-        *benchArgv = new char*[benchArgc];
+    if(benchArgv == 0)
+        benchArgv = new char*[benchArgc];
 
     if(!binaryFile)
         // TODO: solve warning for conversion from string constant to char* 
@@ -69,11 +64,12 @@ void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& o
         binFile = "benchmarks/build/matmul_int_4.riscv32";
 #endif
 
-    *benchArgv[0] = new char[strlen(binFile)+1];
-    strcpy(*benchArgv[0], binFile);
+    benchArgv[0] = new char[strlen(binFile)+1];
+    strcpy(benchArgv[0], binFile);
     for(int i = 1; i < benchArgc; ++i)
     {
-        *benchArgv[i] = new char[strlen(argv[argstart + i - 1])+1];
-        strcpy(*benchArgv[i], argv[argstart + i - 1]);
+        benchArgv[i] = new char[strlen(argv[argstart + i - 1])+1];
+        strcpy(benchArgv[i], argv[argstart + i - 1]);
+        std::cout << "Read benchmark argument " << i << ": " << benchArgv[i] << std::endl;
     }
 }
