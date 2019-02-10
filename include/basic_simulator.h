@@ -19,7 +19,7 @@ public:
 protected:
     void fillMemory();
 
-    void printCycle(){ }//printf("pc: @%06x\n",core.pc); }; 
+    void printCycle(); 
     void printStat(){};
     void extend(){};
     void solveSyscall();

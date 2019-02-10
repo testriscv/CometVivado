@@ -57,11 +57,10 @@ void parseArgs(int argc, char** argv, char *& binFile, char *& inFile, char *& o
         benchArgv = new char*[benchArgc];
 
     if(!binaryFile)
-        // TODO: solve warning for conversion from string constant to char* 
 #ifdef __HLS__
-        binFile = "matmul.riscv32";
+        binFile = (char*)"matmul.riscv32";
 #else
-        binFile = "benchmarks/build/matmul_int_4.riscv32";
+        binFile = (char*)"benchmarks/build/matmul_int_4.riscv32";
 #endif
 
     benchArgv[0] = new char[strlen(binFile)+1];

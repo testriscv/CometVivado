@@ -701,7 +701,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!stallSignals[3] && !globalStall){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
-        fprintf(stderr, "store address: %06x\n", (memtoWB_temp.address >> 2));
     	if (memtoWB_temp.we && memtoWB_temp.isStore)
     		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
 		 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
@@ -725,7 +724,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall)
 {
-    //declare a core
     Core core;
     core.pc = 0;
 
