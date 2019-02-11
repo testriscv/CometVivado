@@ -445,7 +445,7 @@ void memory(struct ExtoMem extoMem,
 void writeback(struct MemtoWB memtoWB,
 				struct WBOut &wbOut)
 {
-	fprintf(stderr, "use rd is %d\n", memtoWB.useRd);
+//	fprintf(stderr, "use rd is %d\n", memtoWB.useRd);
 	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
     	wbOut.rd = memtoWB.rd;
@@ -656,7 +656,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
-    //resolve stalls, forwards
+    //resolve stalls, forwards 
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
     		dctoEx_temp.rs2, dctoEx_temp.useRs2,
 			dctoEx_temp.rs3, dctoEx_temp.useRs3,
@@ -723,9 +723,11 @@ void doCycle(struct Core &core, 		 //Core containing all values
 }
 
 //void doCore(IncompleteMemory im, IncompleteMemory dm, ac_int<1, false> globalStall)
-void doCore(ac_int<1, false> globalStall)
+void doCore(ac_int<1, false> globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
     Core core;
+    core.im.data = imData;
+    core.dm.data = dmData;
     core.pc = 0;
 
     while(1) {
