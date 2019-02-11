@@ -8,9 +8,9 @@
 
 void fetch(ac_int<32, false> pc,
            struct FtoDC &ftoDC,
-           ac_int<32, false> instructionMemory[DRAM_SIZE])
+           ac_int<32, false> instruction)
 {
-    ftoDC.instruction = instructionMemory[pc/4];
+    ftoDC.instruction = instruction;
     ftoDC.pc = pc;
     ftoDC.nextPCFetch = pc + 4;
 
@@ -242,7 +242,7 @@ void execute(struct DCtoEx dctoEx,
         break;
     case RISCV_BR:
         extoMem.nextPC = extoMem.pc + imm13_signed;
-        
+
         switch(dctoEx.funct3)
         {
         case RISCV_BR_BEQ:
@@ -407,8 +407,7 @@ void execute(struct DCtoEx dctoEx,
 }
 
 void memory(struct ExtoMem extoMem,
-            struct MemtoWB &memtoWB,
-            ac_int<32, false> dataMemory[DRAM_SIZE])
+            struct MemtoWB &memtoWB)
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
@@ -424,7 +423,7 @@ void memory(struct ExtoMem extoMem,
     {
     case RISCV_LD:
         memtoWB.rd = extoMem.rd;
-        
+
        	memtoWB.address = extoMem.result;
         memtoWB.isLoad = 1;
     //    formatread(extoMem.result, datasize, signenable, mem_read); //TODO
@@ -549,9 +548,9 @@ void forwardUnit(
 }
 
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
-    dest.pc = src.pc;           	
-    dest.instruction = src.instruction;  
-    dest.nextPCFetch = src.nextPCFetch;      
+    dest.pc = src.pc;
+    dest.instruction = src.instruction;
+    dest.nextPCFetch = src.nextPCFetch;
     dest.we = src.we;
     dest.stall = src.stall;
 }
@@ -634,13 +633,11 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 
 
 void doCycle(struct Core &core, 		 //Core containing all values
-		ac_int<32, false> im[DRAM_SIZE], //Instruction memory
-		ac_int<32, false> dm[DRAM_SIZE],  //Data memory
-		ac_int<1, false> globalStall)  
+		ac_int<1, false> globalStall)
 {
 
     ac_int<1, false> stallSignals[5] = {0, 0, 0, 0, 0};
-    
+
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
     struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
@@ -650,12 +647,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
     //declare temporary register file
-
-
-    fetch(core.pc, ftoDC_temp, im);
+    ac_int<32, false> nextInst;
+    bool wait_tmp;
+    core.im.process(core.pc, WORD, LOAD, 0, nextInst, wait_tmp);
+    fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
     execute(core.dctoEx, extoMem_temp);
-    memory(core.extoMem, memtoWB_temp, dm);
+    memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
     //resolve stalls, forwards
@@ -701,10 +699,12 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!stallSignals[3] && !globalStall){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
-    	if (memtoWB_temp.we && memtoWB_temp.isStore)
+    	/*if (memtoWB_temp.we && memtoWB_temp.isStore)
     		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
 		 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
-			 core.memtoWB.result = dm[memtoWB_temp.address >> 2];
+			 core.memtoWB.result = dm[memtoWB_temp.address >> 2];*/
+       bool wait_tmp_2;
+       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, core.memtoWB.result, wait_tmp_2);
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd){
@@ -722,12 +722,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 }
 
-void doCore(ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall)
+//void doCore(IncompleteMemory im, IncompleteMemory dm, ac_int<1, false> globalStall)
+void doCore(ac_int<1, false> globalStall)
 {
     Core core;
     core.pc = 0;
 
     while(1) {
-        doCycle(core, im, dm, globalStall);
+        doCycle(core, globalStall);
     }
 }

@@ -7,16 +7,14 @@ class Simulator
 {
 protected:
     Core core;
-    ac_int<32, false>* instructionMemory;
-    ac_int<32, false>* dataMemory;
     bool exitFlag;
 
 public:
-    virtual void run() 
+    virtual void run()
     {
         exitFlag = false;
         while(!exitFlag){
-            doCycle(core, instructionMemory, dataMemory, 0);
+            doCycle(core, 0);
             solveSyscall();
             extend();
             printCycle();

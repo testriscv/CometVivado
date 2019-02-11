@@ -3,7 +3,7 @@
 
 #include <ac_int.h>
 #include "riscvISA.h"
-#include "memory.h"
+#include "incompleteMemory.h"
 
 /******************************************************************************************
  * Definition of all pipeline registers
@@ -99,15 +99,15 @@ struct ExtoMem
 
 struct MemtoWB
 {
-    ac_int<32, true> result;    // Result to be written back
+    ac_int<32, false> result;    // Result to be written back
     ac_int<5, false> rd;        // destination register
     ac_int<1, false> useRd;
 
     ac_int<32, true> address;
-    ac_int<32, true> valueToWrite;
+    ac_int<32, false> valueToWrite;
     ac_int<4, false> byteEnable;
-    ac_int<1, true> isStore;
-    ac_int<1, true> isLoad;
+    ac_int<1, false> isStore;
+    ac_int<1, false> isLoad;
 
     //Register for all stages
     ac_int<1, false> we;
@@ -129,6 +129,9 @@ struct Core
     DCtoEx dctoEx;
     ExtoMem extoMem;
     MemtoWB memtoWB;
+
+		//memories, yay
+		IncompleteMemory dm, im;
 
     //CoreCtrl ctrl;
 
@@ -152,9 +155,7 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src);
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
 
-void doCycle(struct Core &core, ac_int<32, false> im[DRAM_SIZE], ac_int<32, false> dm[DRAM_SIZE], ac_int<1, false> globalStall);
-
-class Simulator;
+void doCycle(struct Core &core, ac_int<1, false> globalStall);
 
 
 
