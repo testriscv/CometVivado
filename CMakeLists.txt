@@ -6,7 +6,7 @@ project (Comet)
 # add the binary tree to the search path for include files
 include_directories(./include)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__CATAPULT__")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -D__CATAPULT__")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 

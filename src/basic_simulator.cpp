@@ -10,10 +10,83 @@
 #include "elfFile.h"
 #include "core.h"
 
-BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *inputFile, char *outputFile)
+BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *inputFile, char *outputFile)
 {
+
+  core.ftoDC.we = false;
+core.ftoDC.stall = false;
+
+core.dctoEx.pc = 0;
+core.dctoEx.instruction = 0;
+
+core.dctoEx.opCode = 0;
+core.dctoEx.funct7 = 0;
+core.dctoEx.funct3 = 0;
+
+core.dctoEx.lhs = 0;
+core.dctoEx.rhs = 0;
+core.dctoEx.datac = 0;
+
+// syscall only
+core.dctoEx.datad = 0;
+core.dctoEx.datae = 0;
+
+//For branch unit
+core.dctoEx.nextPCDC = 0;
+core.dctoEx.isBranch = false;
+
+//Information for forward/stall unit
+core.dctoEx.useRs1 = false;
+core.dctoEx.useRs2 = false;
+core.dctoEx.useRs3 = false;
+core.dctoEx.useRd = false;
+core.dctoEx.rs1 = 0;
+core.dctoEx.rs2 = 0;
+core.dctoEx.rs3 = 0;
+core.dctoEx.rd = 0;
+
+//Register for all stages
+core.dctoEx.we = false;
+core.dctoEx.stall = false;
+
+core.extoMem.pc = 0;
+core.extoMem.instruction = 0;
+
+core.extoMem.result = 0;
+core.extoMem.rd = 0;
+core.extoMem.useRd = false;
+core.extoMem.isLongInstruction = false;
+core.extoMem.opCode = 0;
+core.extoMem.funct3 = 0;
+
+core.extoMem.datac = 0;
+
+//For branch unit
+core.extoMem.nextPC = 0;
+core.extoMem.isBranch = false;
+
+//Register for all stages
+core.extoMem.we = false;
+core.extoMem.stall = false;
+
+core.memtoWB.result = 0;
+core.memtoWB.rd = 0;
+core.memtoWB.useRd = false;
+
+core.memtoWB.address = 0;
+core.memtoWB.valueToWrite = 0;
+core.memtoWB.byteEnable = 0;
+core.memtoWB.isStore = false;
+core.memtoWB.isLoad = false;
+
+//Register for all stages
+core.memtoWB.we = false;
+core.memtoWB.stall = false;
+
+
+    core.im.data = new ac_int<32, false>[DRAM_SIZE >> 2];
+    core.dm.data = new ac_int<32, false>[DRAM_SIZE >> 2];
     /*
-    instructionMemory = new ac_int<32, false>[DRAM_SIZE];
     dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
     {
@@ -23,13 +96,13 @@ BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *in
     */
     heapAddress = 0;
 
-    input = stdin; 
+    input = stdin;
     output = stdout ;
     if(inputFile)
         input = fopen(inputFile, "rb");
     if(outputFile)
         output = fopen(outputFile, "wb");
-    
+
     printf("Reading the ELF file: %s\n", binaryFile);
     ElfFile elfFile(binaryFile);
     int counter = 0;
@@ -116,7 +189,7 @@ BasicSimulator::~BasicSimulator()
 
 void BasicSimulator::fillMemory()
 {
-    if(imemMap.size() / 4 > DRAM_SIZE)
+    if(imemMap.size() / 4 > DRAM_SIZE )
     {
         fprintf(stderr, "Error! Instruction memory size exceeded");
         exit(-1);
@@ -128,15 +201,14 @@ void BasicSimulator::fillMemory()
     }
 
     //fill instruction memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = imemMap.begin(); it!=imemMap.end(); ++it)
+    for(auto it = imemMap.begin(); it!=imemMap.end(); it++)
     {
         core.im.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 
     //fill data memory
-    for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = dmemMap.begin(); it!=dmemMap.end(); ++it)
+    for(auto it = dmemMap.begin(); it!=dmemMap.end(); it++)
     {
-        //dataMemory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
         core.dm.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 }
@@ -156,6 +228,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 }
 
 void BasicSimulator::printCycle(){
+  fprintf(stdout, "cycle\n");
     if(core.extoMem.opCode == RISCV_ST)
         fprintf(stdout, "pc: %08x, store address: %08x\n", core.extoMem.pc, ((ac_int<32,false>)core.extoMem.result >> 2));
 }
@@ -198,7 +271,7 @@ void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 {
 // if data is in the cache, we must read in the cache directly
-//#ifndef nocache     
+//#ifndef nocache
 //    int i = getSet(addr);
 //    for(int j(0); j < Associativity; ++j)
 //    {
@@ -258,9 +331,9 @@ void BasicSimulator::solveSyscall()
 {
     if(core.extoMem.opCode == RISCV_SYSTEM){
         ac_int<32, true> syscallId = core.regFile[17];
-        ac_int<32, true> arg1 = core.regFile[10]; 
-        ac_int<32, true> arg2 = core.regFile[11]; 
-        ac_int<32, true> arg3 = core.regFile[12]; 
+        ac_int<32, true> arg1 = core.regFile[10];
+        ac_int<32, true> arg2 = core.regFile[11];
+        ac_int<32, true> arg3 = core.regFile[12];
         ac_int<32, true> arg4 = core.regFile[13];
 
         ac_int<32, true> result = 0;
@@ -435,7 +508,7 @@ void BasicSimulator::solveSyscall()
             exitFlag = 1;
             break;
         }
-        
+
         core.regFile[10] = result;
     }// if exToMem.opCode == RISCV_SYSTEM
 }

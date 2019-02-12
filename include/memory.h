@@ -51,7 +51,7 @@
 #define DRAM_SIZE   8192
 #endif
 
-#define STACK_INIT  (4*DRAM_SIZE-0x1000)
+#define STACK_INIT  (DRAM_SIZE-0x1000)
 
 #ifndef MEMORY_READ_LATENCY
 #define MEMORY_READ_LATENCY     5

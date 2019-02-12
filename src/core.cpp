@@ -448,9 +448,9 @@ void writeback(struct MemtoWB memtoWB,
 //	fprintf(stderr, "use rd is %d\n", memtoWB.useRd);
 	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
-    	wbOut.rd = memtoWB.rd;
+      wbOut.rd = memtoWB.rd;
+      wbOut.value = memtoWB.result;
     	wbOut.useRd = 1;
-    	wbOut.value = memtoWB.result;
     }
 }
 
@@ -643,7 +643,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
     struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0; extoMem_temp.stall = 0;
     struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0; memtoWB_temp.isLoad = 0;
-    struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0;
+    struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
     //declare temporary register file
@@ -656,7 +656,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
-    //resolve stalls, forwards 
+    //resolve stalls, forwards
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
     		dctoEx_temp.rs2, dctoEx_temp.useRs2,
 			dctoEx_temp.rs3, dctoEx_temp.useRs3,
