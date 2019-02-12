@@ -1,5 +1,5 @@
 #include "simpleMemory.h"
-
+/*
 void SimpleMemory::setByte(ac_int<32, false> addr, ac_int<8, false> data) {
   data[addr>>2].set_slc(addr.slc<2>(0) << 3, data);
 }
@@ -15,8 +15,8 @@ void SimpleMemory::setWord(ac_int<32, false> addr, ac_int<32, false> data) {
 ac_int<32, false> SimpleMemory::getWord(ac_int<32, false> addr) {
   return  data[addr>>2];
 }
-
-void SimpleMemory::virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
+*/
+void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
   //no latency, wait is always set to false
   waitOut = false;
   switch(opType) {

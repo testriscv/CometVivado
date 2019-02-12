@@ -12,17 +12,17 @@
  */
 
 struct ForwardReg {
-	ac_int<1, false> forwardWBtoVal1;
-	ac_int<1, false> forwardWBtoVal2;
-	ac_int<1, false> forwardWBtoVal3;
+	bool forwardWBtoVal1;
+	bool forwardWBtoVal2;
+	bool forwardWBtoVal3;
 
-	ac_int<1, false> forwardMemtoVal1;
-	ac_int<1, false> forwardMemtoVal2;
-	ac_int<1, false> forwardMemtoVal3;
+	bool forwardMemtoVal1;
+	bool forwardMemtoVal2;
+	bool forwardMemtoVal3;
 
-	ac_int<1, false> forwardExtoVal1;
-	ac_int<1, false> forwardExtoVal2;
-	ac_int<1, false> forwardExtoVal3;
+	bool forwardExtoVal1;
+	bool forwardExtoVal2;
+	bool forwardExtoVal3;
 };
 
 struct FtoDC
@@ -34,8 +34,8 @@ struct FtoDC
     ac_int<32, false> nextPCFetch;      // Next pc according to fetch
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall;
+    bool we;
+    bool stall;
 };
 
 struct DCtoEx
@@ -57,21 +57,21 @@ struct DCtoEx
 
     //For branch unit
     ac_int<32, false> nextPCDC;
-    ac_int<1, false> isBranch;
+    bool isBranch;
 
     //Information for forward/stall unit
-    ac_int<1, false> useRs1;
-    ac_int<1, false> useRs2;
-    ac_int<1, false> useRs3;
-    ac_int<1, false> useRd;
+    bool useRs1;
+    bool useRs2;
+    bool useRs3;
+    bool useRd;
     ac_int<5, false> rs1;       // rs1    = instruction[19:15]
     ac_int<5, false> rs2;       // rs2    = instruction[24:20]
     ac_int<5, false> rs3;
     ac_int<5, false> rd;        // rd     = instruction[11:7]
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall; //TODO add that
+    bool we;
+    bool stall; //TODO add that
 };
 
 struct ExtoMem
@@ -81,8 +81,8 @@ struct ExtoMem
 
     ac_int<32, true> result;    // result of the EX stage
     ac_int<5, false> rd;        // destination register
-    ac_int<1, false> useRd;
-    ac_int<1, false> isLongInstruction;
+    bool useRd;
+    bool isLongInstruction;
     ac_int<7, false> opCode;    // LD or ST (can be reduced to 2 bits)
     ac_int<3, false> funct3;    // datasize and sign extension bit
 
@@ -90,28 +90,28 @@ struct ExtoMem
 
     //For branch unit
     ac_int<32, false> nextPC;
-    ac_int<1, false> isBranch;
+    bool isBranch;
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall; //TODO add that
+    bool we;
+    bool stall; //TODO add that
 };
 
 struct MemtoWB
 {
     ac_int<32, false> result;    // Result to be written back
     ac_int<5, false> rd;        // destination register
-    ac_int<1, false> useRd;
+    bool useRd;
 
     ac_int<32, true> address;
     ac_int<32, false> valueToWrite;
     ac_int<4, false> byteEnable;
-    ac_int<1, false> isStore;
-    ac_int<1, false> isLoad;
+    bool isStore;
+    bool isLoad;
 
     //Register for all stages
-    ac_int<1, false> we;
-    ac_int<1, false> stall;
+    bool we;
+    bool stall;
 
 };
 
@@ -119,8 +119,8 @@ struct WBOut
 {
 	ac_int<32, false> value;
 	ac_int<5, false> rd;
-	ac_int<1, false> useRd;
-    ac_int<1, false> we;
+	bool useRd;
+    bool we;
 };
 
 struct Core
@@ -155,7 +155,7 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src);
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src);
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src);
 
-void doCycle(struct Core &core, ac_int<1, false> globalStall);
+void doCycle(struct Core &core, bool globalStall);
 
 
 

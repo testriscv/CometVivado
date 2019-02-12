@@ -411,7 +411,7 @@ void memory(struct ExtoMem extoMem,
 {
 
     ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
-    ac_int<1, false> signenable = !extoMem.funct3.slc<1>(2);
+    bool signenable = !extoMem.funct3.slc<1>(2);
     memtoWB.we = extoMem.we;
     memtoWB.useRd = extoMem.useRd;
     memtoWB.result = extoMem.result;
@@ -456,12 +456,12 @@ void writeback(struct MemtoWB memtoWB,
 
 void branchUnit(ac_int<32, false> nextPC_fetch,
 		ac_int<32, false> nextPC_decode,
-		ac_int<1, false> isBranch_decode,
+		bool isBranch_decode,
 		ac_int<32, false> nextPC_execute,
-		ac_int<1, false> isBranch_execute,
+		bool isBranch_execute,
 		ac_int<32, false> &pc,
-		ac_int<1, false> &we_fetch,
-		ac_int<1, false> &we_decode){
+		bool &we_fetch,
+		bool &we_decode){
 
 	if (isBranch_execute){
 		we_fetch = 0;
@@ -479,23 +479,23 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 
 void forwardUnit(
 		ac_int<5, false> decodeRs1,
-		ac_int<1, false> decodeUseRs1,
+		bool decodeUseRs1,
 		ac_int<5, false> decodeRs2,
-		ac_int<1, false> decodeUseRs2,
+		bool decodeUseRs2,
 		ac_int<5, false> decodeRs3,
-		ac_int<1, false> decodeUseRs3,
+		bool decodeUseRs3,
 
 		ac_int<5, false> executeRd,
-		ac_int<1, false> executeUseRd,
-		ac_int<1, false> executeIsLongComputation,
+		bool executeUseRd,
+		bool executeIsLongComputation,
 
 		ac_int<5, false> memoryRd,
-		ac_int<1, false> memoryUseRd,
+		bool memoryUseRd,
 
 		ac_int<5, false> writebackRd,
-		ac_int<1, false> writebackUseRd,
+		bool writebackUseRd,
 
-		ac_int<1, false> stall[5],
+		bool stall[5],
 		struct ForwardReg &forwardRegisters){
 
 	if (decodeUseRs1){
@@ -633,10 +633,10 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 
 
 void doCycle(struct Core &core, 		 //Core containing all values
-		ac_int<1, false> globalStall)
+		bool globalStall)
 {
 
-    ac_int<1, false> stallSignals[5] = {0, 0, 0, 0, 0};
+    bool stallSignals[5] = {0, 0, 0, 0, 0};
 
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
@@ -722,8 +722,8 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 }
 
-//void doCore(IncompleteMemory im, IncompleteMemory dm, ac_int<1, false> globalStall)
-void doCore(ac_int<1, false> globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
+//void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
+void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
     Core core;
     core.im.data = imData;

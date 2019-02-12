@@ -83,7 +83,7 @@ int main(int argc, char** argv)
 		im[0] = instruction;
 
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
-			doCycle(core, im, dm, 0);
+			doCycle(core, 0);
 		}
 
 

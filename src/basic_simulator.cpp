@@ -12,6 +12,7 @@
 
 BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *inputFile, char *outputFile)
 {
+    /*
     instructionMemory = new ac_int<32, false>[DRAM_SIZE];
     dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
@@ -19,6 +20,7 @@ BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *in
         instructionMemory[i] = 0;
         dataMemory[i] = 0;
     }
+    */
     heapAddress = 0;
 
     input = stdin; 
@@ -106,9 +108,6 @@ BasicSimulator::BasicSimulator(char* binaryFile, int argc, char **argv, char *in
 
 BasicSimulator::~BasicSimulator()
 {
-    delete[] instructionMemory;
-    delete[] dataMemory;
-
     if(input)
         fclose(input);
     if(output)
@@ -131,14 +130,14 @@ void BasicSimulator::fillMemory()
     //fill instruction memory
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = imemMap.begin(); it!=imemMap.end(); ++it)
     {
-        instructionMemory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+        core.im.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 
     //fill data memory
     for(std::map<ac_int<32, false>, ac_int<8, false> >::iterator it = dmemMap.begin(); it!=dmemMap.end(); ++it)
     {
         //dataMemory.set_byte((it->first/4)%DRAM_SIZE,it->second,it->first%4);
-        dataMemory[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+        core.dm.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
     }
 }
 
@@ -164,9 +163,9 @@ void BasicSimulator::printCycle(){
 
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
-    ac_int<32, false> mem = dataMemory[addr >> 2];
+    ac_int<32, false> mem = core.dm.data[addr >> 2];
     formatwrite(addr, 0, mem, value);
-    dataMemory[addr >> 2] = mem;
+    core.dm.data[addr >> 2] = mem;
 }
 
 void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
@@ -213,7 +212,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 //#endif
     // read main memory if it wasn't in cache
     ac_int<8, true> result;
-    ac_int<32, false> read = dataMemory[addr >> 2];
+    ac_int<32, false> read = core.dm.data[addr >> 2];
     formatread(addr, 0, 0, read);
     result = read;
     return result;
