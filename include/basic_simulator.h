@@ -2,6 +2,7 @@
 #define __BASIC_SIMULATOR_H__
 
 #include <map>
+#include <vector>
 #include "simulator.h"
 
 class BasicSimulator : public Simulator 
@@ -13,7 +14,7 @@ class BasicSimulator : public Simulator
     FILE* input;
     FILE* output;
 public:
-    BasicSimulator(char* binaryFile, int argc, char** argv, char* inputFile, char* outputFile); 
+    BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inputFile, const char* outputFile); 
     ~BasicSimulator();
 
 protected:

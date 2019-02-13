@@ -1,12 +1,12 @@
 cmake_minimum_required (VERSION 3.0.2)
-
 project (Comet)
 
  
 # add the binary tree to the search path for include files
-include_directories(./include)
+include_directories(./include
+                    /usr/include/boost)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -D__CATAPULT__")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_program_options -g -std=c++11 -D__CATAPULT__")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
