@@ -16,6 +16,7 @@ add_executable(comet.sim 	./src/cache.cpp
 							./src/memory.cpp 
 							./src/portability.cpp 
 							./src/main.cpp 
+							./src/riscvISA.cpp
 							./src/basic_simulator.cpp)
 
 add_executable(atomicTests 	./src/cache.cpp 
@@ -24,4 +25,5 @@ add_executable(atomicTests 	./src/cache.cpp
 							./src/elfFile.cpp 
 							./src/memory.cpp 
 							./src/portability.cpp
+							./src/riscvISA.cpp
 							./src/basic_simulator.cpp)

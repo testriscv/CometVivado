@@ -8,6 +8,12 @@
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
 #include <string.h>
+#include <iomanip>
+#include <sstream>
+
+#ifndef __HLS__
+std::string printDecodedInstrRISCV(unsigned int oneInstruction);
+#endif
 
 // Major opcodes
 #define RISCV_LUI               0x37    //0x0D
@@ -273,5 +279,7 @@ extern const char* riscvNames[8];
 #define SYS_O_SYNC              0x2000
 #define SYS_O_NONBLOCK          0x4000
 #define SYS_O_NOCTTY            0x8000
+
+
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

@@ -189,8 +189,13 @@ void decode(struct FtoDC ftoDC,
     }
 
     //If the instruction was dropped, we ensure that isBranch is at zero
-    if (!ftoDC.we)
+    if (!ftoDC.we){
     	dctoEx.isBranch = 0;
+    	dctoEx.useRd = 0;
+    	dctoEx.useRs1 = 0;
+    	dctoEx.useRs2 = 0;
+    	dctoEx.useRs3 = 0;
+    }
 
 }
 
@@ -271,6 +276,7 @@ void execute(struct DCtoEx dctoEx,
         extoMem.result = dctoEx.lhs + dctoEx.rhs;
         break;
     case RISCV_ST:
+    	extoMem.datac = dctoEx.datac;
         extoMem.result = dctoEx.lhs + dctoEx.rhs;
         break;
     case RISCV_OPI:
@@ -404,8 +410,10 @@ void execute(struct DCtoEx dctoEx,
     }
 
     //If the instruction was dropped, we ensure that isBranch is at zero
-    if (!dctoEx.we)
+    if (!dctoEx.we){
     	extoMem.isBranch = 0;
+    	extoMem.useRd = 0;
+    }
 }
 
 void memory(struct ExtoMem extoMem,
@@ -447,7 +455,6 @@ void memory(struct ExtoMem extoMem,
 void writeback(struct MemtoWB memtoWB,
 				struct WBOut &wbOut)
 {
-//	fprintf(stderr, "use rd is %d\n", memtoWB.useRd);
 	wbOut.we = memtoWB.we;
     if((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd){
       wbOut.rd = memtoWB.rd;
@@ -501,11 +508,7 @@ void forwardUnit(
 		struct ForwardReg &forwardRegisters){
 
 	if (decodeUseRs1){
-		if (writebackUseRd && decodeRs1 == writebackRd)
-			forwardRegisters.forwardWBtoVal1 = 1;
-		else if (memoryUseRd && decodeRs1 == memoryRd)
-			forwardRegisters.forwardMemtoVal1 = 1;
-		else if (executeUseRd && decodeRs1 == executeRd){
+		if (executeUseRd && decodeRs1 == executeRd){
 			if (executeIsLongComputation){
 				stall[0] = 1;
 				stall[1] = 1;
@@ -514,14 +517,14 @@ void forwardUnit(
 				forwardRegisters.forwardExtoVal1 = 1;
 			}
 		}
+		else if (memoryUseRd && decodeRs1 == memoryRd)
+			forwardRegisters.forwardMemtoVal1 = 1;
+		else if (writebackUseRd && decodeRs1 == writebackRd)
+			forwardRegisters.forwardWBtoVal1 = 1;
 	}
 
 	if (decodeUseRs2){
-		if (writebackUseRd && decodeRs2 == writebackRd)
-			forwardRegisters.forwardWBtoVal2 = 1;
-		else if (memoryUseRd && decodeRs2 == memoryRd)
-			forwardRegisters.forwardMemtoVal2 = 1;
-		else if (executeUseRd && decodeRs2 == executeRd){
+		if (executeUseRd && decodeRs2 == executeRd){
 			if (executeIsLongComputation){
 				stall[0] = 1;
 				stall[1] = 1;
@@ -530,14 +533,15 @@ void forwardUnit(
 				forwardRegisters.forwardExtoVal2 = 1;
 			}
 		}
+		else if (memoryUseRd && decodeRs2 == memoryRd)
+			forwardRegisters.forwardMemtoVal2 = 1;
+		else if (writebackUseRd && decodeRs2 == writebackRd)
+			forwardRegisters.forwardWBtoVal2 = 1;
+
 	}
 
 	if (decodeUseRs3){
-		if (writebackUseRd && decodeRs3 == writebackRd)
-			forwardRegisters.forwardWBtoVal3 = 1;
-		else if (memoryUseRd && decodeRs3 == memoryRd)
-			forwardRegisters.forwardMemtoVal3 = 1;
-		else if (executeUseRd && decodeRs3 == executeRd){
+		if (executeUseRd && decodeRs3 == executeRd){
 			if (executeIsLongComputation){
 				stall[0] = 1;
 				stall[1] = 1;
@@ -546,6 +550,11 @@ void forwardUnit(
 				forwardRegisters.forwardExtoVal3 = 1;
 			}
 		}
+		else if (memoryUseRd && decodeRs3 == memoryRd)
+			forwardRegisters.forwardMemtoVal3 = 1;
+		else
+			if (writebackUseRd && decodeRs3 == writebackRd)
+				forwardRegisters.forwardWBtoVal3 = 1;
 	}
 }
 
@@ -658,6 +667,12 @@ void doCycle(struct Core &core, 		 //Core containing all values
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
+    //memory access
+    if (!stallSignals[3] && !globalStall){
+       bool wait_tmp_2;
+       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
+    }
+
     //resolve stalls, forwards
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
     		dctoEx_temp.rs2, dctoEx_temp.useRs2,
@@ -696,6 +711,10 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		core.dctoEx.datac = wbOut_temp.value;
     }
 
+    if (stallSignals[1] && !stallSignals[2]){
+    	core.dctoEx.we = 0; core.dctoEx.useRd = 0; core.dctoEx.isBranch = 0; core.dctoEx.instruction = 0; core.dctoEx.pc = 0;
+    }
+
     if (!stallSignals[2] && !globalStall)
     	copyExtoMem(core.extoMem, extoMem_temp);
 
@@ -714,13 +733,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
 
     branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
-
-//    fprintf(stderr, "%x instr: %x regs : ", core.pc, core.ftoDC.instruction);
-//    for (int oneReg = 0; oneReg < 32; oneReg++){
-//    	fprintf(stderr, "%x ", core.regFile[oneReg]);
-//    }
-//    fprintf(stderr, "use rd : %d %d %d \n", core.dctoEx.useRd, core.extoMem.useRd, core.memtoWB.useRd);
-//    fprintf(stderr, "\n");
 
 }
 

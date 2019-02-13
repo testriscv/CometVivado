@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
+#include <riscvISA.h>
+
 #include "basic_simulator.h"
 #include "elfFile.h"
 #include "core.h"
@@ -177,6 +179,7 @@ BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *i
 
 	fillMemory();
 	heapAddress = heap;
+	core.regFile[2] = STACK_INIT; //TODO not sure whether to use the initial or the modified stack init
 }
 
 BasicSimulator::~BasicSimulator()
@@ -228,9 +231,15 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 }
 
 void BasicSimulator::printCycle(){
-	fprintf(stdout, "cycle\n");
-	if(core.extoMem.opCode == RISCV_ST)
-		fprintf(stdout, "pc: %08x, store address: %08x\n", core.extoMem.pc, ((ac_int<32,false>)core.extoMem.result >> 2));
+
+	fprintf(stdout, "%x  ",core.ftoDC.pc);
+	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
+
+	for (int oneReg = 0; oneReg < 32; oneReg++){
+		fprintf(stdout, "%x  ", core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+	}
+	std::cout << std::endl;
+
 }
 
 
