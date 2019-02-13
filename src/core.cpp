@@ -205,6 +205,7 @@ void execute(struct DCtoEx dctoEx,
     extoMem.we = dctoEx.we;
     extoMem.isBranch = 0;
     extoMem.useRd = dctoEx.useRd;
+    extoMem.isLongInstruction = 0;
 
     ac_int<13, false> imm13 = 0;
     imm13[12] = dctoEx.instruction[31];
@@ -266,6 +267,7 @@ void execute(struct DCtoEx dctoEx,
         }
         break;
     case RISCV_LD:
+        extoMem.isLongInstruction = 1;
         extoMem.result = dctoEx.lhs + dctoEx.rhs;
         break;
     case RISCV_ST:
