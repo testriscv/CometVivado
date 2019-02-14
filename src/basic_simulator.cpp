@@ -12,7 +12,11 @@
 #include "elfFile.h"
 #include "core.h"
 
-BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *inputFile, char *outputFile)
+BasicSimulator::BasicSimulator (
+    const char* binaryFile, 
+    std::vector<std::string> args,
+    const char *inputFile, 
+    const char *outputFile)
 {
 
 	core.ftoDC.we = false;
@@ -154,6 +158,8 @@ BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *i
 
 	unsigned int heap = heapAddress;    // keep heap where it is because it will be set over stackpointer
 
+    unsigned int argc = args.size();
+
 	insertDataMemoryMap(STACK_INIT, argc & 0xFF);
 	insertDataMemoryMap(STACK_INIT + 1, (argc >> 8) & 0xFF);
 	insertDataMemoryMap(STACK_INIT + 2, (argc >> 16) & 0xFF);
@@ -168,13 +174,13 @@ BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *i
 		insertDataMemoryMap(STACK_INIT+ 4*oneArg + 7, currentPlaceStrings.slc<8>(24));
 
 		int oneCharIndex = 0;
-		char oneChar = argv[oneArg][oneCharIndex];
+		char oneChar = args[oneArg].c_str()[oneCharIndex];
 		while (oneChar != 0)
 		{
 			insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
 
 			oneCharIndex++;
-			oneChar = argv[oneArg][oneCharIndex];
+			oneChar = args[oneArg].c_str()[oneCharIndex];
 		}
 		insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
 		oneCharIndex++;
