@@ -470,9 +470,13 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 		bool isBranch_execute,
 		ac_int<32, false> &pc,
 		bool &we_fetch,
-		bool &we_decode){
+		bool &we_decode,
+    bool stall_fetch){
 
-	if (isBranch_execute){
+  if(stall_fetch) {
+    pc = pc;
+  }
+  else if (isBranch_execute){
 		we_fetch = 0;
 		we_decode = 0;
 		pc = nextPC_execute;
@@ -689,15 +693,17 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (!stallSignals[1] && !globalStall){
     	copyDCtoEx(core.dctoEx, dctoEx_temp);
 
-    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
-    		core.dctoEx.lhs = extoMem_temp.result;
+    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we) {
+        core.dctoEx.lhs = extoMem_temp.result;
+      }
     	else if (forwardRegisters.forwardMemtoVal1 && memtoWB_temp.we)
     		core.dctoEx.lhs = memtoWB_temp.result;
     	else if (forwardRegisters.forwardWBtoVal1 && wbOut_temp.we)
     		core.dctoEx.lhs = wbOut_temp.value;
 
-    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we)
+    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we) {
     		core.dctoEx.rhs = extoMem_temp.result;
+      }
     	else if (forwardRegisters.forwardMemtoVal2 && memtoWB_temp.we)
     		core.dctoEx.rhs = memtoWB_temp.result;
     	else if (forwardRegisters.forwardWBtoVal2 && wbOut_temp.we)
@@ -732,7 +738,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
     }
 
-    branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we);
+    branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, stallSignals[0]);
 
 }
 

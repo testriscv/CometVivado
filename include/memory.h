@@ -46,7 +46,7 @@
 #define INSTR_MEMORY_WIDTH 32
 #define DRAM_WIDTH  32
 #ifndef __HLS__
-#define DRAM_SIZE   ((size_t)1 << 24)
+#define DRAM_SIZE   ((size_t)1 << 26)
 #else
 #define DRAM_SIZE   8192
 #endif

@@ -88,6 +88,10 @@ BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *i
 
 	core.im.data = new ac_int<32, false>[DRAM_SIZE >> 2];
 	core.dm.data = new ac_int<32, false>[DRAM_SIZE >> 2];
+
+	for(int i=0; i<32; i++) {
+			core.regFile[i] = 0;
+	}
 	/*
     dataMemory = new ac_int<32, false>[DRAM_SIZE];
     for(int i(0); i < DRAM_SIZE; i++)
@@ -179,7 +183,7 @@ BasicSimulator::BasicSimulator (char* binaryFile, int argc, char **argv, char *i
 
 	fillMemory();
 	heapAddress = heap;
-	core.regFile[2] = STACK_INIT; //TODO not sure whether to use the initial or the modified stack init
+	core.regFile[2] = STACK_INIT;
 }
 
 BasicSimulator::~BasicSimulator()
@@ -232,7 +236,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 
 void BasicSimulator::printCycle(){
 
-	fprintf(stdout, "%x  ",core.ftoDC.pc);
+	fprintf(stdout, "Debug trace : %x  ",core.ftoDC.pc);
 	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
 	for (int oneReg = 0; oneReg < 32; oneReg++){
@@ -338,7 +342,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 //ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
-	if(core.extoMem.opCode == RISCV_SYSTEM){
+	if(core.memtoWB.opCode == RISCV_SYSTEM){
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
 		ac_int<32, true> arg2 = core.regFile[11];
