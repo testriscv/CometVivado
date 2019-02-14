@@ -188,6 +188,11 @@ void decode(struct FtoDC ftoDC,
 
     }
 
+    //If dest is zero, useRd should be at zero
+	if (rd == 0){
+		dctoEx.useRd = 0;
+	}
+
     //If the instruction was dropped, we ensure that isBranch is at zero
     if (!ftoDC.we){
     	dctoEx.isBranch = 0;
@@ -473,10 +478,7 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 		bool &we_decode,
     bool stall_fetch){
 
-  if(stall_fetch) {
-    pc = pc;
-  }
-  else if (isBranch_execute){
+  if (isBranch_execute){
 		we_fetch = 0;
 		we_decode = 0;
 		pc = nextPC_execute;
@@ -485,9 +487,10 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 		we_fetch = 0;
 		pc = nextPC_decode;
 	}
-	else {
+	else if(!stall_fetch) {
 		pc = nextPC_fetch;
 	}
+
 }
 
 void forwardUnit(
@@ -670,11 +673,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
-    //memory access
-    if (!core.stallSignals[3] && !globalStall){
-       bool wait_tmp_2;
-       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
-    }
 
     //resolve stalls, forwards
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
@@ -696,17 +694,15 @@ void doCycle(struct Core &core, 		 //Core containing all values
     if (!core.stallSignals[1] && !globalStall){
     	copyDCtoEx(core.dctoEx, dctoEx_temp);
 
-    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we) {
-        core.dctoEx.lhs = extoMem_temp.result;
-      }
+    	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
+      	  core.dctoEx.lhs = extoMem_temp.result;
     	else if (forwardRegisters.forwardMemtoVal1 && memtoWB_temp.we)
     		core.dctoEx.lhs = memtoWB_temp.result;
     	else if (forwardRegisters.forwardWBtoVal1 && wbOut_temp.we)
     		core.dctoEx.lhs = wbOut_temp.value;
 
-    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we) {
+    	if (forwardRegisters.forwardExtoVal2 && extoMem_temp.we)
     		core.dctoEx.rhs = extoMem_temp.result;
-      }
     	else if (forwardRegisters.forwardMemtoVal2 && memtoWB_temp.we)
     		core.dctoEx.rhs = memtoWB_temp.result;
     	else if (forwardRegisters.forwardWBtoVal2 && wbOut_temp.we)
