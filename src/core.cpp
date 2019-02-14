@@ -685,6 +685,10 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		wbOut_temp.rd, wbOut_temp.useRd,
 			core.stallSignals, forwardRegisters);
 
+    if (!core.stallSignals[3] && !globalStall){
+       bool wait_tmp_2;
+       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
+    }
     //commit the changes to the pipeline register
     if (!core.stallSignals[0] && !globalStall)
     	copyFtoDC(core.ftoDC, ftoDC_temp);
@@ -725,12 +729,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     if (!core.stallSignals[3] && !globalStall){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
-    	/*if (memtoWB_temp.we && memtoWB_temp.isStore)
-    		dm[memtoWB_temp.address >> 2] = memtoWB_temp.valueToWrite;
-		 else if (memtoWB_temp.we && memtoWB_temp.isLoad)
-			 core.memtoWB.result = dm[memtoWB_temp.address >> 2];*/
-       bool wait_tmp_2;
-       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, core.memtoWB.result, wait_tmp_2);
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd){
