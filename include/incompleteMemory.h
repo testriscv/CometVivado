@@ -17,7 +17,6 @@ public:
     }
     else if (opType == LOAD){
         dataOut = data[addr>>2];
-        fprintf(stderr, "Read %x\n", dataOut);
     }
 
   }
