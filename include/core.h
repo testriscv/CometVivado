@@ -138,6 +138,9 @@ struct Core
     ac_int<32, true> regFile[32];
     ac_int<32, false> pc;
 
+		//stall
+		bool stallSignals[5] = {0, 0, 0, 0, 0};
+
     /// Multicycle operation
 
     /// Instruction cache

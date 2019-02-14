@@ -13,9 +13,9 @@
 #include "core.h"
 
 BasicSimulator::BasicSimulator (
-    const char* binaryFile, 
+    const char* binaryFile,
     std::vector<std::string> args,
-    const char *inputFile, 
+    const char *inputFile,
     const char *outputFile)
 {
 
@@ -348,12 +348,25 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 //ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
-	if(core.memtoWB.opCode == RISCV_SYSTEM){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2])){
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
 		ac_int<32, true> arg2 = core.regFile[11];
 		ac_int<32, true> arg3 = core.regFile[12];
 		ac_int<32, true> arg4 = core.regFile[13];
+
+		if(core.memtoWB.useRd && core.memtoWB.we && !core.stallSignals[3]) {
+			if(core.memtoWB.rd == 10)
+			 	arg1 = core.memtoWB.result;
+			else if(core.memtoWB.rd == 11)
+			 	arg2 = core.memtoWB.result;
+			else if(core.memtoWB.rd == 12)
+			 	arg3 = core.memtoWB.result;
+			else if(core.memtoWB.rd == 13)
+			 	arg4 = core.memtoWB.result;
+			else if(core.memtoWB.rd == 17)
+				syscallId = core.memtoWB.result;
+		}
 
 		ac_int<32, true> result = 0;
 		switch (syscallId)
@@ -528,7 +541,13 @@ void BasicSimulator::solveSyscall()
 			break;
 		}
 
-		core.regFile[10] = result;
+		if(core.dctoEx.useRs1 && (core.dctoEx.rs1 == 10))
+			core.dctoEx.rhs = result;
+		if(core.dctoEx.useRs2 && (core.dctoEx.rs2 == 10))
+			core.dctoEx.lhs = result;
+		if(core.dctoEx.useRs3 && (core.dctoEx.rs3 == 10))
+			core.dctoEx.datac = result;
+
 	}// if exToMem.opCode == RISCV_SYSTEM
 }
 
