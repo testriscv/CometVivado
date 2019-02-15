@@ -40,5 +40,5 @@ test:atomic:
   stage: test
   script:
     - cd build/bin
-    - ./atomicTest $CI_PROJECT_DIR/benchmarks/autoTests/atomic.txt
+    - ./atomicTests $CI_PROJECT_DIR/benchmarks/autoTests/atomic.txt
 
