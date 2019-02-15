@@ -10,7 +10,7 @@ cache:
 stages:
   - build
   - test
-	- hls
+  - hls
 
 # Note: we cannot use submodule commit as cache key, so we do it manually in
 # subfolder of a big cache
