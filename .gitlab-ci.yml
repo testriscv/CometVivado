@@ -10,6 +10,7 @@ cache:
 stages:
   - build
   - test
+	- hls
 
 # Note: we cannot use submodule commit as cache key, so we do it manually in
 # subfolder of a big cache
@@ -17,15 +18,15 @@ cbuild:
   stage: build
   artifacts:
     paths:
-      - build
+      - build/bin
   script:
     - mkdir build
     - cd build
     - cmake ..
     - make all
 
-hls:
-  stage: build
+catapult:
+  stage: hls
   artifacts:
     paths:
       - build-catapult/Catapult/doCore.v1/concat_rtl.vhdl
