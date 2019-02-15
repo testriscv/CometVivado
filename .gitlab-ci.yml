@@ -1,6 +1,6 @@
 before_script:
-  -	export PATH=/opt/Catapult-10.3a/Mgc_home/bin:$PATH
-	- export LM_LICENSE_FILE=1717@licence.irisa.fr:2100@licence.irisa.fr
+  - export PATH=/opt/Catapult-10.3a/Mgc_home/bin:$PATH
+  - export LM_LICENSE_FILE=1717@licence.irisa.fr:2100@licence.irisa.fr
   - mkdir -p cache
 
 cache:
@@ -16,10 +16,10 @@ stages:
 cbuild:
   stage: build
   script:
-		- mkdir build
-		- cd build
-		- cmake ..
-		- make all
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make all
 
 hls:
   stage: build
