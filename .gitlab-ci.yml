@@ -15,6 +15,9 @@ stages:
 # subfolder of a big cache
 cbuild:
   stage: build
+  artifacts:
+    paths:
+      - build
   script:
     - mkdir build
     - cd build
@@ -25,7 +28,7 @@ hls:
   stage: build
   artifacts:
     paths:
-      - Catapult/doCore.v1/
+      - build-catapult/Catapult/doCore.v1/concat_rtl.vhdl
     expire_in: 1 day
   script:
     - mkdir build-catapult
