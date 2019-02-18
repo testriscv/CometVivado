@@ -30,7 +30,7 @@ catapult:
   artifacts:
     paths:
       - build-catapult/Catapult/doCore.v1/concat_rtl.vhdl
-    expire_in: 1 day
+    expire_in: 0
   script:
     - mkdir build-catapult
     - cd build-catapult
@@ -41,4 +41,3 @@ test:atomic:
   script:
     - cd build/bin
     - ./atomicTests $CI_PROJECT_DIR/benchmarks/autoTests/atomic.txt
-
