@@ -2,8 +2,10 @@
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
 RV32I base ISA, support for M extension
 
-## TODO
- - [ ] Create a proper TODO list
+## Comet RTL files
+
+- [Latest ASIC RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/rework/browse?job=catapult_ASIC)
+- [Latest Xilinx RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/rework/browse?job=catapult_Xilinx)
 
 ## Dependencies
 To compile the simulator:

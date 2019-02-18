@@ -25,16 +25,29 @@ cbuild:
     - cmake ..
     - make all
 
-catapult:
+catapult_ASIC:
   stage: hls
   artifacts:
     paths:
-      - build-catapult/Catapult/doCore.v1/concat_rtl.vhdl
+      - comet.vhdl
     expire_in: 0
   script:
     - mkdir build-catapult
     - cd build-catapult
-    - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult.tcl
+    - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_asic.tcl
+    - mv build-catapult/Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
+
+catapult_Xilinx:
+  stage: hls
+  artifacts:
+    paths:
+      - comet.vhdl
+    expire_in: 0
+  script:
+    - mkdir build-catapult
+    - cd build-catapult
+    - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_xilinx.tcl
+    - mv build-catapult/Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
 
 test:atomic:
   stage: test

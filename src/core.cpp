@@ -674,8 +674,6 @@ void doCycle(struct Core &core, 		 //Core containing all values
     writeback(core.memtoWB, wbOut_temp);
 
 
-    this is made to fail
-
     //resolve stalls, forwards
     forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
     		dctoEx_temp.rs2, dctoEx_temp.useRs2,
