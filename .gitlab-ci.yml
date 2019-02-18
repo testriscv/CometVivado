@@ -30,7 +30,7 @@ catapult_ASIC:
   artifacts:
     paths:
       - comet.vhdl
-    expire_in: 0
+    expire_in: 200y
   script:
     - mkdir build-catapult
     - cd build-catapult
@@ -42,7 +42,7 @@ catapult_Xilinx:
   artifacts:
     paths:
       - comet.vhdl
-    expire_in: 0
+    expire_in: 200y
   script:
     - mkdir build-catapult
     - cd build-catapult

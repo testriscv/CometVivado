@@ -1,4 +1,9 @@
 # Comet
+
+[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rework)
+
+
+
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
 RV32I base ISA, support for M extension
 
@@ -80,3 +85,8 @@ By default the simulator will execute the `matmul_int_4.riscv32` benchmark. You 
 The `-i` and `-o` switches are used to specify the benchmark's standard input and output respectively.
 
 The `--` switch allows to pass arguments to the benchmark that is being run by the simulator.
+
+
+## Todo
+
+- [ ] Fix artifacts lifetime once the version allows it (or make something that pushes automatically every 200 years)
