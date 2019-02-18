@@ -57,10 +57,10 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	switch (opcode)
 	{
 	case RISCV_LUI:
-		stream << "LUI r" << rd << " " << imm31_12;
+		stream << "LUI r" << (int) rd << " " << imm31_12;
 	break;
 	case RISCV_AUIPC:
-		stream << "AUIPC r" << rd + " " << imm31_12;
+		stream << "AUIPC r" << (int) rd << " " << imm31_12;
 	break;
 	case RISCV_JAL:
 		if (rd==0)
@@ -70,93 +70,93 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	break;
 	case RISCV_JALR:
 		if (rd==0)
-			stream << "JR r" << rs1 + " + " << imm12_I_signed;
+			stream << "JR r" << (int) rs1 << " << " << imm12_I_signed;
 		else
-			stream << "JALR r" << rd + " r" << rs1 + " "<< imm12_I_signed;
+			stream << "JALR r" << (int) rd << " r" << (int) rs1 << " "<< imm12_I_signed;
 	break;
 	case RISCV_BR:
 		stream << riscvNamesBR[funct3];
-		stream <<  " r" << rs1 + " r" << rs2 + " " << imm13_signed;
+		stream <<  " r" << (int) rs1 << " r" << (int) rs2 << " " << imm13_signed;
 	break;
 	case RISCV_LD:
 		stream << riscvNamesLD[funct3];
-		stream <<  " r" << rd + " = " << imm12_I_signed + " (r" << rs1 + ")";
+		stream <<  " r" << (int) rd << " = " << imm12_I_signed << " (r" << (int) rs1 << ")";
 	break;
 	case RISCV_ST:
 		stream << riscvNamesST[funct3];
-		stream <<  " r" << rs2 + " = " << imm12_S_signed + " (r" << rs1 + ")";
+		stream <<  " r" << (int) rs2 << " = " << imm12_S_signed << " (r" << (int) rs1 << ")";
 	break;
 	case RISCV_OPI:
 		if (funct3 == RISCV_OPI_SRI)
 			if (funct7 == RISCV_OPI_SRI_SRLI)
-				stream << "SRLi r" << rd + " = r" << rs1 + ", " << shamt;
+				stream << "SRLi r" << (int) rd << " = r" << (int) rs1 << ", " << shamt;
 			else //SRAI
-				stream << "SRAi r" << rd + " = r" << rs1 + ", " << shamt;
+				stream << "SRAi r" << (int) rd << " = r" << (int) rs1 << ", " << shamt;
 		else if (funct3 == RISCV_OPI_SLLI){
 			stream << riscvNamesOPI[funct3];
-			stream << " r" << rd + " = r" << rs1 + ", " << shamt;
+			stream << " r" <<  rd << " = r" << (int) rs1 << ", " << shamt;
 		}
 		else{
 			stream << riscvNamesOPI[funct3];
-			stream << " r" << rd + " = r" << rs1 + ", " << imm12_I_signed;
+			stream << " r" << (int) rd << " = r" << (int) rs1 << ", " << imm12_I_signed;
 		}
 	break;
 	case RISCV_OP:
 		if (funct7 == 1){
 			stream << riscvNamesMUL[funct3];
-			stream << " r" << rd + " = r" << rs1 + ", r" << rs2;
+			stream << " r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 		}
 		else{
 			if (funct3 == RISCV_OP_ADD)
 				if (funct7 == RISCV_OP_ADD_ADD)
-					stream << "ADD r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "ADD r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 				else
-					stream << "SUB r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SUB r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			else if (funct3 == RISCV_OP_SR)
 				if (funct7 == RISCV_OP_SR_SRL)
-					stream << "SRL r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SRL r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 				else //SRA
-					stream << "SRA r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SRA r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			else{
 				stream << riscvNamesOP[funct3];
-				stream <<  " r" << rd + " = r" << rs1 + ", r" << rs2;
+				stream <<  " r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			}
 		}
 	break;
 	case RISCV_OPIW:
 		if (funct3 == RISCV_OPIW_SRW)
 			if (funct7 == RISCV_OPIW_SRW_SRLIW)
-				stream << "SRLWi r" << rd + " = r" << rs1 + ", " << rs2;
+				stream << "SRLWi r" << (int) rd << " = r" << (int) rs1 << ", " << (int) rs2;
 			else //SRAI
-				stream << "SRAWi r" << rd + " = r" << rs1 + ", " << rs2;
+				stream << "SRAWi r" << (int) rd << " = r" << (int) rs1 << ", " << (int) rs2;
 		else if (funct3 == RISCV_OPIW_SLLIW){
 			stream << riscvNamesOPI[funct3];
-			stream << " r" << rd + " = r" << rs1 + ", " << rs2;
+			stream << " r" << (int) rd << " = r" << (int) rs1 << ", " << (int) rs2;
 		}
 		else{
 			stream << riscvNamesOPIW[funct3];
-			stream << " r" << rd + " = r" << rs1 + ", " << imm12_I_signed;
+			stream << " r" << (int) rd << " = r" << (int) rs1 << ", " << imm12_I_signed;
 		}
 	break;
 	case RISCV_OPW:
 		if (funct7 == 1){
 			stream << riscvNamesMUL[funct3];
-			stream << "W r" << rd + " = r" << rs1 + ", r" << rs2;
+			stream << "W r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 		}
 		else{
 			if (funct3 == RISCV_OP_ADD)
 				if (funct7 == RISCV_OPW_ADDSUBW_ADDW)
-					stream << "ADDW r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "ADDW r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 				else
-					stream << "SUBW r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SUBW r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			else if (funct3 == RISCV_OPW_SRW)
 				if (funct7 == RISCV_OPW_SRW_SRLW)
-					stream << "SRLW r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SRLW r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 				else //SRAW
-					stream << "SRAW r" << rd + " = r" << rs1 + ", r" << rs2;
+					stream << "SRAW r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			else{
 				stream << riscvNamesOPW[funct3];
-				stream <<  " r" << rd + " = r" << rs1 + ", r" << rs2;
+				stream <<  " r" << (int) rd << " = r" << (int) rs1 << ", r" << (int) rs2;
 			}
 		}
 	break;
