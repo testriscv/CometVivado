@@ -242,22 +242,22 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 
 void BasicSimulator::printCycle(){
 
-  if(!core.stallSignals[0]) {
-	fprintf(stdout, "Debug trace : %x  ",core.ftoDC.pc);
-	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
-
-	for (int oneReg = 0; oneReg < 32; oneReg++){
-		fprintf(stdout, "%x  ", core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
-	}
-	std::cout << std::endl;
-}
+//  if(!core.stallSignals[0]) {
+//	fprintf(stdout, "Debug trace : %x  ",core.ftoDC.pc);
+//	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
+//
+//	for (int oneReg = 0; oneReg < 32; oneReg++){
+//		fprintf(stdout, "%x  ", core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+//	}
+//	std::cout << std::endl;
+//}
 }
 
 
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
 	ac_int<32, false> mem = core.dm.data[addr >> 2];
-	formatwrite(addr, 0, mem, value);
+	mem.set_slc(((int) addr.slc<2>(0) << 3), value);
 	core.dm.data[addr >> 2] = mem;
 }
 
@@ -305,9 +305,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 	//#endif
 	// read main memory if it wasn't in cache
 	ac_int<8, true> result;
-	ac_int<32, false> read = core.dm.data[addr >> 2];
-	formatread(addr, 0, 0, read);
-	result = read;
+	result = core.dm.data[addr >> 2].slc<8>(((int)addr.slc<2>(0))<<3);
 	return result;
 }
 
@@ -349,7 +347,6 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 //ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
-  printf("test SyscallId :\n");
 
 	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2])){
 		ac_int<32, true> syscallId = core.regFile[17];
@@ -583,7 +580,7 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
 	char* localBuffer = new char[size.to_int()];
-  printf("write syscall size: %d\n", size);
+  printf("write syscall size: %d file : %d output : %d\n", size, file, output);
 	for (int i=0; i<size; i++)
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
@@ -727,6 +724,8 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
 		str += "NOCTTY";
 	}
 	int result  = open(localPath, unixflags, mode.to_int());
+
+	fprintf(stdout, "Opening a file %d\n", result);
 
 	delete[] localPath;
 	return result;

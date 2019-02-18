@@ -30,19 +30,15 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
         case BYTE:
           temp =   data[addr>>2];
           data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
-          if(waitOut) printf("STB address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
           break;
         case HALF:
           temp =   data[addr>>2];
-
-          data[addr>>2].set_slc(((int)addr[1])<<4, dataIn.slc<16>(0));
-          if(waitOut) printf("STH address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
+          data[addr>>2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
 
           break;
         case WORD:
           temp =   data[addr>>2];
           data[addr>>2] = dataIn;
-          if(waitOut) printf("STW address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
 
           break;
       }
@@ -57,8 +53,7 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
           dataOut = 0;
           break;
         case HALF:
-          t16 = data[addr>>2].slc<16>( ((int)addr.slc<1>(0)) << 4);
-          if(waitOut) printf("BIT START IS %d\n",  ((int)addr.slc<1>(0)) << 4);
+          t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
           bit = t16.slc<1>(15);
           dataOut.set_slc(0, t16);
           dataOut.set_slc(16, (ac_int<16, true>)bit);
@@ -70,10 +65,9 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
           dataOut = data[addr>>2].slc<8>(((int) addr.slc<2>(0))<<3) & 0xff;
           break;
         case HALF_U:
-          dataOut = data[addr>>2].slc<16>(((int) addr.slc<1>(0))<<4)& 0xffff;
+          dataOut = data[addr>>2].slc<16>(addr[1] ? 16 : 0)& 0xffff;
           break;
       }
-      if(waitOut) printf("A thing has been loaded from address %x, it contained %x, the actual contents of memory were : %x\n", addr, dataOut, data[addr>>2]);
       break;
   }
   waitOut = false;
