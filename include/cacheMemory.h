@@ -19,11 +19,11 @@
  * 		- SET_SIZE
  * 		- ASSOCIATIVITY
  ************************************************************************/
-template<int OFFSET_SIZE, int TAG_SIZE, int SET_SIZE, int ASSOCIATIVITY>;
+template<int OFFSET_SIZE, int TAG_SIZE, int SET_SIZE, int ASSOCIATIVITY>
 
 class CacheMemory: public MemoryInterface {
 protected:
-  IncompleteMemory *nextLevel;
+  MemoryInterface *nextLevel;
   ac_int<TAG_SIZE+SET_SIZE, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<16, false> age[SET_SIZE][ASSOCIATIVITY];
 
@@ -31,7 +31,8 @@ protected:
 
 
 public:
-  CacheMemory(IncompleteMemory *nextLevel){
+
+  CacheMemory(MemoryInterface *nextLevel){
 	  nextLevel = nextLevel;
 	  for (int oneSetElement = 0; oneSetElement<SET_SIZE; oneSetElement++){
 		  for (int oneSet = 0; oneSet < ASSOCIATIVITY; oneSet++){
