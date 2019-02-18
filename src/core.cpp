@@ -258,7 +258,6 @@ void execute(struct DCtoEx dctoEx,
         {
         case RISCV_BR_BEQ:
             extoMem.isBranch = (dctoEx.lhs == dctoEx.rhs);
-            printf("lhs : %x, rhs : %x\n", dctoEx.lhs, dctoEx.rhs);
             break;
         case RISCV_BR_BNE:
             extoMem.isBranch = (dctoEx.lhs != dctoEx.rhs);
