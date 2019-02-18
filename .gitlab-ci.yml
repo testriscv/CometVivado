@@ -10,8 +10,7 @@ cache:
 stages:
   - build
   - test
-  - hls_asic
-  - hls_fpga
+  - hls
 
 # Note: we cannot use submodule commit as cache key, so we do it manually in
 # subfolder of a big cache
@@ -27,7 +26,7 @@ cbuild:
     - make all
 
 catapult_ASIC:
-  stage: hls_asic
+  stage: hls
   artifacts:
     paths:
       - comet.vhdl
@@ -39,7 +38,7 @@ catapult_ASIC:
     - mv Catapult/doCore.v1/concat_rtl.vhdl ../comet.vhdl
 
 catapult_Xilinx:
-  stage: hls_fpga
+  stage: hls
   artifacts:
     paths:
       - comet.vhdl
