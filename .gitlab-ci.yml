@@ -1,9 +1,44 @@
-image: gcc
+before_script:
+  - export PATH=/opt/Catapult-10.3a/Mgc_home/bin:$PATH
+  - export LM_LICENSE_FILE=1717@licence.irisa.fr:2100@licence.irisa.fr
+  - mkdir -p cache
 
-build:
+cache:
+  paths:
+    - cache
+
+stages:
+  - build
+  - test
+  - hls
+
+# Note: we cannot use submodule commit as cache key, so we do it manually in
+# subfolder of a big cache
+cbuild:
   stage: build
-  before_script: 
-     - apt update && apt -y install make 
-  script: 
-    - make
-    
+  artifacts:
+    paths:
+      - build/bin
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make all
+
+catapult:
+  stage: hls
+  artifacts:
+    paths:
+      - build-catapult/Catapult/doCore.v1/concat_rtl.vhdl
+    expire_in: 1 day
+  script:
+    - mkdir build-catapult
+    - cd build-catapult
+    - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult.tcl
+
+test:atomic:
+  stage: test
+  script:
+    - cd build/bin
+    - ./atomicTests $CI_PROJECT_DIR/benchmarks/autoTests/atomic.txt
+
