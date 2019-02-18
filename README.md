@@ -1,6 +1,5 @@
 # Comet
 
-
 [![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/rework/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rework)
 
 
