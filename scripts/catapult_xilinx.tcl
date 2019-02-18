@@ -15,15 +15,18 @@ directive set -DESIGN_GOAL area
 go new
 directive set -DESIGN_HIERARCHY doCore
 go compile
-solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/Catapult-10.0b/Mgc_home/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib
-solution library add ST_singleport_8192x32
+solution library add mgc_Xilinx-ZYNQ-uplus-2L_beh -- -rtlsyntool Vivado -manufacturer Xilinx -family ZYNQ-uplus -speed -2L -part xczu11eg-ffvb1517-2L-e
+solution library add Xilinx_RAMS
+solution library add Xilinx_ROMS
+solution library add amba
+solution library add Xilinx_FIFO
 go libraries
-directive set -CLOCKS {clk {-CLOCK_PERIOD 1.67 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 0.835 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
+directive set -CLOCKS {clk {-CLOCK_PERIOD 10.0 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 5.0 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
 go assembly
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
+directive set /doCore/imData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
+directive set /doCore/dmData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
-directive set /doCore/imData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
-directive set /doCore/dmData:rsc -MAP_TO_MODULE ST_singleport_8192x32.ST_SPHD_BB_8192x32m16_aTdol_wrapper
 go architect
 go extract

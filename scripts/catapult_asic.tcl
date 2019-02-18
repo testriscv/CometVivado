@@ -15,7 +15,7 @@ directive set -DESIGN_GOAL area
 go new
 directive set -DESIGN_HIERARCHY doCore
 go compile
-solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/Catapult-10.0b/Mgc_home/pkgs/siflibs/designcompiler/CORE65LPHVT_ccs.lib
+solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/Catapult-10.0b/Mgc_home/pkgs/siflibs/designcompiler/C28SOI_SC_12_CORE_LL_ccs.lib -- -vendor STMicroelectronics -technology {28nm FDSOI}
 solution library add ST_singleport_8192x32
 go libraries
 directive set -CLOCKS {clk {-CLOCK_PERIOD 1.67 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 0.835 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
