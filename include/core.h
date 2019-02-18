@@ -3,7 +3,14 @@
 
 #include <ac_int.h>
 #include "riscvISA.h"
+
+//all the possible memories
 #include "simpleMemory.h"
+#include "incompleteMemory.h"
+
+#ifndef MEMORY_INTERFACE
+#define MEMORY_INTERFACE SimpleMemory
+#endif
 
 /******************************************************************************************
  * Definition of all pipeline registers

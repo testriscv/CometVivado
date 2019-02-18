@@ -24,7 +24,7 @@ add_executable(atomicTests 	./src/cache.cpp
 							./src/atomicTest.cpp
 							./src/elfFile.cpp
 							./src/portability.cpp
-							./src/simpleMemory.cpp 
+							./src/simpleMemory.cpp
 							./src/riscvISA.cpp
 							./src/basic_simulator.cpp)
 
