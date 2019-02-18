@@ -6,7 +6,9 @@
 typedef enum {
   BYTE = 0,
   HALF,
-  WORD
+  WORD,
+  BYTE_U,
+  HALF_U
 } memMask;
 
 typedef enum {

@@ -258,6 +258,7 @@ void execute(struct DCtoEx dctoEx,
         {
         case RISCV_BR_BEQ:
             extoMem.isBranch = (dctoEx.lhs == dctoEx.rhs);
+            printf("lhs : %x, rhs : %x\n", dctoEx.lhs, dctoEx.rhs);
             break;
         case RISCV_BR_BNE:
             extoMem.isBranch = (dctoEx.lhs != dctoEx.rhs);
@@ -665,7 +666,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     //declare temporary register file
     ac_int<32, false> nextInst;
-    bool wait_tmp;
+    bool wait_tmp = false;
     core.im.process(core.pc, WORD, LOAD, 0, nextInst, wait_tmp);
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
@@ -683,9 +684,33 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		wbOut_temp.rd, wbOut_temp.useRd,
 			core.stallSignals, forwardRegisters);
 
+    bool wait_tmp_2 = true;
     if (!core.stallSignals[3] && !globalStall){
-       bool wait_tmp_2;
-       core.dm.process(memtoWB_temp.address, WORD, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
+
+       memMask mask;
+       //TODO: carry the data size to memToWb
+       switch (core.extoMem.funct3) {
+         case 0:
+          mask = BYTE;
+          break;
+         case 1:
+          mask = HALF;
+          break;
+        case 2:
+          mask = WORD;
+          break;
+        case 4:
+          mask = BYTE_U;
+          break;
+        case 5:
+          mask = HALF_U;
+          break;
+        //Should NEVER happen
+        default:
+          mask = WORD;
+          break;
+       }
+       core.dm.process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
     }
     //commit the changes to the pipeline register
     if (!core.stallSignals[0] && !globalStall)

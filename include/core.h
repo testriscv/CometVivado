@@ -3,7 +3,7 @@
 
 #include <ac_int.h>
 #include "riscvISA.h"
-#include "incompleteMemory.h"
+#include "simpleMemory.h"
 
 /******************************************************************************************
  * Definition of all pipeline registers
@@ -131,7 +131,7 @@ struct Core
     MemtoWB memtoWB;
 
 		//memories, yay
-		IncompleteMemory dm, im;
+		SimpleMemory dm, im;
 
     //CoreCtrl ctrl;
 

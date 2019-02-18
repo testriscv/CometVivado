@@ -18,32 +18,63 @@ ac_int<32, false> SimpleMemory::getWord(ac_int<32, false> addr) {
 */
 void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut) {
   //no latency, wait is always set to false
-  waitOut = false;
+
+  ac_int<32, true> temp;
+  ac_int<8, false> t8;
+  ac_int<1, true> bit;
+  ac_int<16, false> t16;
+
   switch(opType) {
     case STORE:
       switch(mask) {
         case BYTE:
-          data[addr>>2].set_slc(addr.slc<2>(0) << 3, dataIn.slc<8>(0));
+          temp =   data[addr>>2];
+          data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
+          if(waitOut) printf("STB address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
           break;
         case HALF:
-          data[addr>>2].set_slc(addr[1], dataIn.slc<16>(0));
+          temp =   data[addr>>2];
+
+          data[addr>>2].set_slc(((int)addr[1])<<4, dataIn.slc<16>(0));
+          if(waitOut) printf("STH address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
+
           break;
         case WORD:
+          temp =   data[addr>>2];
           data[addr>>2] = dataIn;
+          if(waitOut) printf("STW address %x, previous data in memory %x, byte to write %x next data %x\n", addr, temp, dataIn, data[addr>>2]);
+
           break;
       }
       break;
     case LOAD:
       switch(mask) {
         case BYTE:
-          dataOut = data[addr>>2] & 0xff;
+          t8 = data[addr>>2].slc<8>(((int)addr.slc<2>(0)) << 3);
+          bit = t8.slc<1>(7);
+          dataOut.set_slc(0, t8);
+          dataOut.set_slc(8, (ac_int<24, true>)bit);
+          dataOut = 0;
           break;
         case HALF:
-          dataOut = data[addr>>2] & 0xffff;
+          t16 = data[addr>>2].slc<16>( ((int)addr.slc<1>(0)) << 4);
+          if(waitOut) printf("BIT START IS %d\n",  ((int)addr.slc<1>(0)) << 4);
+          bit = t16.slc<1>(15);
+          dataOut.set_slc(0, t16);
+          dataOut.set_slc(16, (ac_int<16, true>)bit);
           break;
         case WORD:
           dataOut = data[addr>>2];
           break;
+        case BYTE_U:
+          dataOut = data[addr>>2].slc<8>(((int) addr.slc<2>(0))<<3) & 0xff;
+          break;
+        case HALF_U:
+          dataOut = data[addr>>2].slc<16>(((int) addr.slc<1>(0))<<4)& 0xffff;
+          break;
       }
+      if(waitOut) printf("A thing has been loaded from address %x, it contained %x, the actual contents of memory were : %x\n", addr, dataOut, data[addr>>2]);
+      break;
   }
+  waitOut = false;
 }

@@ -242,6 +242,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 
 void BasicSimulator::printCycle(){
 
+  if(!core.stallSignals[0]) {
 	fprintf(stdout, "Debug trace : %x  ",core.ftoDC.pc);
 	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
@@ -249,7 +250,7 @@ void BasicSimulator::printCycle(){
 		fprintf(stdout, "%x  ", core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
 	}
 	std::cout << std::endl;
-
+}
 }
 
 
@@ -348,6 +349,8 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 //ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
+  printf("test SyscallId :\n");
+
 	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2])){
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
@@ -360,8 +363,10 @@ void BasicSimulator::solveSyscall()
 			 	arg1 = core.memtoWB.result;
 			else if(core.memtoWB.rd == 11)
 			 	arg2 = core.memtoWB.result;
-			else if(core.memtoWB.rd == 12)
+			else if(core.memtoWB.rd == 12){
 			 	arg3 = core.memtoWB.result;
+        printf("forwarding %x\n", arg3);
+      }
 			else if(core.memtoWB.rd == 13)
 			 	arg4 = core.memtoWB.result;
 			else if(core.memtoWB.rd == 17)
@@ -369,6 +374,10 @@ void BasicSimulator::solveSyscall()
 		}
 
 		ac_int<32, true> result = 0;
+
+		//XXX Debug
+		printf("SyscallId : %d\n", syscallId);
+
 		switch (syscallId)
 		{
 		case SYS_exit:
@@ -574,6 +583,7 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
 	char* localBuffer = new char[size.to_int()];
+  printf("write syscall size: %d\n", size);
 	for (int i=0; i<size; i++)
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
