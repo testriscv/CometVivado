@@ -1,7 +1,6 @@
 # Comet
 
-[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rework)
-
+[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/rework/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rework)
 
 
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
