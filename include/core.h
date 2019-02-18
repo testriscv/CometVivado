@@ -138,7 +138,7 @@ struct Core
     MemtoWB memtoWB;
 
 		//memories, yay
-		SimpleMemory dm, im;
+		MEMORY_INTERFACE dm, im;
 
     //CoreCtrl ctrl;
 
