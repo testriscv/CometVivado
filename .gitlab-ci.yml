@@ -36,7 +36,7 @@ catapult_ASIC:
     - mkdir build-catapult-asic
     - cd build-catapult-asic
     - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_asic.tcl
-    - mv build-catapult-asic/Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
+    - mv Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
 
 catapult_Xilinx:
   stage: hls_fpga
@@ -48,7 +48,7 @@ catapult_Xilinx:
     - mkdir build-catapult-xilinx
     - cd build-catapult-xilinx
     - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_xilinx.tcl
-    - mv build-catapult-xilinx/Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
+    - mv Catapult/doCore.v1/concat_rtl.vhdl ./comet.vhdl
 
 test:atomic:
   stage: test
