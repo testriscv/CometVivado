@@ -10,7 +10,7 @@ cache:
 stages:
   - build
   - test
-  - hls
+  - HLS
 
 # Note: we cannot use submodule commit as cache key, so we do it manually in
 # subfolder of a big cache
@@ -26,7 +26,7 @@ cbuild:
     - make all
 
 catapult_ASIC:
-  stage: hls
+  stage: HLS
   artifacts:
     paths:
       - comet.vhdl
@@ -38,7 +38,7 @@ catapult_ASIC:
     - mv Catapult/doCore.v1/concat_rtl.vhdl ../comet.vhdl
 
 catapult_Xilinx:
-  stage: hls
+  stage: HLS
   artifacts:
     paths:
       - comet.vhdl
@@ -53,4 +53,10 @@ test:atomic:
   stage: test
   script:
     - cd build/bin
-    - ./atomicTests $CI_PROJECT_DIR/benchmarks/autoTests/atomic.txt
+    - ./atomicTests $CI_PROJECT_DIR/tests/atomicTests
+
+test:applications:
+  stage: test
+  script:
+    - cd tests
+    - ./runTests.sh

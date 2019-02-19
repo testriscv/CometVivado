@@ -7,7 +7,7 @@ EXEC=qsort
 all: $(EXEC).riscv$(XLEN)
 
 $(EXEC).riscv$(XLEN): $(EXEC).c
-	$(CC) $(EXEC).c $(CFLAGS) -o $(EXEC).riscv$(XLEN)
+	$(CCRV) $(EXEC).c $(CFLAGS) -o $(EXEC).riscv$(XLEN)
 	$(CCHOST) $(EXEC).c -o $(EXEC)
 	./$(EXEC) > expectedOutput
 	rm -f $(EXEC)
