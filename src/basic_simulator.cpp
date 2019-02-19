@@ -108,7 +108,8 @@ BasicSimulator::BasicSimulator (
 
 	input = stdin;
 	output = stdout ;
-	if(inputFile)
+
+  if(inputFile)
 		input = fopen(inputFile, "rb");
 	if(outputFile)
 		output = fopen(outputFile, "wb");
