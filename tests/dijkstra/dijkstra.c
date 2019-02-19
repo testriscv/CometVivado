@@ -1,42 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
-
-#ifdef __unix
-typedef unsigned long long uint64_t;
-#endif
-
-uint64_t myclock()
-{
-    struct timeval tv;
-    int res = gettimeofday(&tv, NULL);
-
-    if(res < 0)
-        return 0;
-    else
-        return (uint64_t)tv.tv_sec*1000000 + tv.tv_usec;
-}
-#define clock() myclock()
+#include <limits.h>
 
 #include "dijkstra.h"
-
-void printGraphe(const Graphe* graphe)
-{
-    int i, j;
-    printf("%s :\t%d sommets\n"
-           "\t\t%d arcs\n", graphe->nom, graphe->nSommets, graphe->nArcs);
-    for(i = 0; i < graphe->nSommets; ++i)
-    {
-        printf("%s : %d arcs\n", graphe->sommets[i].nom, graphe->sommets[i].narcs);
-        for(j = 0; j < graphe->sommets[i].narcs; ++j)
-            printf("\t%s --> %s (%d)\n", graphe->sommets[i].arcs[j]->depart->nom
-                                       , graphe->sommets[i].arcs[j]->arrivee->nom
-                                       , graphe->sommets[i].arcs[j]->poids);
-    }
-}
 
 Graphe* createGraphe(const char* nom, char* sSommets[], int nSommets, sArc* sArcs, int nArcs)
 {
@@ -109,8 +76,6 @@ int dijkstra(Graphe* graphe, int depart, int arrivee)
             {
                 sommets[depart].arcs[i]->arrivee->poids = sommets[depart].poids + sommets[depart].arcs[i]->poids;
                 sommets[depart].arcs[i]->arrivee->precedent = &sommets[depart];
-                /*printf("%s --> %s (%d) %d\n", sommets[depart].arcs[i]->depart->nom, sommets[depart].arcs[i]->arrivee->nom
-                                     , sommets[depart].arcs[i]->poids, iterations);*/
             }
         }
         int minDistance = INT_MAX;
@@ -132,7 +97,6 @@ int dijkstra(Graphe* graphe, int depart, int arrivee)
             break;
         sommets[depart].parcouru = 1;
     } while(depart != arrivee);
-    //printf("%d iterations\n", iterations);
     return graphe->sommets[arrivee].poids;
 }
 
@@ -142,7 +106,6 @@ void pluslongdespluscourts(Graphe* graphe)
     Sommet* sommets = malloc(graphe->nSommets*sizeof(Sommet));
     for(i = 0; i < graphe->nSommets; ++i)
     {
-        printf("%d\n", i+1);
         for(j = 0; j < graphe->nSommets; ++j)
         {
             if(i == j)
@@ -157,20 +120,10 @@ void pluslongdespluscourts(Graphe* graphe)
                 while(arr != dep)
                 {
                     sommets[k++] = *arr;
-                    /*printf("De %s a %s : %d\n", arr->precedent->nom, arr->nom,
-                                                arr->poids-arr->precedent->poids);*/
                     arr = arr->precedent;
                 }
                 sommets[k--] = *dep;
                 numSommets = k;
-                /*printf("Chemin le plus court entre %s et %s : %d \n",
-                       graphe->sommets[i].nom, graphe->sommets[j].nom,
-                       graphe->sommets[j].poids);
-                for(; k >= 0; --k)
-                {
-                    printf("De %s a %s : %d\n", sommets[k+1].nom, sommets[k].nom,
-                                                sommets[k].poids-sommets[k+1].poids);
-                }*/
             }
         }
     }
@@ -188,72 +141,16 @@ void pluslongdespluscourts(Graphe* graphe)
 int main(int argc, char **argv)
 {
     int i;
-    /*printf("%d sommets : ", nSommets);
-    for(i = 0; i < nSommets; ++i)
-        printf("%s, ", sSommets[i]);
-
-    printf("\n%d arcs : ", nArcs);
-    for(i = 0; i < nArcs; ++i)
-        printf("%s --> %s (%d)\n", sArcs[i].depart, sArcs[i].arrivee, sArcs[i].poids);*/
-
     Graphe* graphe = createGraphe("Graphe 1", sSommets, _nSommets, sArcs, _nArcs);
-    //printGraphe(graphe);
 
-    uint64_t debut = clock();
     pluslongdespluscourts(graphe);
-    uint64_t fin = clock();
 
-    //printf("Determination du plus long des plus courts en %lld ms\n", (fin-debut)/1000);
-#if 0
-    Sommet** iSommet = malloc(graphe->nSommets*sizeof(Sommet*));
-    int depart = 6;
-    int arrivee = 9;
-    for(depart = 0; depart < graphe->nSommets; ++depart)
-    {
-        for(arrivee = 0; arrivee < graphe->nSommets; ++arrivee)
-        {
-            if(arrivee == depart)
-                continue;
-
-            clock_t debut = clock();
-            printf("%d\n", dijkstra(graphe, depart, arrivee));
-            clock_t fin = clock();
-            Sommet* dep = &graphe->sommets[depart];
-            Sommet* arr = &graphe->sommets[arrivee];
-            if(arr->precedent == NULL)
-                printf("Aucun chemin trouve de %s a %s\n", graphe->sommets[depart].nom, graphe->sommets[arrivee].nom);
-            else
-            {
-
-                i = 0;
-                while(arr != dep)
-                {
-                    iSommet[i++] = arr;
-                    /*printf("De %s a %s : %d\n", arr->precedent->nom, arr->nom,
-                                                arr->poids-arr->precedent->poids);*/
-                    arr = arr->precedent;
-                }
-                iSommet[i--] = dep;
-                printf("Chemin le plus court entre %s et %s : %d (en %lf ms)\n",
-                       graphe->sommets[depart].nom, graphe->sommets[arrivee].nom,
-                       graphe->sommets[arrivee].poids, 1000*(fin-debut)/(float)CLOCKS_PER_SEC);
-                /*for(; i >= 0; --i)
-                {
-                    printf("De %s a %s : %d\n", iSommet[i+1]->nom, iSommet[i]->nom,
-                                                iSommet[i]->poids-iSommet[i+1]->poids);
-                }*/
-            }
-        }
-    }
-
-    // Nettoyage
-    free(iSommet);
-#endif
     free(graphe->arcs);
-    for(i = 0; i < graphe->nSommets; ++i)
+    for(i = 0; i < graphe->nSommets; ++i) {
         free(graphe->sommets[i].arcs);
+    }
     free(graphe->sommets);
     free(graphe);
-   
+
     return 0;
 }

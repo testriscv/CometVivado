@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "qsort.h"
+int A[10] = {893, 40, 3233, 4267, 2669, 2541, 9073, 6023, 5681, 4622};
+
 int partition(int low, int hi)
 {
-    TYPE pivot = A[hi];
+    int pivot = A[hi];
     int i = low-1,j;
-    TYPE temp;
+    int temp;
     for(j = low; j<hi; j++)
     {
         if(A[j] < pivot)
@@ -39,18 +40,9 @@ void qsort(int low, int hi)
 int main()
 {
     int i;
-    qsort(0,SIZE-1);
-#ifndef __HLS__
-#define STR1(X) #X
-#define STR(X)  STR1(X)
-    for(i = 0; i < SIZE; ++i)
+    qsort(0,10-1);
+    for(i = 0; i < 10; ++i)
     {
-        if(strcmp(STR(TYPE), "float") == 0)
-            printf("%f\n", A[i]);
-        else if(strcmp(STR(TYPE), "int64") == 0 || strcmp(STR(TYPE), "uint64") == 0)
-            printf("%lld\n", A[i]);
-        else
-            printf("%d\n", A[i]);                    
+      printf("%d\n", A[i]);
     }
-#endif
 }
