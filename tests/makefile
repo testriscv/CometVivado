@@ -1,7 +1,7 @@
-benchmarks = matmul qsort dijkstra
+subdirs = $(wildcard */)
 
 all:
-	$(foreach bench, $(benchmarks), $(MAKE) -C $(bench) all;)
+	$(foreach test, $(subdirs), $(MAKE) -C $(test) all;)
 
 clean:
-	$(foreach bench, $(benchmarks), $(MAKE) -C $(bench) clean;)
+	$(foreach test, $(subdirs), $(MAKE) -C $(test) clean;)
