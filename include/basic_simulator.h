@@ -11,10 +11,11 @@ class BasicSimulator : public Simulator
     std::map<ac_int<32, false>, ac_int<8, false> > imemMap;  
     std::map<ac_int<32, false>, ac_int<8, false> > dmemMap;  
     
-    FILE* input;
-    FILE* output;
+    FILE* inputFile;
+    FILE* outputFile;
+    FILE* traceFile;
 public:
-    BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inputFile, const char* outputFile); 
+    BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile, const char *tFile ); 
     ~BasicSimulator();
 
 protected:

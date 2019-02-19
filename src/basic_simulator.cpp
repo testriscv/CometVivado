@@ -15,8 +15,9 @@
 BasicSimulator::BasicSimulator (
     const char* binaryFile,
     std::vector<std::string> args,
-    const char *inputFile,
-    const char *outputFile)
+    const char *inFile,
+    const char *outFile,
+    const char *tFile)
 {
 
 	core.ftoDC.we = false;
@@ -106,13 +107,16 @@ BasicSimulator::BasicSimulator (
 	 */
 	heapAddress = 0;
 
-	input = stdin;
-	output = stdout ;
+	inputFile = stdin;
+	outputFile = stdout ;
+    traceFile = stderr;
 
-  if(inputFile)
-		input = fopen(inputFile, "rb");
-	if(outputFile)
-		output = fopen(outputFile, "wb");
+    if(inFile)
+		inputFile = fopen(inFile, "rb");
+	if(outFile)
+		outputFile = fopen(outFile, "wb");
+	if(tFile)
+		traceFile = fopen(tFile, "wb");
 
 	ElfFile elfFile(binaryFile);
 	int counter = 0;
@@ -193,10 +197,10 @@ BasicSimulator::BasicSimulator (
 
 BasicSimulator::~BasicSimulator()
 {
-	if(input)
-		fclose(input);
-	if(output)
-		fclose(output);
+	if(inputFile)
+		fclose(inputFile);
+	if(outputFile)
+		fclose(outputFile);
 }
 
 void BasicSimulator::fillMemory()
@@ -240,6 +244,8 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 }
 
 void BasicSimulator::printCycle(){
+    // Use the trace file to separate program output from simulator output
+    //fprintf(traceFile, "PC: %08x\n", core.pc); 
 
 //  if(!core.stallSignals[0]) {
 //
@@ -567,8 +573,8 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 	char* localBuffer = new char[size.to_int()];
 	ac_int<32, true> result;
 
-	if(file == 0 && input)
-		result = read(input->_fileno, localBuffer, size);
+	if(file == 0 && inputFile)
+		result = read(inputFile->_fileno, localBuffer, size);
 	else
 		result = read(file, localBuffer, size);
 
@@ -590,10 +596,10 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
 	ac_int<32, true> result = 0;
-	if(file == 1 && output)  // 3 is the first available file descriptor
+	if(file == 1 && outputFile)  // 3 is the first available file descriptor
 	{
 		fflush(stdout);
-		result = write(output->_fileno, localBuffer, size);
+		result = write(outputFile->_fileno, localBuffer, size);
 	}
 	else
 	{
