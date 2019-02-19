@@ -7,7 +7,7 @@ include_directories(./include
 				/usr/include/boost
 		    ${Boost_INCLUDE_DIRS})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_program_options -g -std=c++11 -D__CATAPULT__")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_program_options -g -std=c++11 -D__CATAPULT__ -O3")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
