@@ -178,7 +178,6 @@ void decode(struct FtoDC ftoDC,
 
         break;
     case RISCV_SYSTEM:
-
         //TODO
 
         break;
@@ -524,10 +523,13 @@ void forwardUnit(
 				forwardRegisters.forwardExtoVal1 = 1;
 			}
 		}
-		else if (memoryUseRd && decodeRs1 == memoryRd)
+		else if (memoryUseRd && decodeRs1 == memoryRd){
 			forwardRegisters.forwardMemtoVal1 = 1;
-		else if (writebackUseRd && decodeRs1 == writebackRd)
+		}
+		else if (writebackUseRd && decodeRs1 == writebackRd){
 			forwardRegisters.forwardWBtoVal1 = 1;
+
+		}
 	}
 
 	if (decodeUseRs2){
@@ -684,7 +686,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 			core.stallSignals, forwardRegisters);
 
     bool wait_tmp_2 = true;
-    if (!core.stallSignals[3] && !globalStall){
+    if (!core.stallSignals[3] && !globalStall && memtoWB_temp.we){
 
        memMask mask;
        //TODO: carry the data size to memToWb

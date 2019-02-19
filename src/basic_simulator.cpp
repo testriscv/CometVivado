@@ -113,7 +113,6 @@ BasicSimulator::BasicSimulator (
 	if(outputFile)
 		output = fopen(outputFile, "wb");
 
-	printf("Reading the ELF file: %s\n", binaryFile);
 	ElfFile elfFile(binaryFile);
 	int counter = 0;
 	for(unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++)
@@ -149,7 +148,6 @@ BasicSimulator::BasicSimulator (
 		const char* name = (const char*) &(sectionContent[symbol->name]);
 		if(strcmp(name, "_start") == 0)
 		{
-			fprintf(stdout, "%s     @%06x\n", name, symbol->offset);
 			core.pc = symbol->offset;
 		}
 
@@ -187,8 +185,8 @@ BasicSimulator::BasicSimulator (
 		currentPlaceStrings += oneCharIndex;
 	}
 
-	fillMemory();
 	heapAddress = heap;
+	fillMemory();
 	core.regFile[2] = STACK_INIT;
 }
 
@@ -243,14 +241,20 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
 
 //  if(!core.stallSignals[0]) {
-//	fprintf(stdout, "Debug trace : %x  ",core.ftoDC.pc);
+//
+//	printf("Debug trace : %x ", (unsigned int) core.ftoDC.pc);
 //	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 //
 //	for (int oneReg = 0; oneReg < 32; oneReg++){
-//		fprintf(stdout, "%x  ", core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+//		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
 //	}
 //	std::cout << std::endl;
-//}
+//	if (core.memtoWB.isStore)
+//		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
+//	if (core.memtoWB.isLoad)
+//		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
+//	}
+
 }
 
 
@@ -345,7 +349,6 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 }
 
 void BasicSimulator::solveSyscall()
-//ac_int<32, true> syscallId, ac_int<32, true> arg1, ac_int<32, true> arg2, ac_int<32, true> arg3, ac_int<32, true> arg4, bool &exit)
 {
 
 	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2])){
@@ -362,7 +365,6 @@ void BasicSimulator::solveSyscall()
 			 	arg2 = core.memtoWB.result;
 			else if(core.memtoWB.rd == 12){
 			 	arg3 = core.memtoWB.result;
-        printf("forwarding %x\n", arg3);
       }
 			else if(core.memtoWB.rd == 13)
 			 	arg4 = core.memtoWB.result;
@@ -371,9 +373,6 @@ void BasicSimulator::solveSyscall()
 		}
 
 		ac_int<32, true> result = 0;
-
-		//XXX Debug
-		printf("SyscallId : %d\n", syscallId);
 
 		switch (syscallId)
 		{
@@ -547,10 +546,15 @@ void BasicSimulator::solveSyscall()
 			break;
 		}
 
+		//We write the result and forward
+		core.memtoWB.result = result;
+		core.memtoWB.rd = 10;
+		core.memtoWB.useRd = 1;
+
 		if(core.dctoEx.useRs1 && (core.dctoEx.rs1 == 10))
-			core.dctoEx.rhs = result;
-		if(core.dctoEx.useRs2 && (core.dctoEx.rs2 == 10))
 			core.dctoEx.lhs = result;
+		if(core.dctoEx.useRs2 && (core.dctoEx.rs2 == 10))
+			core.dctoEx.rhs = result;
 		if(core.dctoEx.useRs3 && (core.dctoEx.rs3 == 10))
 			core.dctoEx.datac = result;
 
@@ -580,7 +584,7 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
 {
 	char* localBuffer = new char[size.to_int()];
-  printf("write syscall size: %d file : %d output : %d\n", size, file, output);
+
 	for (int i=0; i<size; i++)
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
@@ -725,7 +729,6 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
 	}
 	int result  = open(localPath, unixflags, mode.to_int());
 
-	fprintf(stdout, "Opening a file %d\n", result);
 
 	delete[] localPath;
 	return result;
@@ -801,7 +804,6 @@ ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, f
 
 ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
 {
-
 	ac_int<32, true> result;
 	if (value == 0)
 	{

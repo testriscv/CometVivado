@@ -28,16 +28,16 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
     case STORE:
       switch(mask) {
         case BYTE:
-          temp =   data[addr>>2];
+          temp = data[addr>>2];
           data[addr>>2].set_slc(((int) addr.slc<2>(0)) << 3, dataIn.slc<8>(0));
           break;
         case HALF:
-          temp =   data[addr>>2];
+          temp = data[addr>>2];
           data[addr>>2].set_slc(addr[1] ? 16 : 0, dataIn.slc<16>(0));
 
           break;
         case WORD:
-          temp =   data[addr>>2];
+          temp = data[addr>>2];
           data[addr>>2] = dataIn;
 
           break;
