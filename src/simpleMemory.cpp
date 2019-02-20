@@ -50,7 +50,6 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
           bit = t8.slc<1>(7);
           dataOut.set_slc(0, t8);
           dataOut.set_slc(8, (ac_int<24, true>)bit);
-          dataOut = 0;
           break;
         case HALF:
           t16 = data[addr>>2].slc<16>(addr[1] ? 16 : 0);
