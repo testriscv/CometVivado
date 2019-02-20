@@ -12,6 +12,7 @@ int main(int argc, char** argv)
     std::string binaryFile;
     std::string inputFile;
     std::string outputFile;
+    std::string traceFile;
     std::vector<std::string> benchArgs;
 
     namespace po = boost::program_options;
@@ -25,6 +26,7 @@ int main(int argc, char** argv)
         ("file,f", po::value<std::string>()->required(), "Specifies the RISCV program binary file")
         ("input,i", po::value<std::string>(), "Specifies input file")
         ("output,o", po::value<std::string>(), "Specifies output file")
+        ("trace-file,t", po::value<std::string>(), "Specifies trace file for simulator output")
         ("program-args,a", po::value<std::vector<std::string> >(), "Specifies command line arguments for the binary program");
 
         positionalOpts.add("program-args", -1);
@@ -46,10 +48,12 @@ int main(int argc, char** argv)
             benchArgs = optionMap["program-args"].as<std::vector<std::string> >();
         }
 
-        if(optionMap.count("output"))
-          outputFile = optionMap["output"].as<std::string>();
         if(optionMap.count("input"))
           inputFile = optionMap["input"].as<std::string>();
+        if(optionMap.count("output"))
+          outputFile = optionMap["output"].as<std::string>();
+        if(optionMap.count("trace-file"))
+          traceFile = optionMap["trace-file"].as<std::string>();
 
     }catch(std::exception& e){
         std::cerr << "Error: " << e.what() << "\n";
@@ -57,7 +61,7 @@ int main(int argc, char** argv)
         return -1;
     }
     
-    BasicSimulator sim(binaryFile.c_str(), benchArgs, inputFile.c_str(), outputFile.c_str());
+    BasicSimulator sim(binaryFile.c_str(), benchArgs, inputFile.c_str(), outputFile.c_str(), traceFile.c_str());
 
     sim.run();
 
