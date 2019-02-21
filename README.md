@@ -1,6 +1,6 @@
 # Comet
 
-[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/rework)
+[![pipeline status](https://gitlab.inria.fr/srokicki/Comet/badges/master/pipeline.svg)](https://gitlab.inria.fr/srokicki/Comet/commits/master)
 
 
 RISC-V 32-bit processor written in C++ for High Level Synthesis (HLS).
@@ -10,8 +10,8 @@ RV32I base ISA, support for M extension
 
 The latest working RTL sources of comet are downloadable for ASIC or FPGA targets following those two links :
 
-- [Latest ASIC RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/rework/browse?job=catapult_ASIC)
-- [Latest Xilinx RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/rework/browse?job=catapult_Xilinx)
+- [Latest ASIC RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/master/browse?job=catapult_ASIC)
+- [Latest Xilinx RTL](https://gitlab.inria.fr/srokicki/comet/-/jobs/artifacts/master/browse?job=catapult_Xilinx)
 
 ## Dependencies
 To compile the simulator:
