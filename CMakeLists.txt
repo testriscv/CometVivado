@@ -11,21 +11,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_program_options -g -std=c++11 -D
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
-add_executable(comet.sim 	./src/cache.cpp
+add_executable(comet.sim 
 							./src/core.cpp
 							./src/elfFile.cpp
-							./src/portability.cpp
 							./src/main.cpp
 							./src/memory.cpp
 							./src/simpleMemory.cpp
 							./src/riscvISA.cpp
 							./src/basic_simulator.cpp)
 
-add_executable(atomicTests 	./src/cache.cpp
+add_executable(atomicTests
 							./src/core.cpp
 							./src/atomicTest.cpp
 							./src/elfFile.cpp
-							./src/portability.cpp
 							./src/simpleMemory.cpp
 							./src/riscvISA.cpp)
 
