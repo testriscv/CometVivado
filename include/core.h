@@ -26,6 +26,19 @@ typedef enum {
 	STALL_WRITEBACK = 4
 } StallNames;
 
+
+/******************************************************************************************
+* Stall signals enum
+* ****************************************************************************************
+*/
+typedef enum {
+	STALL_FETCH = 0,
+	STALL_DECODE = 1,
+	STALL_EXECUTE = 2,
+	STALL_MEMORY = 3,
+	STALL_WRITEBACK = 4
+} StallNames;
+
 /******************************************************************************************
  * Definition of all pipeline registers
  *
