@@ -39,7 +39,6 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
         case WORD:
           temp = data[addr>>2];
           data[addr>>2] = dataIn;
-
           break;
       }
       break;
@@ -67,6 +66,7 @@ void SimpleMemory::process(ac_int<32, false> addr, memMask mask, memOpType opTyp
           dataOut = data[addr>>2].slc<16>(addr[1] ? 16 : 0)& 0xffff;
           break;
       }
+
       break;
   }
   waitOut = false;

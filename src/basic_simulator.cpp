@@ -15,8 +15,9 @@
 BasicSimulator::BasicSimulator (
     const char* binaryFile,
     std::vector<std::string> args,
-    const char *inputFile,
-    const char *outputFile)
+    const char *inFile,
+    const char *outFile,
+    const char *tFile)
 {
 
 	core.ftoDC.we = false;
@@ -89,9 +90,16 @@ BasicSimulator::BasicSimulator (
 	core.memtoWB.we = false;
 	core.memtoWB.stall = false;
 
+	im = new ac_int<32, false>[DRAM_SIZE >> 2];
+	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
-	core.im.data = new ac_int<32, false>[DRAM_SIZE >> 2];
-	core.dm.data = new ac_int<32, false>[DRAM_SIZE >> 2];
+	core.cycle = 0;
+
+//	core.im = new SimpleMemory(im);
+//	core.dm = new SimpleMemory(dm);
+
+	core.im = new CacheMemory(new SimpleMemory(im), false);
+	core.dm = new CacheMemory(new SimpleMemory(dm), false);
 
 	for(int i=0; i<32; i++) {
 			core.regFile[i] = 0;
@@ -106,13 +114,16 @@ BasicSimulator::BasicSimulator (
 	 */
 	heapAddress = 0;
 
-	input = stdin;
-	output = stdout ;
+	inputFile = stdin;
+	outputFile = stdout ;
+    traceFile = stderr;
 
-  if(inputFile)
-		input = fopen(inputFile, "rb");
-	if(outputFile)
-		output = fopen(outputFile, "wb");
+    if(inFile)
+		inputFile = fopen(inFile, "rb");
+	if(outFile)
+		outputFile = fopen(outFile, "wb");
+	if(tFile)
+		traceFile = fopen(tFile, "wb");
 
 	ElfFile elfFile(binaryFile);
 	int counter = 0;
@@ -193,10 +204,10 @@ BasicSimulator::BasicSimulator (
 
 BasicSimulator::~BasicSimulator()
 {
-	if(input)
-		fclose(input);
-	if(output)
-		fclose(output);
+	if(inputFile)
+		fclose(inputFile);
+	if(outputFile)
+		fclose(outputFile);
 }
 
 void BasicSimulator::fillMemory()
@@ -215,13 +226,13 @@ void BasicSimulator::fillMemory()
 	//fill instruction memory
 	for(auto it = imemMap.begin(); it!=imemMap.end(); it++)
 	{
-		core.im.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+		im[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
 	}
 
 	//fill data memory
 	for(auto it = dmemMap.begin(); it!=dmemMap.end(); it++)
 	{
-		core.dm.data[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
+		dm[(it->first.to_uint()/4)].set_slc(((it->first.to_uint())%4)*8,it->second);
 	}
 }
 
@@ -240,16 +251,20 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 }
 
 void BasicSimulator::printCycle(){
+    // Use the trace file to separate program output from simulator output
+    //fprintf(traceFile, "PC: %08x\n", core.pc); 
 
 //  if(!core.stallSignals[0]) {
 //
-//	printf("Debug trace : %x ", (unsigned int) core.ftoDC.pc);
+//	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
+//	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
 //	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 //
 //	for (int oneReg = 0; oneReg < 32; oneReg++){
 //		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
 //	}
 //	std::cout << std::endl;
+//	}
 //	if (core.memtoWB.isStore)
 //		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
 //	if (core.memtoWB.isLoad)
@@ -261,9 +276,15 @@ void BasicSimulator::printCycle(){
 
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
-	ac_int<32, false> mem = core.dm.data[addr >> 2];
-	mem.set_slc(((int) addr.slc<2>(0) << 3), value);
-	core.dm.data[addr >> 2] = mem;
+//	ac_int<32, false> mem = dm[addr >> 2];
+//	mem.set_slc(((int) addr.slc<2>(0) << 3), value);
+//	dm[addr >> 2] = mem;
+
+	ac_int<32, false> wordRes = 0;
+	bool stall = true;
+	while (stall)
+		core.dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
+
 }
 
 void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
@@ -310,7 +331,13 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 	//#endif
 	// read main memory if it wasn't in cache
 	ac_int<8, true> result;
-	result = core.dm.data[addr >> 2].slc<8>(((int)addr.slc<2>(0))<<3);
+	result = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0))<<3);
+	ac_int<32, false> wordRes = 0;
+	bool stall = true;
+	while (stall)
+		core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
+
+	result = wordRes.slc<8>(0);
 	return result;
 }
 
@@ -352,7 +379,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2])){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2] && ! core.stallIm && ! core.stallDm)){
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
 		ac_int<32, true> arg2 = core.regFile[11];
@@ -379,6 +406,9 @@ void BasicSimulator::solveSyscall()
 		{
 		case SYS_exit:
 			exitFlag = 1; //Currently we break on ECALL
+//			fprintf(stderr, "Stats for dm : %d / %d\n", dynamic_cast<CacheMemory*>(core.dm)->numberMiss, dynamic_cast<CacheMemory*>(core.dm)->numberAccess);
+			fprintf(stderr, "Stats for im : %d / %d\n", dynamic_cast<CacheMemory*>(core.im)->numberMiss, dynamic_cast<CacheMemory*>(core.im)->numberAccess);
+
 			break;
 		case SYS_read:
 			result = this->doRead(arg1, arg2, arg3);
@@ -567,8 +597,8 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
 	char* localBuffer = new char[size.to_int()];
 	ac_int<32, true> result;
 
-	if(file == 0 && input)
-		result = read(input->_fileno, localBuffer, size);
+	if(file == 0 && inputFile)
+		result = read(inputFile->_fileno, localBuffer, size);
 	else
 		result = read(file, localBuffer, size);
 
@@ -590,10 +620,10 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
 	ac_int<32, true> result = 0;
-	if(file == 1 && output)  // 3 is the first available file descriptor
+	if(file == 1 && outputFile)  // 3 is the first available file descriptor
 	{
 		fflush(stdout);
-		result = write(output->_fileno, localBuffer, size);
+		result = write(outputFile->_fileno, localBuffer, size);
 	}
 	else
 	{

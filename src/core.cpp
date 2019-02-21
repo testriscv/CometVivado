@@ -157,6 +157,7 @@ void decode(struct FtoDC ftoDC,
         dctoEx.useRs2 = 0;
         dctoEx.useRs3 = 1;
         dctoEx.useRd = 0;
+        dctoEx.rd = 0;
         break;
     case RISCV_OPI:
         dctoEx.lhs = valueReg1;
@@ -475,19 +476,21 @@ void branchUnit(ac_int<32, false> nextPC_fetch,
 		ac_int<32, false> &pc,
 		bool &we_fetch,
 		bool &we_decode,
-    bool stall_fetch){
+		bool stall_fetch){
 
-  if (isBranch_execute){
-		we_fetch = 0;
-		we_decode = 0;
-		pc = nextPC_execute;
-	}
-	else if (isBranch_decode){
-		we_fetch = 0;
-		pc = nextPC_decode;
-	}
-	else if(!stall_fetch) {
-		pc = nextPC_fetch;
+	if (!stall_fetch){
+		if (isBranch_execute){
+			we_fetch = 0;
+			we_decode = 0;
+			pc = nextPC_execute;
+		}
+		else if (isBranch_decode){
+			we_fetch = 0;
+			pc = nextPC_decode;
+		}
+		else {
+			pc = nextPC_fetch;
+		}
 	}
 
 }
@@ -656,6 +659,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
 		bool globalStall)
 {
     core.stallSignals[0] = 0; core.stallSignals[1] = 0; core.stallSignals[2] = 0; core.stallSignals[3] = 0; core.stallSignals[4] = 0;
+    core.stallIm = false; core.stallDm = false;
 
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
@@ -665,10 +669,14 @@ void doCycle(struct Core &core, 		 //Core containing all values
     struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
+
+
     //declare temporary register file
     ac_int<32, false> nextInst;
-    bool wait_tmp = false;
-    core.im.process(core.pc, WORD, LOAD, 0, nextInst, wait_tmp);
+
+    if (!globalStall && !core.stallDm)
+    	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
+
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
     execute(core.dctoEx, extoMem_temp);
@@ -685,8 +693,7 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		wbOut_temp.rd, wbOut_temp.useRd,
 			core.stallSignals, forwardRegisters);
 
-    bool wait_tmp_2 = true;
-    if (!core.stallSignals[3] && !globalStall && memtoWB_temp.we){
+    if (!core.stallSignals[3] && !globalStall && memtoWB_temp.we && !core.stallIm){
 
        memMask mask;
        //TODO: carry the data size to memToWb
@@ -711,13 +718,14 @@ void doCycle(struct Core &core, 		 //Core containing all values
           mask = WORD;
           break;
        }
-       core.dm.process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, wait_tmp_2);
+       core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
     }
     //commit the changes to the pipeline register
-    if (!core.stallSignals[0] && !globalStall)
+    if (!core.stallSignals[0] && !globalStall && !core.stallIm && !core.stallDm){
     	copyFtoDC(core.ftoDC, ftoDC_temp);
+    }
 
-    if (!core.stallSignals[1] && !globalStall){
+    if (!core.stallSignals[1] && !globalStall && !core.stallIm && !core.stallDm){
     	copyDCtoEx(core.dctoEx, dctoEx_temp);
 
     	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
@@ -742,22 +750,25 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		core.dctoEx.datac = wbOut_temp.value;
     }
 
-    if (core.stallSignals[1] && !core.stallSignals[2]){
+    if (core.stallSignals[1] && !core.stallSignals[2] && !core.stallIm && !core.stallDm){
     	core.dctoEx.we = 0; core.dctoEx.useRd = 0; core.dctoEx.isBranch = 0; core.dctoEx.instruction = 0; core.dctoEx.pc = 0;
     }
 
-    if (!core.stallSignals[2] && !globalStall)
+    if (!core.stallSignals[2] && !globalStall && !core.stallIm && !core.stallDm){
     	copyExtoMem(core.extoMem, extoMem_temp);
+    }
 
-    if (!core.stallSignals[3] && !globalStall){
+    if (!core.stallSignals[3] && !globalStall && !core.stallIm && !core.stallDm){
     	copyMemtoWB(core.memtoWB, memtoWB_temp);
     }
 
-    if (wbOut_temp.we && wbOut_temp.useRd){
+    if (wbOut_temp.we && wbOut_temp.useRd && !globalStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
+    	 core.cycle++;
     }
 
-    branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[0]);
+
+	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[0] || core.stallIm || core.stallDm || globalStall);
 
 }
 
@@ -765,8 +776,8 @@ void doCycle(struct Core &core, 		 //Core containing all values
 void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
     Core core;
-    core.im.data = imData;
-    core.dm.data = dmData;
+    core.im = new IncompleteMemory(imData);
+    core.dm = new IncompleteMemory(dmData);
     core.pc = 0;
 
     while(1) {

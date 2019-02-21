@@ -56,7 +56,7 @@ bool getTest(std::istream& is, std::string &message, unsigned int &instruction, 
 int main(int argc, char** argv)
 {
 	//Opening test definition file
-	std::ifstream infile("test.txt");
+	std::ifstream infile(argv[1]);
 
 
 	while (infile.peek() != EOF){
@@ -69,20 +69,100 @@ int main(int argc, char** argv)
 
 		getTest(infile, message, instruction, numberOfCycles, initialState, finalState);
 		std::cerr<<message;
+		numberOfCycles = 35;
 
 		//We initialize a simulator with the state
 		Core core;
+		ac_int<32, false> im[8192], dm[8192];
+
+		core.im = new CacheMemory(new IncompleteMemory(im), false);
+		core.dm = new CacheMemory(new IncompleteMemory(dm), true);
+
+
 		core.pc = initialState.pc;
 		for (int oneReg = 0; oneReg<32; oneReg++)
 			core.regFile[oneReg] = initialState.regs[oneReg];
 
 
 
-		ac_int<32, false> im[8192], dm[8192];
 
 		im[0] = instruction;
+		dm[initialState.address>>2] = initialState.value;
+		fprintf(stderr, "Setting %x at %d\n", initialState.value, initialState.address);
 
+		core.ftoDC.we = false;
+		core.ftoDC.stall = false;
+
+		core.dctoEx.pc = 0;
+		core.dctoEx.instruction = 0;
+
+		core.dctoEx.opCode = 0;
+		core.dctoEx.funct7 = 0;
+		core.dctoEx.funct3 = 0;
+
+		core.dctoEx.lhs = 0;
+		core.dctoEx.rhs = 0;
+		core.dctoEx.datac = 0;
+
+		// syscall only
+		core.dctoEx.datad = 0;
+		core.dctoEx.datae = 0;
+
+		//For branch unit
+		core.dctoEx.nextPCDC = 0;
+		core.dctoEx.isBranch = false;
+
+		//Information for forward/stall unit
+		core.dctoEx.useRs1 = false;
+		core.dctoEx.useRs2 = false;
+		core.dctoEx.useRs3 = false;
+		core.dctoEx.useRd = false;
+		core.dctoEx.rs1 = 0;
+		core.dctoEx.rs2 = 0;
+		core.dctoEx.rs3 = 0;
+		core.dctoEx.rd = 0;
+
+		//Register for all stages
+		core.dctoEx.we = false;
+		core.dctoEx.stall = false;
+
+		core.extoMem.pc = 0;
+		core.extoMem.instruction = 0;
+
+		core.extoMem.result = 0;
+		core.extoMem.rd = 0;
+		core.extoMem.useRd = false;
+		core.extoMem.isLongInstruction = false;
+		core.extoMem.opCode = 0;
+		core.extoMem.funct3 = 0;
+
+		core.extoMem.datac = 0;
+
+		//For branch unit
+		core.extoMem.nextPC = 0;
+		core.extoMem.isBranch = false;
+
+		//Register for all stages
+		core.extoMem.we = false;
+		core.extoMem.stall = false;
+
+		core.memtoWB.result = 0;
+		core.memtoWB.rd = 0;
+		core.memtoWB.useRd = false;
+
+		core.memtoWB.address = 0;
+		core.memtoWB.valueToWrite = 0;
+		core.memtoWB.byteEnable = 0;
+		core.memtoWB.isStore = false;
+		core.memtoWB.isLoad = false;
+
+		//Register for all stages
+		core.memtoWB.we = false;
+		core.memtoWB.stall = false;
+
+		std::cout << printDecodedInstrRISCV(instruction) << std::endl;
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
+			fprintf(stderr, "cycle\n");
 			doCycle(core, 0);
 		}
 
