@@ -42,8 +42,9 @@ ElfFile::ElfFile(const char* pathToElfFile)
     //*************************************************************************************
     //First step is to read the 16 first bits to determine the type of the elf file to read.
     char eident[16];
-    fread(eident, sizeof(char), 16, elfFile);
-    fseek(elfFile, 0, SEEK_SET);
+
+    size_t readReturnedVal = fread(eident, sizeof(char), 16, elfFile);
+    int seekReturnedVal = fseek(elfFile, 0, SEEK_SET);
 
     if (eident[EI_CLASS] == ELFCLASS32)
         this->is32Bits = 1;
@@ -62,7 +63,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
     if (this->is32Bits)
     {
-        fread(&this->fileHeader32, sizeof(this->fileHeader32), 1, elfFile);
+    	readReturnedVal = fread(&this->fileHeader32, sizeof(this->fileHeader32), 1, elfFile);
 
         if (this->fileHeader32.e_ident[0] == 0x7f)
             needToFixEndianness = 0;
@@ -71,7 +72,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
     }
     else
     {
-        fread(&this->fileHeader64, sizeof(this->fileHeader64), 1, elfFile);
+    	readReturnedVal = fread(&this->fileHeader64, sizeof(this->fileHeader64), 1, elfFile);
 
         if (this->fileHeader64.e_ident[0] == 0x7f)
             needToFixEndianness = 0;
@@ -104,7 +105,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
 
     if (DEBUG)
-        printf("Section table is at %hu and contains %u entries of %u bytes\n", start, tableSize, entrySize);
+        printf("Section table is at %lu and contains %lu entries of %lu bytes\n", start, tableSize, entrySize);
 
 
     unsigned int res = fseek(elfFile, start, SEEK_SET);
@@ -122,7 +123,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
         res = fread(localSectionTable, entrySize,tableSize, elfFile);
         if (res != tableSize)
-            printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+            printf("Error while reading the section table ! (section size is %lu while we only read %u entries)\n", tableSize, res);
 
         //We then copy the section table into it
         this->sectionTable = new std::vector<ElfSection*>();
@@ -138,7 +139,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
         res = fread(localSectionTable, entrySize,tableSize, elfFile);
         if (res != tableSize)
-            printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+            printf("Error while reading the section table ! (section size is %lu while we only read %u entries)\n", tableSize, res);
 
         //We then copy the section table into it
         this->sectionTable = new std::vector<ElfSection*>();
@@ -316,8 +317,8 @@ bool ElfSection::isRelaSection()
 unsigned char* ElfSection::getSectionCode()
 {
     unsigned char* sectionContent = (unsigned char*) malloc(this->size);
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    fread(sectionContent, 1, this->size, this->containingElfFile->elfFile);
+    int seekReturnedVal = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+    size_t readReturnedVal = fread(sectionContent, 1, this->size, this->containingElfFile->elfFile);
     return sectionContent;
 }
 
@@ -335,8 +336,8 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations()
     if (this->isRelSection())
     {
         Elf32_Rel* sectionContent = (Elf32_Rel*) malloc(this->size);
-        fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-        fread(sectionContent, sizeof(Elf32_Rel), this->size/sizeof(Elf32_Rel), this->containingElfFile->elfFile);
+        int seekReturnedVal = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+        size_t readReturnedVal = fread(sectionContent, sizeof(Elf32_Rel), this->size/sizeof(Elf32_Rel), this->containingElfFile->elfFile);
         for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rel); relCounter++)
             result->push_back(new ElfRelocation(sectionContent[relCounter]));
 
@@ -345,8 +346,8 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations()
     else
     {
         Elf32_Rela* sectionContent = (Elf32_Rela*) malloc(this->size);
-        fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-        fread(sectionContent, sizeof(Elf32_Rela), this->size/sizeof(Elf32_Rela), this->containingElfFile->elfFile);
+        int seekReturnedVal = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+        size_t readReturnedVal = fread(sectionContent, sizeof(Elf32_Rela), this->size/sizeof(Elf32_Rela), this->containingElfFile->elfFile);
         for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rela); relCounter++)
             result->push_back(new ElfRelocation(sectionContent[relCounter]));
 
@@ -359,14 +360,14 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations()
 
 void ElfSection::writeSectionCode(unsigned char* newContent)
 {
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
+	int seekReturnedVal = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+	size_t writeReturnedVal = fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
 }
 
 void ElfSection::writeSectionCode(FILE* file, unsigned char* newContent)
 {
-    fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
-    fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
+	int seekReturnedVal = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+	size_t writeReturnedVal = fwrite(newContent, 1, this->size, this->containingElfFile->elfFile);
 }
 
 

@@ -15,7 +15,6 @@ add_executable(comet.sim
 							./src/core.cpp
 							./src/elfFile.cpp
 							./src/main.cpp
-							./src/memory.cpp
 							./src/simpleMemory.cpp
 							./src/riscvISA.cpp
 							./src/basic_simulator.cpp)

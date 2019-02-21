@@ -75,13 +75,10 @@ public:
 	void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<32, false> dataIn, ac_int<32, false>& dataOut, bool& waitOut)
 	{
 
-		if (VERBOSE) fprintf(stderr, "Cache access to %x -- state %d\n", addr, cacheState);
 
 		ac_int<LOG_SET_SIZE, false> place = addr.slc<LOG_SET_SIZE>(LOG_LINE_SIZE); //bit size is the log(setSize)
 		ac_int<TAG_SIZE, false> tag = addr.slc<TAG_SIZE>(LOG_LINE_SIZE + LOG_SET_SIZE); // startAddress is log(lineSize) + log(setSize) + 2
 		ac_int<LOG_LINE_SIZE, false> offset = addr.slc<LOG_LINE_SIZE-2>(2); //bitSize is log(lineSize), start address is 2(because of #bytes in a word)
-
-		if (VERBOSE) fprintf(stderr, "test %x %x %x %x   - TAG %x\n", cacheMemory[place][0].slc<32>(96+TAG_SIZE), cacheMemory[place][0].slc<32>(64+TAG_SIZE), cacheMemory[place][0].slc<32>(32+TAG_SIZE), cacheMemory[place][0].slc<32>(0+TAG_SIZE), cacheMemory[place][0].slc<TAG_SIZE>(0));
 
 		if (!nextLevelWaitOut && opType != NONE){
 			if (cacheState == 0){
@@ -172,13 +169,11 @@ public:
 						}
 
 					}
-					if (VERBOSE) fprintf(stderr, "HIT %x !\n", dataOut);
 
 				}
 				else{
 					numberMiss++;
 					cacheState = 10;
-					if (VERBOSE) fprintf(stderr, "MISS !\n");
 
 				}
 			}
@@ -202,18 +197,15 @@ public:
 					nextLevelAddr = oldAddress + ((cacheState-7)<<2);
 					nextLevelDataIn = oldVal.slc<32>((cacheState-7)*4*8+TAG_SIZE);
 					nextLevelOpType = (isValid) ? STORE : NONE;
-					if (VERBOSE && isValid) fprintf(stderr, "miss WB at %x  of %x\n", nextLevelAddr, nextLevelDataIn);
 				}
 				else if (cacheState >= 2){ //Then we read four values from upper level
 					if (cacheState != 6){
 						newVal.set_slc((cacheState-2)*4*8+TAG_SIZE, nextLevelDataOut); //at addr +1
-						if (VERBOSE) fprintf(stderr, "Loaded value is %x\n", nextLevelDataOut);
 					}
 
 					if (cacheState != 2){
 						nextLevelAddr = (((int) addr.slc<32-LOG_LINE_SIZE>(LOG_LINE_SIZE))<<LOG_LINE_SIZE) + ((cacheState-3)<<2);
 						nextLevelOpType = LOAD;
-						if (VERBOSE) fprintf(stderr, "miss load at %x\n", nextLevelAddr);
 					}
 				}
 
@@ -221,8 +213,6 @@ public:
 				//if (age1<age2 & age1<age3 & age1<age4)
 				if (cacheState == 1){
 					if (opType == STORE){
-						if (VERBOSE) fprintf(stderr, "before store value is %x %x %x %x --- Value to return is %x\n", newVal.slc<32>(96+TAG_SIZE), newVal.slc<32>(64+TAG_SIZE), newVal.slc<32>(32+TAG_SIZE), newVal.slc<32>(0+TAG_SIZE), dataOut);
-
 						switch(mask) {
 						case BYTE:
 							newVal.set_slc((((int) addr.slc<2>(0)) << 3) + TAG_SIZE + 4*8*offset, dataIn.slc<8>(0));
@@ -234,7 +224,6 @@ public:
 							newVal.set_slc(TAG_SIZE + 4*8*offset, dataIn);
 							break;
 						}
-						if (VERBOSE) fprintf(stderr, "after store value is %x %x %x %x --- Value to return is %x\n", newVal.slc<32>(96+TAG_SIZE), newVal.slc<32>(64+TAG_SIZE), newVal.slc<32>(32+TAG_SIZE), newVal.slc<32>(0+TAG_SIZE), dataOut);
 					}
 
 					cacheMemory[place][0] = newVal;
@@ -267,8 +256,6 @@ public:
 						break;
 					}
 					cacheState = 0;
-					if (VERBOSE) fprintf(stderr, "value is %x %x %x %x --- Value to return is %x\n", newVal.slc<32>(96+TAG_SIZE), newVal.slc<32>(64+TAG_SIZE), newVal.slc<32>(32+TAG_SIZE), newVal.slc<32>(0+TAG_SIZE), dataOut);
-
 				}
 
 

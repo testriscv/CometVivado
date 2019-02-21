@@ -406,9 +406,6 @@ void BasicSimulator::solveSyscall()
 		{
 		case SYS_exit:
 			exitFlag = 1; //Currently we break on ECALL
-//			fprintf(stderr, "Stats for dm : %d / %d\n", dynamic_cast<CacheMemory*>(core.dm)->numberMiss, dynamic_cast<CacheMemory*>(core.dm)->numberAccess);
-			fprintf(stderr, "Stats for im : %d / %d\n", dynamic_cast<CacheMemory*>(core.im)->numberMiss, dynamic_cast<CacheMemory*>(core.im)->numberAccess);
-
 			break;
 		case SYS_read:
 			result = this->doRead(arg1, arg2, arg3);
