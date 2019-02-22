@@ -13,8 +13,6 @@ void fetch(ac_int<32, false> pc,
     ftoDC.instruction = instruction;
     ftoDC.pc = pc;
     ftoDC.nextPCFetch = pc + 4;
-
-    ftoDC.stall = 0;
     ftoDC.we = 1;
 }
 
@@ -575,7 +573,6 @@ void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
     dest.instruction = src.instruction;
     dest.nextPCFetch = src.nextPCFetch;
     dest.we = src.we;
-    dest.stall = src.stall;
 }
 
 void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
@@ -589,10 +586,6 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
     dest.lhs = src.lhs;   //  left hand side : operand 1
     dest.rhs = src.rhs;   // right hand side : operand 2
     dest.datac = src.datac; // ST, BR, JAL/R,
-
-    // syscall only
-    dest.datad = src.datad;
-    dest.datae = src.datae;
 
     //For branch unit
     dest.nextPCDC = src.nextPCDC;
@@ -610,7 +603,6 @@ void copyDCtoEx(struct DCtoEx &dest, struct DCtoEx src){
 
     //Register for all stages
     dest.we = src.we;
-    dest.stall = src.stall; //TODO add that
 }
 
 void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
@@ -632,7 +624,6 @@ void copyExtoMem(struct ExtoMem &dest, struct ExtoMem src){
 
     //Register for all stages
     dest.we = src.we;
-    dest.stall = src.stall; //TODO add that
 }
 
 void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
@@ -648,7 +639,6 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 
     //Register for all stages
     dest.we = src.we;
-    dest.stall = src.stall;
 }
 
 
@@ -662,10 +652,10 @@ void doCycle(struct Core &core, 		 //Core containing all values
     core.stallIm = false; core.stallDm = false;
 
     //declare temporary structs
-    struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0; ftoDC_temp.stall = 0;
-    struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0; dctoEx_temp.stall = 0;
-    struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0; extoMem_temp.stall = 0;
-    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.stall = 0; memtoWB_temp.isLoad = 0;
+    struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
+    struct DCtoEx dctoEx_temp; dctoEx_temp.isBranch = 0; dctoEx_temp.useRs1 = 0; dctoEx_temp.useRs2 = 0; dctoEx_temp.useRs3 = 0; dctoEx_temp.useRd = 0; dctoEx_temp.we = 0;
+    struct ExtoMem extoMem_temp; extoMem_temp.useRd = 0; extoMem_temp.isBranch = 0; extoMem_temp.we = 0;
+    struct MemtoWB memtoWB_temp; memtoWB_temp.useRd = 0; memtoWB_temp.isStore = 0; memtoWB_temp.we = 0; memtoWB_temp.isLoad = 0;
     struct WBOut wbOut_temp; wbOut_temp.useRd = 0; wbOut_temp.we = 0; wbOut_temp.rd = 0;
     struct ForwardReg forwardRegisters; forwardRegisters.forwardExtoVal1 = 0; forwardRegisters.forwardExtoVal2 = 0; forwardRegisters.forwardExtoVal3 = 0; forwardRegisters.forwardMemtoVal1 = 0; forwardRegisters.forwardMemtoVal2 = 0; forwardRegisters.forwardMemtoVal3 = 0; forwardRegisters.forwardWBtoVal1 = 0; forwardRegisters.forwardWBtoVal2 = 0; forwardRegisters.forwardWBtoVal3 = 0;
 
