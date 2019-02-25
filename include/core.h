@@ -49,7 +49,7 @@ struct ForwardReg {
 
 struct FtoDC
 {
-    FtoDC() : pc(0), instruction(0x13), we(1), stall(0)
+    FtoDC() : pc(0), instruction(0x13), we(1)
     {}
     ac_int<32, false> pc;           	// PC where to fetch
     ac_int<32, false> instruction;  	// Instruction to execute
@@ -57,7 +57,6 @@ struct FtoDC
 
     //Register for all stages
     bool we;
-    bool stall;
 };
 
 struct DCtoEx
@@ -72,10 +71,6 @@ struct DCtoEx
     ac_int<32, true> lhs;   //  left hand side : operand 1
     ac_int<32, true> rhs;   // right hand side : operand 2
     ac_int<32, true> datac; // ST, BR, JAL/R,
-
-    // syscall only
-    ac_int<32, true> datad;
-    ac_int<32, true> datae;
 
     //For branch unit
     ac_int<32, false> nextPCDC;
@@ -93,7 +88,6 @@ struct DCtoEx
 
     //Register for all stages
     bool we;
-    bool stall; //TODO add that
 };
 
 struct ExtoMem
@@ -116,7 +110,6 @@ struct ExtoMem
 
     //Register for all stages
     bool we;
-    bool stall; //TODO add that
 };
 
 struct MemtoWB
@@ -133,8 +126,6 @@ struct MemtoWB
 
     //Register for all stages
     bool we;
-    bool stall;
-
 };
 
 struct WBOut

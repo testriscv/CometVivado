@@ -21,7 +21,6 @@ BasicSimulator::BasicSimulator (
 {
 
 	core.ftoDC.we = false;
-	core.ftoDC.stall = false;
 
 	core.dctoEx.pc = 0;
 	core.dctoEx.instruction = 0;
@@ -33,10 +32,6 @@ BasicSimulator::BasicSimulator (
 	core.dctoEx.lhs = 0;
 	core.dctoEx.rhs = 0;
 	core.dctoEx.datac = 0;
-
-	// syscall only
-	core.dctoEx.datad = 0;
-	core.dctoEx.datae = 0;
 
 	//For branch unit
 	core.dctoEx.nextPCDC = 0;
@@ -54,7 +49,6 @@ BasicSimulator::BasicSimulator (
 
 	//Register for all stages
 	core.dctoEx.we = false;
-	core.dctoEx.stall = false;
 
 	core.extoMem.pc = 0;
 	core.extoMem.instruction = 0;
@@ -74,7 +68,6 @@ BasicSimulator::BasicSimulator (
 
 	//Register for all stages
 	core.extoMem.we = false;
-	core.extoMem.stall = false;
 
 	core.memtoWB.result = 0;
 	core.memtoWB.rd = 0;
@@ -88,7 +81,6 @@ BasicSimulator::BasicSimulator (
 
 	//Register for all stages
 	core.memtoWB.we = false;
-	core.memtoWB.stall = false;
 
 	im = new ac_int<32, false>[DRAM_SIZE >> 2];
 	dm = new ac_int<32, false>[DRAM_SIZE >> 2];
@@ -252,7 +244,7 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
-    //fprintf(traceFile, "PC: %08x\n", core.pc); 
+    //fprintf(traceFile, "PC: %08x\n", core.pc);
 
 //  if(!core.stallSignals[0]) {
 //
@@ -406,9 +398,6 @@ void BasicSimulator::solveSyscall()
 		{
 		case SYS_exit:
 			exitFlag = 1; //Currently we break on ECALL
-//			fprintf(stderr, "Stats for dm : %d / %d\n", dynamic_cast<CacheMemory*>(core.dm)->numberMiss, dynamic_cast<CacheMemory*>(core.dm)->numberAccess);
-			fprintf(stderr, "Stats for im : %d / %d\n", dynamic_cast<CacheMemory*>(core.im)->numberMiss, dynamic_cast<CacheMemory*>(core.im)->numberAccess);
-
 			break;
 		case SYS_read:
 			result = this->doRead(arg1, arg2, arg3);

@@ -91,7 +91,6 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Setting %x at %d\n", initialState.value, initialState.address);
 
 		core.ftoDC.we = false;
-		core.ftoDC.stall = false;
 
 		core.dctoEx.pc = 0;
 		core.dctoEx.instruction = 0;
@@ -103,10 +102,6 @@ int main(int argc, char** argv)
 		core.dctoEx.lhs = 0;
 		core.dctoEx.rhs = 0;
 		core.dctoEx.datac = 0;
-
-		// syscall only
-		core.dctoEx.datad = 0;
-		core.dctoEx.datae = 0;
 
 		//For branch unit
 		core.dctoEx.nextPCDC = 0;
@@ -124,7 +119,6 @@ int main(int argc, char** argv)
 
 		//Register for all stages
 		core.dctoEx.we = false;
-		core.dctoEx.stall = false;
 
 		core.extoMem.pc = 0;
 		core.extoMem.instruction = 0;
@@ -144,7 +138,6 @@ int main(int argc, char** argv)
 
 		//Register for all stages
 		core.extoMem.we = false;
-		core.extoMem.stall = false;
 
 		core.memtoWB.result = 0;
 		core.memtoWB.rd = 0;
@@ -158,7 +151,6 @@ int main(int argc, char** argv)
 
 		//Register for all stages
 		core.memtoWB.we = false;
-		core.memtoWB.stall = false;
 
 		std::cout << printDecodedInstrRISCV(instruction) << std::endl;
 		for (int oneCycle = 0; oneCycle < numberOfCycles; oneCycle++){
