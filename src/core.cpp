@@ -775,8 +775,11 @@ void doCycle(struct Core &core, 		 //Core containing all values
 void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32, false> dmData[DRAM_SIZE>>2])
 {
     Core core;
-    core.im = new IncompleteMemory(imData);
-    core.dm = new IncompleteMemory(dmData);
+    IncompleteMemory imInterface = IncompleteMemory(imData);
+    IncompleteMemory dmInterface = IncompleteMemory(dmData);
+
+    core.im = &imInterface;
+    core.dm = &dmInterface;
     core.pc = 0;
 
     while(1) {
