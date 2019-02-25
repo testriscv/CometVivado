@@ -570,6 +570,10 @@ void forwardUnit(
 	}
 }
 
+/****************************************************************
+ *  Copy functions 
+ ****************************************************************
+
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
     dest.pc = src.pc;
     dest.instruction = src.instruction;
@@ -650,6 +654,7 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
     dest.we = src.we;
     dest.stall = src.stall;
 }
+*/
 
 
 
@@ -722,11 +727,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
     //commit the changes to the pipeline register
     if (!core.stallSignals[STALL_FETCH] && !globalStall && !core.stallIm && !core.stallDm){
-    	copyFtoDC(core.ftoDC, ftoDC_temp);
+    	//copyFtoDC(core.ftoDC, ftoDC_temp);
+        core.ftoDC = ftoDC_temp;
     }
 
     if (!core.stallSignals[STALL_DECODE] && !globalStall && !core.stallIm && !core.stallDm){
-    	copyDCtoEx(core.dctoEx, dctoEx_temp);
+    	//copyDCtoEx(core.dctoEx, dctoEx_temp);
+        core.dctoEx = dctoEx_temp;
 
     	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
       	  core.dctoEx.lhs = extoMem_temp.result;
@@ -755,11 +762,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
     }
 
     if (!core.stallSignals[STALL_EXECUTE] && !globalStall && !core.stallIm && !core.stallDm){
-    	copyExtoMem(core.extoMem, extoMem_temp);
+    	//copyExtoMem(core.extoMem, extoMem_temp);
+        core.extoMem = extoMem_temp;
     }
 
     if (!core.stallSignals[STALL_MEMORY] && !globalStall && !core.stallIm && !core.stallDm){
-    	copyMemtoWB(core.memtoWB, memtoWB_temp);
+    	//copyMemtoWB(core.memtoWB, memtoWB_temp);
+        core.memtoWB = memtoWB_temp;
     }
 
     if (wbOut_temp.we && wbOut_temp.useRd && !globalStall && !core.stallIm && !core.stallDm){
