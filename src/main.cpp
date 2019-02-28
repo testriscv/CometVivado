@@ -45,7 +45,11 @@ int main(int argc, char** argv)
 
         binaryFile = optionMap["file"].as<std::string>();
         if(optionMap.count("program-args")){
-            benchArgs = optionMap["program-args"].as<std::vector<std::string> >();
+            auto pargs = optionMap["program-args"].as<std::vector<std::string> >();
+            benchArgs.push_back(binaryFile);
+            for(auto a: pargs){
+                benchArgs.push_back(a);
+            }
         }
 
         if(optionMap.count("input"))
