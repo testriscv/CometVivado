@@ -64,13 +64,13 @@ Comet implements the 32bit ISA with the M extension (hardware multiply) and has 
 The build process needs to be configured accordingly.
 
 ```
-./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
+./configure --prefix=$RISCV --with-arch=rv32i --with-abi=ilp32
 make
 ```
 
 Once the toolchain compiled it is a good idea to add it's installation directory to the your system's PATH :
 ```
-export PATH = $PATH:$RISCV
+export PATH = $PATH:$RISCV/bin
 ```
 
 > You may want to add that command to your shell startup file
