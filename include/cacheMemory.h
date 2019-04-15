@@ -34,7 +34,13 @@
 //template<int OFFSET_SIZE, int TAG_SIZE, int SET_SIZE, int ASSOCIATIVITY>
 class CacheMemory: public MemoryInterface {
 public:
+
+#ifdef HLS
 	IncompleteMemory *nextLevel;
+#else
+	MemoryInterface *nextLevel;
+#endif
+
 	ac_int<TAG_SIZE+LINE_SIZE*8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
 	ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
 	ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
@@ -66,7 +72,11 @@ public:
 
 
 
+#ifdef HLS
 	CacheMemory(IncompleteMemory *nextLevel, bool v){
+#else
+	CacheMemory(MemoryInterface *nextLevel, bool v){
+#endif
 		this->nextLevel = nextLevel;
 		for (int oneSetElement = 0; oneSetElement<SET_SIZE; oneSetElement++){
 			for (int oneSet = 0; oneSet < ASSOCIATIVITY; oneSet++){
