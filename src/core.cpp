@@ -1,5 +1,6 @@
 #include <core.h>
 #include <ac_int.h>
+#include <cacheMemory.h>
 
 #ifndef __HLS__
 #include "simulator.h"
@@ -318,24 +319,7 @@ void execute(struct DCtoEx dctoEx,
     case RISCV_OP:
         if(dctoEx.funct7.slc<1>(0))     // M Extension
         {
-            ac_int<33, true> mul_reg_a = dctoEx.lhs;
-            ac_int<33, true> mul_reg_b = dctoEx.rhs;
-            ac_int<66, true> longResult = 0;
-            switch (dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
-            {
-            case RISCV_OP_M_MULHSU:
-                mul_reg_b[32] = 0;
-                break;
-            case RISCV_OP_M_MULHU:
-                mul_reg_a[32] = 0;
-                mul_reg_b[32] = 0;
-                break;
-            }
-            longResult = mul_reg_a * mul_reg_b;
-            if(dctoEx.funct3 == RISCV_OP_M_MULH || dctoEx.funct3 == RISCV_OP_M_MULHSU || dctoEx.funct3 == RISCV_OP_M_MULHU)
-                extoMem.result = longResult.slc<32>(32);
-            else
-                extoMem.result = longResult.slc<32>(0);
+
         }
         else{
             switch(dctoEx.funct3){
@@ -778,8 +762,10 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
     IncompleteMemory imInterface = IncompleteMemory(imData);
     IncompleteMemory dmInterface = IncompleteMemory(dmData);
 
+    CacheMemory dmCache = CacheMemory(&dmInterface, false);
+
     core.im = &imInterface;
-    core.dm = &dmInterface;
+    core.dm = &dmCache;
     core.pc = 0;
 
     while(1) {
