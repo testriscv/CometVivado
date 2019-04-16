@@ -762,10 +762,10 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
     IncompleteMemory imInterface = IncompleteMemory(imData);
     IncompleteMemory dmInterface = IncompleteMemory(dmData);
 
-    CacheMemory dmCache = CacheMemory(&dmInterface, false);
+//    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
-    core.im = &imInterface;
-    core.dm = &dmCache;
+    core.im = &dmInterface;
+    core.dm = &dmInterface;
     core.pc = 0;
 
     while(1) {
