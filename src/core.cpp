@@ -764,7 +764,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
 
 //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
-    core.im = &dmInterface;
+    core.im = &imInterface;
     core.dm = &dmInterface;
     core.pc = 0;
 
