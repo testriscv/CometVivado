@@ -57,11 +57,13 @@ public:
 	ac_int<32, false> nextLevelDataOut;
 	ac_int<40, false> cycle;
 	ac_int<LOG_ASSOCIATIVITY, false> setMiss;
+	bool isValid;
 	
     	bool wasStore = false;
 	ac_int<LOG_ASSOCIATIVITY, false> setStore;
 	ac_int<LOG_SET_SIZE, false> placeStore;
 	ac_int<LINE_SIZE*8+TAG_SIZE, false> valStore;
+	ac_int<32, false> dataOutStore;
 
 	bool nextLevelWaitOut;
 
@@ -102,16 +104,19 @@ public:
 
 
 
-		if (!nextLevelWaitOut && opType != NONE){
+		if (!nextLevelWaitOut){
 			cycle++;
 
 			if (wasStore || cacheState == 1){
+
 				cacheMemory[placeStore][setStore] = valStore;
 				age[placeStore][setStore] = cycle;
 				dataValid[placeStore][setStore] = 1;
+				dataOut = dataOutStore;
 				wasStore = false;
+				cacheState = 0;
 			}
-			else {
+			else if (opType != NONE){
 
 				ac_int<LINE_SIZE*8+TAG_SIZE, false> val1 = cacheMemory[place][0];
 				ac_int<LINE_SIZE*8+TAG_SIZE, false> val2 = cacheMemory[place][1];
@@ -131,7 +136,7 @@ public:
 				if (cacheState == 0){
 					numberAccess++;
 
-	//				fprintf(stderr, "Reading at addr %x\n", addr);
+	//				fprintf(stdout, "Reading at addr %x\n", addr);
 
 
 					ac_int<TAG_SIZE, false> tag1 = val1.slc<TAG_SIZE>(0);
@@ -147,25 +152,30 @@ public:
 					bool hit = hit1 | hit2 | hit3 | hit4;
 					ac_int<LOG_ASSOCIATIVITY, false> set = 0;
 					ac_int<LINE_SIZE*8, false> selectedValue;
+					ac_int<TAG_SIZE, false> tag;
 
 
 					if (hit1){
 						selectedValue = val1.slc<LINE_SIZE*8>(TAG_SIZE);
+						tag = tag1;
 						set = 0;
 					}
 
 					if (hit2){
 						selectedValue = val2.slc<LINE_SIZE*8>(TAG_SIZE);
+						tag = tag2;
 						set = 1;
 					}
 
 					if (hit3){
 						selectedValue = val3.slc<LINE_SIZE*8>(TAG_SIZE);
+						tag = tag3;
 						set = 2;
 					}
 
 					if (hit4){
 						selectedValue = val4.slc<LINE_SIZE*8>(TAG_SIZE);
+						tag = tag4;
 						set = 3;
 					}
 
@@ -174,23 +184,29 @@ public:
 					ac_int<32, true> signedWord;
 
 					if (hit){
+
+
+						ac_int<LINE_SIZE*8+TAG_SIZE, false> localValStore = 0;
+						localValStore.set_slc(TAG_SIZE, selectedValue);
+						localValStore.set_slc(0, tag);
+
 						//First we handle the store
 						if (opType == STORE){
 							switch(mask) {
 							case BYTE:
-								selectedValue.set_slc((((int) addr.slc<2>(0)) << 3) + TAG_SIZE + 4*8*offset, dataIn.slc<8>(0));
+								localValStore.set_slc((((int) addr.slc<2>(0)) << 3) + TAG_SIZE + 4*8*offset, dataIn.slc<8>(0));
 								break;
 							case HALF:
-								selectedValue.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4*8*offset, dataIn.slc<16>(0));
+								localValStore.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4*8*offset, dataIn.slc<16>(0));
 								break;
 							case WORD:
-								selectedValue.set_slc(TAG_SIZE + 4*8*offset, dataIn);
+								localValStore.set_slc(TAG_SIZE + 4*8*offset, dataIn);
 								break;
 							}
 
 							placeStore = place;
 							setStore = set;
-							valStore = selectedValue;
+							valStore = localValStore;
 							wasStore = true;
 
 						}
@@ -231,12 +247,11 @@ public:
 
 					if (cacheState == 10){
 						newVal = tag;
-						oldVal = val1;
 						setMiss = (age1 < age2 && age1<age3 && age1<age4) ? 0 : ((age2 < age1 && age2<age3 && age2<age4) ? 1 : ((age3 < age2 && age3<age1 && age3<age4) ? 2 : 3));
+						oldVal = (age1 < age2 && age1<age3 && age1<age4) ? val1 : ((age2 < age1 && age2<age3 && age2<age4) ? val2 : ((age3 < age2 && age3<age1 && age3<age4) ? val3 : val4));
+						isValid = (age1 < age2 && age1<age3 && age1<age4) ? valid1 : ((age2 < age1 && age2<age3 && age2<age4) ? valid2 : ((age3 < age2 && age3<age1 && age3<age4) ? valid3 : valid4));
 					}
 
-
-					bool isValid = valid1;
 
 					ac_int<32, false> oldAddress = (((int)oldVal.slc<TAG_SIZE>(0))<<(LOG_LINE_SIZE + LOG_SET_SIZE)) | (((int) place)<<LOG_LINE_SIZE);
 					//First we write back the four memory values in upper level
@@ -308,6 +323,8 @@ public:
 							dataOut = newVal.slc<16>((addr[1] ? 16 : 0) + 4*8*offset + TAG_SIZE) & 0xffff;
 							break;
 						}
+						dataOutStore = dataOut;
+
 
 					}
 
