@@ -35,7 +35,7 @@
 class CacheMemory: public MemoryInterface {
 public:
 
-#ifdef HLS
+#ifdef __HLS__
 	IncompleteMemory *nextLevel;
 #else
 	MemoryInterface *nextLevel;
@@ -74,7 +74,7 @@ public:
 
 
 
-#ifdef HLS
+#ifdef __HLS__
 	CacheMemory(IncompleteMemory *nextLevel, bool v){
 #else
 	CacheMemory(MemoryInterface *nextLevel, bool v){
