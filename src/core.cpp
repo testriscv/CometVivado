@@ -207,201 +207,66 @@ void execute(struct DCtoEx dctoEx,
              struct ExtoMem &extoMem)
 {
 
-    extoMem.pc = dctoEx.pc;
-    extoMem.opCode = dctoEx.opCode;
-    extoMem.rd = dctoEx.rd;
-    extoMem.funct3 = dctoEx.funct3;
-    extoMem.we = dctoEx.we;
-    extoMem.isBranch = 0;
-    extoMem.useRd = dctoEx.useRd;
-    extoMem.isLongInstruction = 0;
 
-    ac_int<13, false> imm13 = 0;
-    imm13[12] = dctoEx.instruction[31];
-    imm13.set_slc(5, dctoEx.instruction.slc<6>(25));
-    imm13.set_slc(1, dctoEx.instruction.slc<4>(8));
-    imm13[11] = dctoEx.instruction[7];
-
-    ac_int<13, true> imm13_signed = 0;
-    imm13_signed.set_slc(0, imm13);
-
-    ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
-
-
-    // switch must be in the else, otherwise external op may trigger default case
-    switch(dctoEx.opCode)
-    {
-    case RISCV_LUI:
-        extoMem.result = dctoEx.lhs;
-        break;
-    case RISCV_AUIPC:
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
-        break;
-    case RISCV_JAL:
-        //Note: in current version, the addition is made in the decode stage
-        //The value to store in rd (pc+4) is stored in lhs
-        extoMem.result = dctoEx.lhs;
-        break;
-    case RISCV_JALR:
-        //Note: in current version, the addition is made in the decode stage
-        //The value to store in rd (pc+4) is stored in lhs
-    	extoMem.nextPC = dctoEx.rhs + dctoEx.lhs;
-    	extoMem.isBranch = 1;
-
-        extoMem.result = dctoEx.pc+4;
-        break;
-    case RISCV_BR:
-        extoMem.nextPC = extoMem.pc + imm13_signed;
-
-        switch(dctoEx.funct3)
-        {
-        case RISCV_BR_BEQ:
-            extoMem.isBranch = (dctoEx.lhs == dctoEx.rhs);
-            break;
-        case RISCV_BR_BNE:
-            extoMem.isBranch = (dctoEx.lhs != dctoEx.rhs);
-            break;
-        case RISCV_BR_BLT:
-            extoMem.isBranch = (dctoEx.lhs < dctoEx.rhs);
-            break;
-        case RISCV_BR_BGE:
-            extoMem.isBranch = (dctoEx.lhs >= dctoEx.rhs);
-            break;
-        case RISCV_BR_BLTU:
-            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs);
-            break;
-        case RISCV_BR_BGEU:
-            extoMem.isBranch = ((ac_int<32, false>)dctoEx.lhs >= (ac_int<32, false>)dctoEx.rhs);
-            break;
-        }
-        break;
-    case RISCV_LD:
-        extoMem.isLongInstruction = 1;
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
-        break;
-    case RISCV_ST:
-    	extoMem.datac = dctoEx.datac;
-        extoMem.result = dctoEx.lhs + dctoEx.rhs;
-        break;
-    case RISCV_OPI:
-        switch(dctoEx.funct3)
-        {
-        case RISCV_OPI_ADDI:
-            extoMem.result = dctoEx.lhs + dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLTI:
-            extoMem.result = dctoEx.lhs < dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLTIU:
-            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
-            break;
-        case RISCV_OPI_XORI:
-            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
-            break;
-        case RISCV_OPI_ORI:
-            extoMem.result = dctoEx.lhs | dctoEx.rhs;
-            break;
-        case RISCV_OPI_ANDI:
-            extoMem.result = dctoEx.lhs & dctoEx.rhs;
-            break;
-        case RISCV_OPI_SLLI: // cast rhs as 5 bits, otherwise generated hardware is 32 bits
-            // & shift amount held in the lower 5 bits (riscv spec)
-            extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
-            break;
-        case RISCV_OPI_SRI:
-            if (dctoEx.funct7.slc<1>(5)) //SRAI
-                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
-            else //SRLI
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
-            break;
-        }
-        break;
-    case RISCV_OP:
-        if(dctoEx.funct7.slc<1>(0))     // M Extension
-        {
-
-        }
-        else{
-            switch(dctoEx.funct3){
-            case RISCV_OP_ADD:
-                if (dctoEx.funct7.slc<1>(5))   // SUB
-                    extoMem.result = dctoEx.lhs - dctoEx.rhs;
-                else   // ADD
-                    extoMem.result = dctoEx.lhs + dctoEx.rhs;
-                break;
-            case RISCV_OP_SLL:
-                extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_SLT:
-                extoMem.result = dctoEx.lhs < dctoEx.rhs;
-                break;
-            case RISCV_OP_SLTU:
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_XOR:
-                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
-                break;
-            case RISCV_OP_SR:
-                if(dctoEx.funct7.slc<1>(5))   // SRA
-                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                else  // SRL
-                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_OR:
-                extoMem.result = dctoEx.lhs | dctoEx.rhs;
-                break;
-            case RISCV_OP_AND:
-                extoMem.result = dctoEx.lhs & dctoEx.rhs;
-                break;
-            }
-        }
-        break;
-    case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
-        break;
-
-    case RISCV_SYSTEM:
-        switch(dctoEx.funct3)
-        { // case 0: mret instruction, dctoEx.memValue should be 0x302
-        case RISCV_SYSTEM_ENV:
-#ifndef __HLS__
-        	//TODO handling syscall correctly
-            //extoMem.result = sim->solveSyscall(dctoEx.lhs, dctoEx.rhs, dctoEx.datac, dctoEx.datad, dctoEx.datae, exit);
-#endif
-            break;
-        case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
-            extoMem.datac = dctoEx.rhs;       // written back to csr
-            extoMem.result = dctoEx.lhs;      // written back to rd
-            break;
-        case RISCV_SYSTEM_CSRRS:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRC:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRWI:
-            extoMem.datac = dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRSI:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRCI:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
-            break;
-        }
-        break;
-    }
-
-    //If the instruction was dropped, we ensure that isBranch is at zero
-    if (!dctoEx.we){
-    	extoMem.isBranch = 0;
-    	extoMem.useRd = 0;
-    }
 }
+
+class DivMultALU {
+public:
+	ac_int<32, false> quotient, remainder, divident;
+	ac_int<32, false> state;
+
+void rvmALU(struct DCtoEx dctoEx, bool select, bool &done, ac_int<32, false> &result){
+
+	if (state = 0) {
+		if (!select || dctoEx.opCode != RISCV_OP || dctoEx.funct7 != RISCV_OP_M)
+			done = true;
+		else {
+			done = true;
+			ac_int<32, false> dataAUnsigned = 0;
+			dataAUnsigned.set_slc(0, dctoEx.lhs);
+
+			ac_int<32, false> dataBUnsigned = 0;
+			dataAUnsigned.set_slc(0, dctoEx.rhs);
+
+			ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
+			ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
+			ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
+
+			switch (dctoEx.funct3){
+			case RISCV_OP_M_MUL:
+				result = resultS.slc<32>(0);
+			break;
+			case RISCV_OP_M_MULH:
+				result = resultS.slc<32>(32);
+			break;
+			case RISCV_OP_M_MULHSU:
+				result = resultSU.slc<32>(32);
+			break;
+			case RISCV_OP_M_MULHU:
+				result = resultU.slc<32>(32);
+			break;
+			case RISCV_OP_M_DIV:
+			case RISCV_OP_M_DIVU:
+			case RISCV_OP_M_REM:
+			case RISCV_OP_M_REMU:
+				done = false;
+				state = 32;
+				quotient = 0;
+				if (remainder > dctoEx.rhs){
+					remainder = dctoEx.lhs - dctoEx.rhs;
+					quotient = 1;
+				}
+			break;
+
+			}
+		}
+	}
+	else{
+
+	}
+}
+};
+
 
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB)
@@ -637,8 +502,11 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 void doCycle(struct Core &core, 		 //Core containing all values
 		bool globalStall)
 {
+	bool localStall = globalStall;
+
     core.stallSignals[0] = 0; core.stallSignals[1] = 0; core.stallSignals[2] = 0; core.stallSignals[3] = 0; core.stallSignals[4] = 0;
-    core.stallIm = false; core.stallDm = false;
+    core.stallIm = false; core.stallDm = false; core.stallAlu = false;
+    bool localStallAlu = false;
 
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
@@ -653,26 +521,31 @@ void doCycle(struct Core &core, 		 //Core containing all values
     //declare temporary register file
     ac_int<32, false> nextInst;
 
-    if (!globalStall && !core.stallDm)
+    if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
     execute(core.dctoEx, extoMem_temp);
+    core.alu.process(core.dctoEx, extoMem_temp, core.stallAlu);
+
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
+    //We update localStore value according to stallAlu
+    localStall |= core.stallAlu;
 
     //resolve stalls, forwards
-    forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
-    		dctoEx_temp.rs2, dctoEx_temp.useRs2,
-			dctoEx_temp.rs3, dctoEx_temp.useRs3,
-			extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
-			memtoWB_temp.rd, memtoWB_temp.useRd,
-    		wbOut_temp.rd, wbOut_temp.useRd,
-			core.stallSignals, forwardRegisters);
+    if (!localStall)
+		forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
+				dctoEx_temp.rs2, dctoEx_temp.useRs2,
+				dctoEx_temp.rs3, dctoEx_temp.useRs3,
+				extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
+				memtoWB_temp.rd, memtoWB_temp.useRd,
+				wbOut_temp.rd, wbOut_temp.useRd,
+				core.stallSignals, forwardRegisters);
 
-    if (!core.stallSignals[STALL_MEMORY] && !globalStall && memtoWB_temp.we && !core.stallIm){
+    if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm){
 
        memMask mask;
        //TODO: carry the data size to memToWb
@@ -700,13 +573,11 @@ void doCycle(struct Core &core, 		 //Core containing all values
        core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
     }
     //commit the changes to the pipeline register
-    if (!core.stallSignals[STALL_FETCH] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyFtoDC(core.ftoDC, ftoDC_temp);
+    if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm){
         core.ftoDC = ftoDC_temp;
     }
 
-    if (!core.stallSignals[STALL_DECODE] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyDCtoEx(core.dctoEx, dctoEx_temp);
+    if (!core.stallSignals[STALL_DECODE] && !localStall && !core.stallIm && !core.stallDm){
         core.dctoEx = dctoEx_temp;
 
     	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
@@ -731,27 +602,25 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		core.dctoEx.datac = wbOut_temp.value;
     }
 
-    if (core.stallSignals[STALL_DECODE] && !core.stallSignals[STALL_EXECUTE] && !core.stallIm && !core.stallDm){
+    if (core.stallSignals[STALL_DECODE] && !core.stallSignals[STALL_EXECUTE] && !core.stallIm && !core.stallDm && !localStall){
     	core.dctoEx.we = 0; core.dctoEx.useRd = 0; core.dctoEx.isBranch = 0; core.dctoEx.instruction = 0; core.dctoEx.pc = 0;
     }
 
-    if (!core.stallSignals[STALL_EXECUTE] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyExtoMem(core.extoMem, extoMem_temp);
+    if (!core.stallSignals[STALL_EXECUTE] && !localStall && !core.stallIm && !core.stallDm){
         core.extoMem = extoMem_temp;
     }
 
-    if (!core.stallSignals[STALL_MEMORY] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyMemtoWB(core.memtoWB, memtoWB_temp);
+    if (!core.stallSignals[STALL_MEMORY] && !localStall && !core.stallIm && !core.stallDm){
         core.memtoWB = memtoWB_temp;
     }
 
-    if (wbOut_temp.we && wbOut_temp.useRd && !globalStall && !core.stallIm && !core.stallDm){
+    if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
-    	 core.cycle++;
+    	core.cycle++;
     }
 
 
-	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || globalStall);
+	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
 
 }
 
