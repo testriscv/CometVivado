@@ -25,9 +25,9 @@ To compile the tests:
 
 Once the repository cloned, `cd` into it.
 
-Make sure that all the dependencies are met by installing `cmake` and the `program_options` library from boost using your package manager or directly from the sources.
+Make sure that the dependencies are met by installing `cmake` using your package manager or directly from the sources.
 
-For exemple on a debian based system, run `sudo apt install cmake libboost-program-options`.
+For exemple on a debian based system, run `sudo apt install cmake`.
 
 ```
 mkdir build && cd build
