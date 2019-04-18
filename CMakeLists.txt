@@ -4,7 +4,7 @@ project (Comet)
 # add the binary tree to the search path for include files
 include_directories(./include)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_program_options -g -std=c++11 -D__CATAPULT__ -O3 -DMEMORY_INTERFACE=CacheMemory ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -D__CATAPULT__ -O3 -DMEMORY_INTERFACE=CacheMemory ")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
@@ -23,4 +23,4 @@ add_executable(atomicTests
 							./src/simpleMemory.cpp
 							./src/riscvISA.cpp)
 
-target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )
+#target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )
