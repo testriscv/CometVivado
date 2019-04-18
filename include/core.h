@@ -136,12 +136,19 @@ struct WBOut
     bool we;
 };
 
+
+//This is ugly but otherwise with have a dependency : alu.h includes core.h (for pipeline regs) and core.h includes alu.h...
+#include <alu.h>
+
+
 struct Core
 {
     FtoDC ftoDC;
     DCtoEx dctoEx;
     ExtoMem extoMem;
     MemtoWB memtoWB;
+
+    BasicAlu alu;
 
 	//memories, yay
 	MemoryInterface *dm, *im;
@@ -153,7 +160,7 @@ struct Core
 
 	//stall
 	bool stallSignals[5] = {0, 0, 0, 0, 0};
-    bool stallIm, stallDm;
+    bool stallIm, stallDm, stallAlu;
     unsigned long cycle;
     /// Multicycle operation
 

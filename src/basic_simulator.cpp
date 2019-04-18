@@ -192,6 +192,7 @@ BasicSimulator::BasicSimulator (
 	heapAddress = heap;
 	fillMemory();
 	core.regFile[2] = STACK_INIT;
+	core.stallAlu = false;
 }
 
 BasicSimulator::~BasicSimulator()
@@ -370,7 +371,8 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && (!core.stallSignals[2] && ! core.stallIm && ! core.stallDm)){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
+
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
 		ac_int<32, true> arg2 = core.regFile[11];
@@ -382,13 +384,13 @@ void BasicSimulator::solveSyscall()
 			 	arg1 = core.memtoWB.result;
 			else if(core.memtoWB.rd == 11)
 			 	arg2 = core.memtoWB.result;
-			else if(core.memtoWB.rd == 12){
+			else if(core.memtoWB.rd == 12)
 			 	arg3 = core.memtoWB.result;
-      }
 			else if(core.memtoWB.rd == 13)
 			 	arg4 = core.memtoWB.result;
 			else if(core.memtoWB.rd == 17)
 				syscallId = core.memtoWB.result;
+
 		}
 
 		ac_int<32, true> result = 0;
