@@ -64,7 +64,7 @@ Comet implements the 32bit ISA with the M extension (hardware multiply) and has 
 The build process needs to be configured accordingly.
 
 ```
-./configure --prefix=$RISCV --with-arch=rv32i --with-abi=ilp32
+./configure --prefix=$RISCV --with-arch=rv32im --with-abi=ilp32
 make
 ```
 
