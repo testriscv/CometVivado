@@ -8,8 +8,10 @@
 #ifndef INCLUDE_ALU_H_
 #define INCLUDE_ALU_H_
 
-#include <core.h>
 #include <riscvISA.h>
+#include <pipelineRegisters.h>
+
+//#include <cstdio>
 
 class ALU {
 protected:
@@ -227,10 +229,100 @@ public:
 
 class MultAlu: public ALU {
 public:
+    ac_int<32, false> quotient, remainder;
+    ac_int<6, false> state = 0; 
+    bool resIsNeg;
+
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
-		stall = true;
+        //no need to fill in the output register fields, the first ALU has that taken care of
+        if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
+	        ac_int<32, false> dataAUnsigned = 0;
+			dataAUnsigned.set_slc(0, dctoEx.lhs);
+
+			ac_int<32, false> dataBUnsigned = 0;
+			dataBUnsigned.set_slc(0, dctoEx.rhs);
+			    
+	        if (state == 0) {
+			    //mult results
+			    ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
+			    ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
+			    ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
 
 
+			    switch (dctoEx.funct3){
+			    case RISCV_OP_M_MUL:
+				    extoMem.result = resultS.slc<32>(0);
+			    break;
+			    case RISCV_OP_M_MULH:
+				    extoMem.result = resultS.slc<32>(32);
+			    break;
+			    case RISCV_OP_M_MULHSU:
+				    extoMem.result = resultSU.slc<32>(32);
+			    break;
+			    case RISCV_OP_M_MULHU:
+				    extoMem.result = resultU.slc<32>(32);
+			    break;
+			    case RISCV_OP_M_DIV:
+			        resIsNeg = dataAUnsigned[31];
+			    case RISCV_OP_M_DIVU:
+			        if(dataBUnsigned == 0) {
+			            extoMem.result = -1;
+			        }
+			        else {
+			            state = 32;
+			            quotient = 0;
+			            remainder = 0;
+			        }
+			    break;
+			    case RISCV_OP_M_REM:
+			        resIsNeg = dataAUnsigned[31];
+			    case RISCV_OP_M_REMU:
+			        if(dataBUnsigned == 0) {
+			            extoMem.result = dataAUnsigned;
+			        }
+			        else {
+			            resIsNeg = true;
+			            state = 32;
+			            quotient = 0;
+			            remainder = 0;
+			        }        
+			    break;
+			    }
+			}
+			else {
+			    //Loop for the division
+			    state--;
+			    remainder = remainder  << 1;
+			    remainder[0] = dataAUnsigned[state];
+			    if(remainder >= dataBUnsigned) {
+			        remainder = remainder - dataBUnsigned;
+			        quotient[state] = 1;
+			    }
+			    if(state == 0) {
+			        switch(dctoEx.funct3) {
+			        case RISCV_OP_M_DIV:
+			            if(resIsnNeg)
+			                extoMem.result = -quotient;
+			            else
+			                extoMem.result = quotient;
+			        break;
+			        case RISCV_OP_M_DIVU:
+			            extoMem.result = quotient;
+			        break;
+			        case RISCV_OP_M_REM:
+			            if(resIsnNeg)
+			                extoMem.result = -quotient;
+			            else
+			                extoMem.result = quotient;
+			        break;
+			        case RISCV_OP_M_REMU:
+			            extoMem.result = quotient;
+			        break;
+			        }
+			    }
+			}
+			stall |= (state != 0);
+		}
 	}
 };
 

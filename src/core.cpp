@@ -203,71 +203,6 @@ void decode(struct FtoDC ftoDC,
 
 }
 
-void execute(struct DCtoEx dctoEx,
-             struct ExtoMem &extoMem)
-{
-
-
-}
-
-class DivMultALU {
-public:
-	ac_int<32, false> quotient, remainder, divident;
-	ac_int<32, false> state;
-
-void rvmALU(struct DCtoEx dctoEx, bool select, bool &done, ac_int<32, false> &result){
-
-	if (state = 0) {
-		if (!select || dctoEx.opCode != RISCV_OP || dctoEx.funct7 != RISCV_OP_M)
-			done = true;
-		else {
-			done = true;
-			ac_int<32, false> dataAUnsigned = 0;
-			dataAUnsigned.set_slc(0, dctoEx.lhs);
-
-			ac_int<32, false> dataBUnsigned = 0;
-			dataAUnsigned.set_slc(0, dctoEx.rhs);
-
-			ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
-			ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
-			ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
-
-			switch (dctoEx.funct3){
-			case RISCV_OP_M_MUL:
-				result = resultS.slc<32>(0);
-			break;
-			case RISCV_OP_M_MULH:
-				result = resultS.slc<32>(32);
-			break;
-			case RISCV_OP_M_MULHSU:
-				result = resultSU.slc<32>(32);
-			break;
-			case RISCV_OP_M_MULHU:
-				result = resultU.slc<32>(32);
-			break;
-			case RISCV_OP_M_DIV:
-			case RISCV_OP_M_DIVU:
-			case RISCV_OP_M_REM:
-			case RISCV_OP_M_REMU:
-				done = false;
-				state = 32;
-				quotient = 0;
-				if (remainder > dctoEx.rhs){
-					remainder = dctoEx.lhs - dctoEx.rhs;
-					quotient = 1;
-				}
-			break;
-
-			}
-		}
-	}
-	else{
-
-	}
-}
-};
-
-
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB)
 {
@@ -526,13 +461,13 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
-    execute(core.dctoEx, extoMem_temp);
-    core.alu.process(core.dctoEx, extoMem_temp, core.stallAlu);
+	core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
+ 	core.multALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
 
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
-    //We update localStore value according to stallAlu
+    //We update localStall value according to stallAlu
     localStall |= core.stallAlu;
 
     //resolve stalls, forwards

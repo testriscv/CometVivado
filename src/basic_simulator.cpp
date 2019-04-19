@@ -246,23 +246,24 @@ void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false
 void BasicSimulator::printCycle(){
     // Use the trace file to separate program output from simulator output
 
-//  if(!core.stallSignals[0]) {
-//
-//	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
-//	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
-//	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
-//
-//	for (int oneReg = 0; oneReg < 32; oneReg++){
-//		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
-//	}
-//	std::cout << std::endl;
-//	}
-//	if (core.memtoWB.isStore)
-//		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
-//	if (core.memtoWB.isLoad)
-//		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
-//	}
+  if(!core.stallSignals[0] && 0) {
+   
+	if (!core.stallSignals[0] && ! core.stallIm && !core.stallDm){
+	printf("Debug trace : %x ",(unsigned int) core.ftoDC.pc);
+	std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
+	for (int oneReg = 0; oneReg < 32; oneReg++){
+		printf("%x  ", (unsigned int) core.regFile[oneReg]); //TODO use cout everywhere (had trouble printing them as hexa
+	}
+	std::cout << std::endl;
+	}
+	/*
+	if (core.memtoWB.isStore)
+		fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite);
+	if (core.memtoWB.isLoad)
+		fprintf(stdout, "Doing a load at %x. Value is %x\n", (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
+*/
+	}
 }
 
 
