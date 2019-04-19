@@ -230,24 +230,24 @@ public:
 class MultAlu: public ALU {
 public:
     ac_int<32, false> quotient, remainder;
+    //ac_int<33, false> 
     ac_int<6, false> state = 0; 
     bool resIsNeg;
+    ac_int<32, false> dataAUnsigned, dataBUnsigned;
 
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
         if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
-	        ac_int<32, false> dataAUnsigned = 0;
-			dataAUnsigned.set_slc(0, dctoEx.lhs);
-
-			ac_int<32, false> dataBUnsigned = 0;
-			dataBUnsigned.set_slc(0, dctoEx.rhs);
+	        
 			    
 	        if (state == 0) {
+			    dataAUnsigned.set_slc(0, dctoEx.lhs);
+    			dataBUnsigned.set_slc(0, dctoEx.rhs);
 			    //mult results
 			    ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
 			    ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
 			    ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
-
+                resIsNeg = dctoEx.lhs[31] ^ dctoEx.rhs[31];
 
 			    switch (dctoEx.funct3){
 			    case RISCV_OP_M_MUL:
@@ -263,7 +263,13 @@ public:
 				    extoMem.result = resultU.slc<32>(32);
 			    break;
 			    case RISCV_OP_M_DIV:
-			        resIsNeg = dataAUnsigned[31];
+			        if(dctoEx.lhs[31]) {
+			            dataAUnsigned = -dctoEx.lhs;
+			        }
+			        if(dctoEx.rhs[31]) {
+			            dataBUnsigned = -dctoEx.rhs;
+			        }
+			        //printf("Dividing %d by %d\n", dataAUnsigned, dataBUnsigned);
 			    case RISCV_OP_M_DIVU:
 			        if(dataBUnsigned == 0) {
 			            extoMem.result = -1;
@@ -275,13 +281,18 @@ public:
 			        }
 			    break;
 			    case RISCV_OP_M_REM:
-			        resIsNeg = dataAUnsigned[31];
+			        if(dctoEx.lhs[31]) {
+			            dataAUnsigned = -dctoEx.lhs;
+			        }
+			        if(dctoEx.rhs[31]) {
+			            dataBUnsigned = -dctoEx.rhs;
+			        }
+			        //printf("Moduling %d by %d\n", dataAUnsigned, dataBUnsigned);
 			    case RISCV_OP_M_REMU:
 			        if(dataBUnsigned == 0) {
 			            extoMem.result = dataAUnsigned;
 			        }
 			        else {
-			            resIsNeg = true;
 			            state = 32;
 			            quotient = 0;
 			            remainder = 0;
@@ -298,10 +309,11 @@ public:
 			        remainder = remainder - dataBUnsigned;
 			        quotient[state] = 1;
 			    }
+			    //printf("Quotient : %d, Remainder : %d\n", quotient, remainder);
 			    if(state == 0) {
 			        switch(dctoEx.funct3) {
 			        case RISCV_OP_M_DIV:
-			            if(resIsnNeg)
+			            if(resIsNeg)
 			                extoMem.result = -quotient;
 			            else
 			                extoMem.result = quotient;
@@ -310,15 +322,16 @@ public:
 			            extoMem.result = quotient;
 			        break;
 			        case RISCV_OP_M_REM:
-			            if(resIsnNeg)
-			                extoMem.result = -quotient;
+			            if(dataAUnsigned[31])
+			                extoMem.result = -remainder;
 			            else
-			                extoMem.result = quotient;
+			                extoMem.result = remainder;
 			        break;
 			        case RISCV_OP_M_REMU:
-			            extoMem.result = quotient;
+			            extoMem.result = remainder;
 			        break;
 			        }
+			        //printf("result : %d\n", extoMem.result);
 			    }
 			}
 			stall |= (state != 0);
