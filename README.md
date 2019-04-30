@@ -120,3 +120,15 @@ For further information about the arguments of the simulator, run `comet.sim -h`
 - Fix artifacts lifetime once the version allows it (or make something that pushes automatically every 200 years)
 - Add CSR support
 - Add a linter to the project
+
+## Contributors
+
+The following persons contributed to the Comet project:
+
+- Simon Rokicki
+- Davide Pala
+- Joseph Paturel
+- Valentin Egloff
+- Edwin Mascarenhas 
+- Gurav Datta
+- Olivier Sentieys
