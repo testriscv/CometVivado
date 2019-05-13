@@ -5,7 +5,10 @@ solution options defaults
 
 
 solution options set /ComponentLibs/TechLibSearchPath /opt/DesignKit/cmos28fdsoi_29/C28SOI_SC_12_CORE_LL/5.1-05/libs
-solution options set /ComponentLibs/SearchPath /opt/Catapult-10.0b/Mgc_home/pkgs/siflibs/designcompiler -append
+
+solution options set ComponentLibs/SearchPath /opt/DesignKit/catapult_lib -append
+solution options set ComponentLibs/SearchPath /opt/DesignKit/catapult_lib/memory -append
+
 solution options set /Input/CompilerFlags {-D __CATAPULT__ -D __HLS__ -D MEMORY_INTERFACE=IncompleteMemory}
 solution options set /Input/SearchPath $WORKING_DIR/../include
 solution options set /Output/GenerateCycleNetlist false
@@ -15,7 +18,7 @@ directive set -DESIGN_GOAL area
 go new
 directive set -DESIGN_HIERARCHY doCore
 go compile
-solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/Catapult-10.0b/Mgc_home/pkgs/siflibs/designcompiler/C28SOI_SC_12_CORE_LL_ccs.lib -- -vendor STMicroelectronics -technology {28nm FDSOI}
+solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/DesignKit/catapult_lib/C28SOI_SC_12_CORE_LL_ccs.lib
 solution library add ST_singleport_8192x32
 go libraries
 directive set -CLOCKS {clk {-CLOCK_PERIOD 1.67 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 0.835 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
