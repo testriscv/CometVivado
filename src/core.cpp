@@ -454,15 +454,18 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary register file
-    ac_int<32, false> nextInst;
+    ac_int<32, false> nextInst, multResult = 0;
 
     if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
-	core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
- 	core.multALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
+    core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
+    bool multUsed = core.multALU.process(core.dctoEx, multResult, core.stallAlu);	//calling ALU: execute stage
+    if (multUsed)
+        extoMem_temp.result = multResult;
+
 
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);

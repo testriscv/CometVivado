@@ -18,11 +18,11 @@ protected:
   bool wait;
 
 public:
-  virtual void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall) =0;
+  virtual bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall) =0;
 };
 
 
-class BasicAlu: public ALU {
+class BasicAlu {
 public:
 	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
 		stall = false;
@@ -235,9 +235,11 @@ public:
     bool resIsNeg;
     ac_int<32, false> dataAUnsigned, dataBUnsigned;
 
-	void process(struct DCtoEx dctoEx, struct ExtoMem &extoMem, bool &stall){
+	bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall){
         //no need to fill in the output register fields, the first ALU has that taken care of
-        if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
+        bool valRet = false;
+
+	if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
 	        
 			    
 	        if (state == 0) {
@@ -247,20 +249,24 @@ public:
 			    ac_int<32, false> resultU = dataAUnsigned * dataBUnsigned;
 			    ac_int<32, false> resultS = dctoEx.lhs * dctoEx.rhs;
 			    ac_int<32, false> resultSU = dctoEx.lhs * dataBUnsigned;
-                resIsNeg = dctoEx.lhs[31] ^ dctoEx.rhs[31];
+				resIsNeg = dctoEx.lhs[31] ^ dctoEx.rhs[31];
 
 			    switch (dctoEx.funct3){
 			    case RISCV_OP_M_MUL:
-				    extoMem.result = resultS.slc<32>(0);
+				    result = resultS.slc<32>(0);
+				    valRet = true;
 			    break;
 			    case RISCV_OP_M_MULH:
-				    extoMem.result = resultS.slc<32>(32);
+				    result = resultS.slc<32>(32);
+				    valRet = true;
 			    break;
 			    case RISCV_OP_M_MULHSU:
-				    extoMem.result = resultSU.slc<32>(32);
+				    result = resultSU.slc<32>(32);
+				    valRet = true;
 			    break;
 			    case RISCV_OP_M_MULHU:
-				    extoMem.result = resultU.slc<32>(32);
+				    result = resultU.slc<32>(32);
+				    valRet = true;
 			    break;
 			    case RISCV_OP_M_DIV:
 			        if(dctoEx.lhs[31]) {
@@ -272,7 +278,8 @@ public:
 			        //printf("Dividing %d by %d\n", dataAUnsigned, dataBUnsigned);
 			    case RISCV_OP_M_DIVU:
 			        if(dataBUnsigned == 0) {
-			            extoMem.result = -1;
+			            result = -1;
+				    valRet = true;
 			        }
 			        else {
 			            state = 32;
@@ -290,7 +297,7 @@ public:
 			        //printf("Moduling %d by %d\n", dataAUnsigned, dataBUnsigned);
 			    case RISCV_OP_M_REMU:
 			        if(dataBUnsigned == 0) {
-			            extoMem.result = dataAUnsigned;
+			            result = dataAUnsigned;
 			        }
 			        else {
 			            state = 32;
@@ -314,21 +321,25 @@ public:
 			        switch(dctoEx.funct3) {
 			        case RISCV_OP_M_DIV:
 			            if(resIsNeg)
-			                extoMem.result = -quotient;
+			                result = -quotient;
 			            else
-			                extoMem.result = quotient;
+			                result = quotient;
+				    valRet = true;
 			        break;
 			        case RISCV_OP_M_DIVU:
-			            extoMem.result = quotient;
+			            result = quotient;
+				    valRet = true;
 			        break;
 			        case RISCV_OP_M_REM:
 			            if(dataAUnsigned[31])
-			                extoMem.result = -remainder;
+			                result = -remainder;
 			            else
-			                extoMem.result = remainder;
+			                result = remainder;
+				    valRet = true;
 			        break;
 			        case RISCV_OP_M_REMU:
-			            extoMem.result = remainder;
+			            result = remainder;
+				    valRet = true;
 			        break;
 			        }
 			        //printf("result : %d\n", extoMem.result);
@@ -336,6 +347,7 @@ public:
 			}
 			stall |= (state != 0);
 		}
+		return valRet;
 	}
 };
 
