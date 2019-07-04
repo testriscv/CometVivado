@@ -233,6 +233,7 @@ public:
     //ac_int<33, false> 
     ac_int<6, false> state = 0; 
     bool resIsNeg;
+    int i;
     ac_int<32, false> dataAUnsigned, dataBUnsigned;
 
 	bool process(struct DCtoEx dctoEx, ac_int<32, false> &result, bool &stall){
@@ -309,12 +310,15 @@ public:
 			}
 			else {
 			    //Loop for the division
-			    state--;
-			    remainder = remainder  << 1;
-			    remainder[0] = dataAUnsigned[state];
-			    if(remainder >= dataBUnsigned) {
-			        remainder = remainder - dataBUnsigned;
-			        quotient[state] = 1;
+			    for(i = 0; i < 4; i++)
+			    {
+			    	state--;
+			    	remainder = remainder  << 1;
+			    	remainder[0] = dataAUnsigned[state];
+			    	if(remainder >= dataBUnsigned) {
+			    	    remainder = remainder - dataBUnsigned;
+			    	    quotient[state] = 1;
+			    	}
 			    }
 			    //printf("Quotient : %d, Remainder : %d\n", quotient, remainder);
 			    if(state == 0) {
