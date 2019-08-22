@@ -372,7 +372,7 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
 void BasicSimulator::solveSyscall()
 {
 
-	if((core.extoMem.opCode == RISCV_SYSTEM) && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
+	if((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<25>(7) == 0 && !core.stallSignals[2] && !core.stallIm && !core.stallDm && !core.stallAlu){
 
 		ac_int<32, true> syscallId = core.regFile[17];
 		ac_int<32, true> arg1 = core.regFile[10];
