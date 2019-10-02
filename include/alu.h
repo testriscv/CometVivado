@@ -34,7 +34,7 @@ public:
 	    extoMem.isBranch = 0;
 	    extoMem.useRd = dctoEx.useRd;
 	    extoMem.isLongInstruction = 0;
-
+        extoMem.instruction = dctoEx.instruction;
 
 
 	    ac_int<13, false> imm13 = 0;
@@ -230,8 +230,8 @@ public:
 class MultAlu: public ALU {
 public:
     ac_int<32, false> quotient, remainder;
-    //ac_int<33, false> 
-    ac_int<6, false> state = 0; 
+    //ac_int<33, false>
+    ac_int<6, false> state = 0;
     bool resIsNeg;
     int i;
     ac_int<32, false> dataAUnsigned, dataBUnsigned;
@@ -241,8 +241,8 @@ public:
         bool valRet = false;
 
 	if (dctoEx.opCode == RISCV_OP && dctoEx.funct7 == RISCV_OP_M) {
-	        
-			    
+
+
 	        if (state == 0) {
 			    dataAUnsigned.set_slc(0, dctoEx.lhs);
     			dataBUnsigned.set_slc(0, dctoEx.rhs);
@@ -304,7 +304,7 @@ public:
 			            state = 32;
 			            quotient = 0;
 			            remainder = 0;
-			        }        
+			        }
 			    break;
 			    }
 			}
