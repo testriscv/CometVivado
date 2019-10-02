@@ -316,99 +316,45 @@ void execute(struct DCtoEx dctoEx,
         }
         break;
     case RISCV_OP:
-        if(dctoEx.funct7.slc<1>(0))     // M Extension
-        {
-            ac_int<33, true> mul_reg_a = dctoEx.lhs;
-            ac_int<33, true> mul_reg_b = dctoEx.rhs;
-            ac_int<66, true> longResult = 0;
-            switch (dctoEx.funct3)  //Switch case for multiplication operations (RV32M)
-            {
-            case RISCV_OP_M_MULHSU:
-                mul_reg_b[32] = 0;
-                break;
-            case RISCV_OP_M_MULHU:
-                mul_reg_a[32] = 0;
-                mul_reg_b[32] = 0;
-                break;
-            }
-            longResult = mul_reg_a * mul_reg_b;
-            if(dctoEx.funct3 == RISCV_OP_M_MULH || dctoEx.funct3 == RISCV_OP_M_MULHSU || dctoEx.funct3 == RISCV_OP_M_MULHU)
-                extoMem.result = longResult.slc<32>(32);
-            else
-                extoMem.result = longResult.slc<32>(0);
+        switch(dctoEx.funct3){
+        case RISCV_OP_ADD:
+            if (dctoEx.funct7.slc<1>(5))   // SUB
+                extoMem.result = dctoEx.lhs - dctoEx.rhs;
+            else   // ADD
+                extoMem.result = dctoEx.lhs + dctoEx.rhs;
+            break;
+        case RISCV_OP_SLL:
+            extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
+            break;
+        case RISCV_OP_SLT:
+            extoMem.result = dctoEx.lhs < dctoEx.rhs;
+            break;
+        case RISCV_OP_SLTU:
+            extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
+            break;
+        case RISCV_OP_XOR:
+            extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
+            break;
+        case RISCV_OP_SR:
+            if(dctoEx.funct7.slc<1>(5))   // SRA
+                extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+            else  // SRL
+                extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
+            break;
+        case RISCV_OP_OR:
+            extoMem.result = dctoEx.lhs | dctoEx.rhs;
+            break;
+        case RISCV_OP_AND:
+            extoMem.result = dctoEx.lhs & dctoEx.rhs;
+            break;
         }
-        else{
-            switch(dctoEx.funct3){
-            case RISCV_OP_ADD:
-                if (dctoEx.funct7.slc<1>(5))   // SUB
-                    extoMem.result = dctoEx.lhs - dctoEx.rhs;
-                else   // ADD
-                    extoMem.result = dctoEx.lhs + dctoEx.rhs;
-                break;
-            case RISCV_OP_SLL:
-                extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_SLT:
-                extoMem.result = dctoEx.lhs < dctoEx.rhs;
-                break;
-            case RISCV_OP_SLTU:
-                extoMem.result = (ac_int<32, false>)dctoEx.lhs < (ac_int<32, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_XOR:
-                extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
-                break;
-            case RISCV_OP_SR:
-                if(dctoEx.funct7.slc<1>(5))   // SRA
-                    extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                else  // SRL
-                    extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
-                break;
-            case RISCV_OP_OR:
-                extoMem.result = dctoEx.lhs | dctoEx.rhs;
-                break;
-            case RISCV_OP_AND:
-                extoMem.result = dctoEx.lhs & dctoEx.rhs;
-                break;
-            }
-        }
+
         break;
     case RISCV_MISC_MEM:    // this does nothing because all memory accesses are ordered and we have only one core
         break;
 
     case RISCV_SYSTEM:
-        switch(dctoEx.funct3)
-        { // case 0: mret instruction, dctoEx.memValue should be 0x302
-        case RISCV_SYSTEM_ENV:
-#ifndef __HLS__
-        	//TODO handling syscall correctly
-            //extoMem.result = sim->solveSyscall(dctoEx.lhs, dctoEx.rhs, dctoEx.datac, dctoEx.datad, dctoEx.datae, exit);
-#endif
-            break;
-        case RISCV_SYSTEM_CSRRW:    // lhs is from csr, rhs is from reg[rs1]
-            extoMem.datac = dctoEx.rhs;       // written back to csr
-            extoMem.result = dctoEx.lhs;      // written back to rd
-            break;
-        case RISCV_SYSTEM_CSRRS:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRC:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRWI:
-            extoMem.datac = dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRSI:
-            extoMem.datac = dctoEx.lhs | dctoEx.rhs;
-            extoMem.result = dctoEx.lhs;
-            break;
-        case RISCV_SYSTEM_CSRRCI:
-            extoMem.datac = dctoEx.lhs & ((ac_int<32, false>)~dctoEx.rhs);
-            extoMem.result = dctoEx.lhs;
-            break;
-        }
+        //Nothing done here : CSR not handled in this branch
         break;
     }
 
@@ -569,7 +515,7 @@ void forwardUnit(
 }
 
 /****************************************************************
- *  Copy functions 
+ *  Copy functions
  ****************************************************************
 
 void copyFtoDC(struct FtoDC &dest, struct FtoDC src){
