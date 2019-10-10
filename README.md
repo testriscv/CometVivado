@@ -121,6 +121,11 @@ For further information about the arguments of the simulator, run `comet.sim -h`
 - Add CSR support
 - Add a linter to the project
 
+## Publication
+
+- "<a href="https://hal.archives-ouvertes.fr/hal-02303453v1">What You Simulate Is What You Synthesize: Designing a Processor Core from C++ Specifications</a>", in 38th IEEE/ACM International Conference on Computer-Aided Design
+
+
 ## Contributors
 
 The following persons contributed to the Comet project:
