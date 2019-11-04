@@ -41,7 +41,6 @@ struct Core
     MemtoWB memtoWB;
 
     BasicAlu basicALU;
-	MultAlu multALU;
 
 	//memories, yay
 	MemoryInterface *dm, *im;
