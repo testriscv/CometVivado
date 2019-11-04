@@ -10,7 +10,7 @@ Support for the RV32I base ISA only, support for the M extension can be found on
 The only dependency to satisfy in order to build the simulator is `cmake`.
 
 To compile the tests, a RISC-V toolchain and libraries are needed:
-  - [RISC-V GNU toolchain](https://github.com/riscv/riscv-tools)
+  - [RISC-V GNU toolchain](https://github.com/riscv/riscv-gnu-toolchain)
 
 ## Building the simulator
 
