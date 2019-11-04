@@ -106,6 +106,11 @@ The `-a` switch allows to pass arguments to the benchmark that is being run by t
 
 For further information about the arguments of the simulator, run `comet.sim -h`.
 
+## Logic Synthesis
+
+Using HLS tools, the Comet core can be synthesized and implemented on FPGA targets or mapped to standard cells using a design kit.
+RTL synthesis is tested using [Mentor Catapult HLS](https://www.mentor.com/hls-lp/catapult-high-level-synthesis/). If you wish to have the RTL output, please send an email to simon.rokicki@irisa.fr.
+
 ## Publication
 
 - "<a href="https://hal.archives-ouvertes.fr/hal-02303453v1">What You Simulate Is What You Synthesize: Designing a Processor Core from C++ Specifications</a>", in 38th IEEE/ACM International Conference on Computer-Aided Design
