@@ -1,5 +1,6 @@
 #include <core.h>
 #include <ac_int.h>
+#include <cacheMemory.h>
 
 #ifndef __HLS__
 #include "simulator.h"
@@ -202,6 +203,7 @@ void decode(struct FtoDC ftoDC,
 
 }
 
+<<<<<<< HEAD
 void execute(struct DCtoEx dctoEx,
              struct ExtoMem &extoMem)
 {
@@ -365,6 +367,8 @@ void execute(struct DCtoEx dctoEx,
     }
 }
 
+=======
+>>>>>>> cacheAndDiv
 void memory(struct ExtoMem extoMem,
             struct MemtoWB &memtoWB)
 {
@@ -599,8 +603,11 @@ void copyMemtoWB(struct MemtoWB &dest, struct MemtoWB src){
 void doCycle(struct Core &core, 		 //Core containing all values
 		bool globalStall)
 {
+	bool localStall = globalStall;
+
     core.stallSignals[0] = 0; core.stallSignals[1] = 0; core.stallSignals[2] = 0; core.stallSignals[3] = 0; core.stallSignals[4] = 0;
-    core.stallIm = false; core.stallDm = false;
+    core.stallIm = false; core.stallDm = false; core.stallAlu = false;
+    bool localStallAlu = false;
 
     //declare temporary structs
     struct FtoDC ftoDC_temp; ftoDC_temp.pc = 0; ftoDC_temp.instruction = 0; ftoDC_temp.nextPCFetch = 0; ftoDC_temp.we = 0;
@@ -613,28 +620,36 @@ void doCycle(struct Core &core, 		 //Core containing all values
 
 
     //declare temporary register file
-    ac_int<32, false> nextInst;
+    ac_int<32, false> nextInst, multResult = 0;
 
-    if (!globalStall && !core.stallDm)
+    if (!localStall && !core.stallDm)
     	core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
 
     fetch(core.pc, ftoDC_temp, nextInst);
     decode(core.ftoDC, dctoEx_temp, core.regFile);
-    execute(core.dctoEx, extoMem_temp);
+    core.basicALU.process(core.dctoEx, extoMem_temp, core.stallAlu);	//calling ALU: execute stage
+    bool multUsed = core.multALU.process(core.dctoEx, multResult, core.stallAlu);	//calling ALU: execute stage
+    if (multUsed)
+        extoMem_temp.result = multResult;
+
+
     memory(core.extoMem, memtoWB_temp);
     writeback(core.memtoWB, wbOut_temp);
 
+    //We update localStall value according to stallAlu
+    localStall |= core.stallAlu;
 
     //resolve stalls, forwards
-    forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
-    		dctoEx_temp.rs2, dctoEx_temp.useRs2,
-			dctoEx_temp.rs3, dctoEx_temp.useRs3,
-			extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
-			memtoWB_temp.rd, memtoWB_temp.useRd,
-    		wbOut_temp.rd, wbOut_temp.useRd,
-			core.stallSignals, forwardRegisters);
+    if (!localStall)
+		forwardUnit(dctoEx_temp.rs1, dctoEx_temp.useRs1,
+				dctoEx_temp.rs2, dctoEx_temp.useRs2,
+				dctoEx_temp.rs3, dctoEx_temp.useRs3,
+				extoMem_temp.rd, extoMem_temp.useRd, extoMem_temp.isLongInstruction,
+				memtoWB_temp.rd, memtoWB_temp.useRd,
+				wbOut_temp.rd, wbOut_temp.useRd,
+				core.stallSignals, forwardRegisters);
 
-    if (!core.stallSignals[STALL_MEMORY] && !globalStall && memtoWB_temp.we && !core.stallIm){
+    if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm){
 
        memMask mask;
        //TODO: carry the data size to memToWb
@@ -662,13 +677,11 @@ void doCycle(struct Core &core, 		 //Core containing all values
        core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE), memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
     }
     //commit the changes to the pipeline register
-    if (!core.stallSignals[STALL_FETCH] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyFtoDC(core.ftoDC, ftoDC_temp);
+    if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm){
         core.ftoDC = ftoDC_temp;
     }
 
-    if (!core.stallSignals[STALL_DECODE] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyDCtoEx(core.dctoEx, dctoEx_temp);
+    if (!core.stallSignals[STALL_DECODE] && !localStall && !core.stallIm && !core.stallDm){
         core.dctoEx = dctoEx_temp;
 
     	if (forwardRegisters.forwardExtoVal1 && extoMem_temp.we)
@@ -693,27 +706,25 @@ void doCycle(struct Core &core, 		 //Core containing all values
     		core.dctoEx.datac = wbOut_temp.value;
     }
 
-    if (core.stallSignals[STALL_DECODE] && !core.stallSignals[STALL_EXECUTE] && !core.stallIm && !core.stallDm){
+    if (core.stallSignals[STALL_DECODE] && !core.stallSignals[STALL_EXECUTE] && !core.stallIm && !core.stallDm && !localStall){
     	core.dctoEx.we = 0; core.dctoEx.useRd = 0; core.dctoEx.isBranch = 0; core.dctoEx.instruction = 0; core.dctoEx.pc = 0;
     }
 
-    if (!core.stallSignals[STALL_EXECUTE] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyExtoMem(core.extoMem, extoMem_temp);
+    if (!core.stallSignals[STALL_EXECUTE] && !localStall && !core.stallIm && !core.stallDm){
         core.extoMem = extoMem_temp;
     }
 
-    if (!core.stallSignals[STALL_MEMORY] && !globalStall && !core.stallIm && !core.stallDm){
-    	//copyMemtoWB(core.memtoWB, memtoWB_temp);
+    if (!core.stallSignals[STALL_MEMORY] && !localStall && !core.stallIm && !core.stallDm){
         core.memtoWB = memtoWB_temp;
     }
 
-    if (wbOut_temp.we && wbOut_temp.useRd && !globalStall && !core.stallIm && !core.stallDm){
+    if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm){
     	core.regFile[wbOut_temp.rd] = wbOut_temp.value;
-    	 core.cycle++;
+    	core.cycle++;
     }
 
 
-	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || globalStall);
+	branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC, extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we, core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
 
 }
 
@@ -723,6 +734,8 @@ void doCore(bool globalStall, ac_int<32, false> imData[DRAM_SIZE>>2], ac_int<32,
     Core core;
     IncompleteMemory imInterface = IncompleteMemory(imData);
     IncompleteMemory dmInterface = IncompleteMemory(dmData);
+
+//    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 
     core.im = &imInterface;
     core.dm = &dmInterface;
