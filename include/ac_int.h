@@ -1744,13 +1744,13 @@ template <typename T> struct c_type;
 
 template <typename T> struct rt_c_type_T {
   template <typename T2> struct op1 {
-    typedef typename T::template rt_T<c_type<T2>>::mult mult;
-    typedef typename T::template rt_T<c_type<T2>>::plus plus;
-    typedef typename T::template rt_T<c_type<T2>>::minus2 minus;
-    typedef typename T::template rt_T<c_type<T2>>::minus minus2;
-    typedef typename T::template rt_T<c_type<T2>>::logic logic;
-    typedef typename T::template rt_T<c_type<T2>>::div2 div;
-    typedef typename T::template rt_T<c_type<T2>>::div div2;
+    typedef typename T::template rt_T<c_type<T2> >::mult mult;
+    typedef typename T::template rt_T<c_type<T2> >::plus plus;
+    typedef typename T::template rt_T<c_type<T2> >::minus2 minus;
+    typedef typename T::template rt_T<c_type<T2> >::minus minus2;
+    typedef typename T::template rt_T<c_type<T2> >::logic logic;
+    typedef typename T::template rt_T<c_type<T2> >::div2 div;
+    typedef typename T::template rt_T<c_type<T2> >::div div2;
   };
 };
 template <typename T> struct c_type {
@@ -1779,7 +1779,7 @@ template <typename T> struct c_type {
   }
 };
 // with T == c_type
-template <typename T> struct rt_c_type_T<c_type<T>> {
+template <typename T> struct rt_c_type_T<c_type<T> > {
   typedef typename c_prom<T>::promoted_type c_prom_T;
   template <typename T2> struct op1 {
     typedef typename c_prom<T2>::promoted_type c_prom_T2;
@@ -1837,13 +1837,13 @@ C_TYPE_MAP_FLOAT(double, 2, 54, 1, 11)
 // ac_int
 template <typename T> struct rt_ac_int_T {
   template <int W, bool S> struct op1 {
-    typedef typename T::template rt_T<ac_int<W, S>>::mult mult;
-    typedef typename T::template rt_T<ac_int<W, S>>::plus plus;
-    typedef typename T::template rt_T<ac_int<W, S>>::minus2 minus;
-    typedef typename T::template rt_T<ac_int<W, S>>::minus minus2;
-    typedef typename T::template rt_T<ac_int<W, S>>::logic logic;
-    typedef typename T::template rt_T<ac_int<W, S>>::div2 div;
-    typedef typename T::template rt_T<ac_int<W, S>>::div div2;
+    typedef typename T::template rt_T<ac_int<W, S> >::mult mult;
+    typedef typename T::template rt_T<ac_int<W, S> >::plus plus;
+    typedef typename T::template rt_T<ac_int<W, S> >::minus2 minus;
+    typedef typename T::template rt_T<ac_int<W, S> >::minus minus2;
+    typedef typename T::template rt_T<ac_int<W, S> >::logic logic;
+    typedef typename T::template rt_T<ac_int<W, S> >::div2 div;
+    typedef typename T::template rt_T<ac_int<W, S> >::div div2;
   };
 };
 } // namespace ac_private
@@ -2644,13 +2644,13 @@ template <> struct ac_int_represent<float> {
 };
 template <> struct ac_int_represent<double> {
 };
-template <int W, bool S> struct ac_int_represent<ac_int<W, S>> {
+template <int W, bool S> struct ac_int_represent<ac_int<W, S> > {
   typedef ac_int<W, S> type;
 };
 } // namespace ac
 
 namespace ac_private {
-template <int W2, bool S2> struct rt_ac_int_T<ac_int<W2, S2>> {
+template <int W2, bool S2> struct rt_ac_int_T<ac_int<W2, S2> > {
   typedef ac_int<W2, S2> i2_t;
   template <int W, bool S> struct op1 {
     typedef ac_int<W, S> i_t;
@@ -2666,7 +2666,7 @@ template <int W2, bool S2> struct rt_ac_int_T<ac_int<W2, S2>> {
   };
 };
 
-template <typename T> struct rt_ac_int_T<c_type<T>> {
+template <typename T> struct rt_ac_int_T<c_type<T> > {
   typedef typename ac::ac_int_represent<T>::type i2_t;
   enum { W2 = i2_t::width, S2 = i2_t::sign };
   template <int W, bool S> struct op1 {
