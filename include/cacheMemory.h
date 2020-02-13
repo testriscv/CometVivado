@@ -11,6 +11,7 @@
 #include "memory.h"
 #include "memoryInterface.h"
 #include <ac_int.h>
+#include <incompleteMemory.h>
 
 #define LINE_SIZE 16
 #define LOG_LINE_SIZE 4
