@@ -3,29 +3,28 @@
 
 #include "core.h"
 
-class Simulator
-{
+class Simulator {
 protected:
-    Core core;
-    bool exitFlag;
+  Core core;
+  bool exitFlag;
 
 public:
-    virtual void run()
-    {
-        exitFlag = false;
-        while(!exitFlag){
-            doCycle(core, 0);
-            solveSyscall();
-            extend();
-            printCycle();
-        }
-        printStat();
+  virtual void run()
+  {
+    exitFlag = false;
+    while (!exitFlag) {
+      doCycle(core, 0);
+      solveSyscall();
+      extend();
+      printCycle();
     }
+    printStat();
+  }
 
-    virtual void printCycle() = 0;
-    virtual void printStat() = 0;
-    virtual void extend() = 0;
-    virtual void solveSyscall() = 0;
+  virtual void printCycle()   = 0;
+  virtual void printStat()    = 0;
+  virtual void extend()       = 0;
+  virtual void solveSyscall() = 0;
 };
 
 #endif // __SIMULATOR_H__
