@@ -5,7 +5,6 @@
 #include <riscvISA.h>
 
 // all the possible memories
-#include <alu.h>
 #include <cacheMemory.h>
 #include <incompleteMemory.h>
 #include <pipelineRegisters.h>
@@ -30,19 +29,14 @@ struct Core {
   ExtoMem extoMem;
   MemtoWB memtoWB;
 
-  BasicAlu basicALU;
-
-  // memories, yay
   MemoryInterface *dm, *im;
-
-  // CoreCtrl ctrl;
 
   ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
 
   // stall
   bool stallSignals[5] = {0, 0, 0, 0, 0};
-  bool stallIm, stallDm, stallAlu;
+  bool stallIm, stallDm;
   unsigned long cycle;
   /// Multicycle operation
 

@@ -180,7 +180,6 @@ for(int i(0); i < DRAM_SIZE; i++)
   heapAddress = heap;
   fillMemory();
   core.regFile[2] = STACK_INIT;
-  core.stallAlu   = false;
 }
 
 BasicSimulator::~BasicSimulator()
@@ -356,7 +355,7 @@ void BasicSimulator::solveSyscall()
 {
 
   if ((core.extoMem.opCode == RISCV_SYSTEM) && core.extoMem.instruction.slc<12>(20) == 0 && !core.stallSignals[2] &&
-      !core.stallIm && !core.stallDm && !core.stallAlu) {
+      !core.stallIm && !core.stallDm) {
 
     ac_int<32, true> syscallId = core.regFile[17];
     ac_int<32, true> arg1      = core.regFile[10];
