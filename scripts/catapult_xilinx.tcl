@@ -10,6 +10,8 @@ solution options set /Input/CompilerFlags {-D __CATAPULT__ -D __HLS__ -D MEMORY_
 solution options set /Input/SearchPath $WORKING_DIR/../include
 solution options set /Output/GenerateCycleNetlist false
 solution file add $WORKING_DIR/../src/core.cpp -type C++
+solution file add $WORKING_DIR/../src/memoryInterface.cpp -type C++
+
 directive set -DESIGN_GOAL area
 
 go new
