@@ -8,19 +8,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -D__CATAPULT__ -O3 -DMEMOR
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 
-add_executable(comet.sim 
+add_executable(comet.sim
 							./src/core.cpp
 							./src/elfFile.cpp
 							./src/main.cpp
-							./src/simpleMemory.cpp
 							./src/riscvISA.cpp
-							./src/basic_simulator.cpp)
+							./src/basic_simulator.cpp
+							./src/memoryInterface.cpp)
 
 add_executable(atomicTests
 							./src/core.cpp
 							./src/atomicTest.cpp
 							./src/elfFile.cpp
-							./src/simpleMemory.cpp
-							./src/riscvISA.cpp)
+							./src/riscvISA.cpp
+							./src/memoryInterface.cpp)
 
 #target_link_libraries( comet.sim	LINK_PUBLIC ${Boost_LIBRARIES} )

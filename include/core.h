@@ -6,9 +6,8 @@
 
 // all the possible memories
 #include <cacheMemory.h>
-#include <incompleteMemory.h>
+#include <memoryInterface.h>
 #include <pipelineRegisters.h>
-#include <simpleMemory.h>
 
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory

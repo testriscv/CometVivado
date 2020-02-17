@@ -8,10 +8,9 @@
 #ifndef INCLUDE_CACHEMEMORY_H_
 #define INCLUDE_CACHEMEMORY_H_
 
-#include "memory.h"
-#include "memoryInterface.h"
 #include <ac_int.h>
-#include <incompleteMemory.h>
+#include <memory.h>
+#include <memoryInterface.h>
 
 #define LINE_SIZE 16
 #define LOG_LINE_SIZE 4
