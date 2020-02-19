@@ -9,7 +9,6 @@
 #define INCLUDE_CACHEMEMORY_H_
 
 #include <ac_int.h>
-#include <memory.h>
 #include <memoryInterface.h>
 
 #define LINE_SIZE 16
