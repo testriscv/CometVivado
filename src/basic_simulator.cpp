@@ -16,75 +16,13 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
                                const char* outFile, const char* tFile)
 {
 
-  core.ftoDC.we = false;
-
-  core.dctoEx.pc          = 0;
-  core.dctoEx.instruction = 0;
-
-  core.dctoEx.opCode = 0;
-  core.dctoEx.funct7 = 0;
-  core.dctoEx.funct3 = 0;
-
-  core.dctoEx.lhs   = 0;
-  core.dctoEx.rhs   = 0;
-  core.dctoEx.datac = 0;
-
-  // For branch unit
-  core.dctoEx.nextPCDC = 0;
-  core.dctoEx.isBranch = false;
-
-  // Information for forward/stall unit
-  core.dctoEx.useRs1 = false;
-  core.dctoEx.useRs2 = false;
-  core.dctoEx.useRs3 = false;
-  core.dctoEx.useRd  = false;
-  core.dctoEx.rs1    = 0;
-  core.dctoEx.rs2    = 0;
-  core.dctoEx.rs3    = 0;
-  core.dctoEx.rd     = 0;
-
-  // Register for all stages
-  core.dctoEx.we = false;
-
-  core.extoMem.pc          = 0;
-  core.extoMem.instruction = 0;
-
-  core.extoMem.result            = 0;
-  core.extoMem.rd                = 0;
-  core.extoMem.useRd             = false;
-  core.extoMem.isLongInstruction = false;
-  core.extoMem.opCode            = 0;
-  core.extoMem.funct3            = 0;
-
-  core.extoMem.datac = 0;
-
-  // For branch unit
-  core.extoMem.nextPC   = 0;
-  core.extoMem.isBranch = false;
-
-  // Register for all stages
-  core.extoMem.we = false;
-
-  core.memtoWB.result = 0;
-  core.memtoWB.rd     = 0;
-  core.memtoWB.useRd  = false;
-
-  core.memtoWB.address      = 0;
-  core.memtoWB.valueToWrite = 0;
-  core.memtoWB.byteEnable   = 0;
-  core.memtoWB.isStore      = false;
-  core.memtoWB.isLoad       = false;
-
-  // Register for all stages
-  core.memtoWB.we = false;
-
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
   core.cycle = 0;
 
-  //	core.im = new SimpleMemory(im);
-  //	core.dm = new SimpleMemory(dm);
+  // core.im = new SimpleMemory(im);
+  // core.dm = new SimpleMemory(dm);
 
   core.im = new CacheMemory(new SimpleMemory(im), false);
   core.dm = new CacheMemory(new SimpleMemory(dm), false);
@@ -92,14 +30,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   for (int i = 0; i < 32; i++) {
     core.regFile[i] = 0;
   }
-  /*
-dataMemory = new ac_int<32, false>[DRAM_SIZE];
-for(int i(0); i < DRAM_SIZE; i++)
-{
-  instructionMemory[i] = 0;
-  dataMemory[i] = 0;
-}
-   */
+
   heapAddress = 0;
 
   inputFile  = stdin;
@@ -113,6 +44,8 @@ for(int i(0); i < DRAM_SIZE; i++)
   if (tFile)
     traceFile = fopen(tFile, "wb");
 
+  //****************************************************************************
+  // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
   int counter = 0;
   for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++) {
@@ -122,20 +55,29 @@ for(int i(0); i < DRAM_SIZE; i++)
       unsigned char* sectionContent = oneSection->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
         counter++;
-        insertDataMemoryMap(oneSection->address + byteNumber, sectionContent[byteNumber]);
+        this->stb(oneSection->address + byteNumber, sectionContent[byteNumber]);
       }
+
+      // We update the size of the heap
+      if (oneSection->address + oneSection->size > heapAddress)
+        heapAddress = oneSection->address + oneSection->size;
+
       free(sectionContent);
     }
 
     if (!strncmp(oneSection->getName().c_str(), ".text", 5)) {
       unsigned char* sectionContent = oneSection->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
-        insertInstructionMemoryMap((oneSection->address + byteNumber), sectionContent[byteNumber]);
+        // Write the instruction byte in Instruction Memory using Little Endian
+        im[(oneSection->address + byteNumber) / 4].set_slc(((oneSection->address + byteNumber) % 4) * 8,
+                                                           ac_int<8, false>(sectionContent[byteNumber]));
       }
       free(sectionContent);
     }
   }
 
+  //****************************************************************************
+  // Looking for start symbol
   for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
     ElfSymbol* symbol             = elfFile.symbols->at(oneSymbol);
     unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
@@ -147,38 +89,28 @@ for(int i(0); i < DRAM_SIZE; i++)
     free(sectionContent);
   }
 
-  unsigned int heap = heapAddress; // keep heap where it is because it will be
-                                   // set over stackpointer
-
+  //****************************************************************************
+  // Adding command line arguments on the stack
   unsigned int argc = args.size();
 
-  insertDataMemoryMap(STACK_INIT, argc & 0xFF);
-  insertDataMemoryMap(STACK_INIT + 1, (argc >> 8) & 0xFF);
-  insertDataMemoryMap(STACK_INIT + 2, (argc >> 16) & 0xFF);
-  insertDataMemoryMap(STACK_INIT + 3, (argc >> 24) & 0xFF);
+  this->stw(STACK_INIT, argc);
 
   ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
   for (int oneArg = 0; oneArg < argc; oneArg++) {
-    insertDataMemoryMap(STACK_INIT + 4 * oneArg + 4, currentPlaceStrings.slc<8>(0));
-    insertDataMemoryMap(STACK_INIT + 4 * oneArg + 5, currentPlaceStrings.slc<8>(8));
-    insertDataMemoryMap(STACK_INIT + 4 * oneArg + 6, currentPlaceStrings.slc<8>(16));
-    insertDataMemoryMap(STACK_INIT + 4 * oneArg + 7, currentPlaceStrings.slc<8>(24));
+    this->stw(STACK_INIT + 4 * oneArg + 4, currentPlaceStrings);
 
     int oneCharIndex = 0;
     char oneChar     = args[oneArg].c_str()[oneCharIndex];
     while (oneChar != 0) {
-      insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
-
+      this->stb(currentPlaceStrings + oneCharIndex, oneChar);
       oneCharIndex++;
       oneChar = args[oneArg].c_str()[oneCharIndex];
     }
-    insertDataMemoryMap(currentPlaceStrings + oneCharIndex, oneChar);
+    this->stb(currentPlaceStrings + oneCharIndex, oneChar);
+
     oneCharIndex++;
     currentPlaceStrings += oneCharIndex;
   }
-
-  heapAddress = heap;
-  fillMemory();
   core.regFile[2] = STACK_INIT;
 }
 
@@ -188,48 +120,12 @@ BasicSimulator::~BasicSimulator()
     fclose(inputFile);
   if (outputFile)
     fclose(outputFile);
-}
-
-void BasicSimulator::fillMemory()
-{
-  if (imemMap.size() / 4 > DRAM_SIZE) {
-    fprintf(stderr, "Error! Instruction memory size exceeded");
-    exit(-1);
-  }
-  if (dmemMap.size() / 4 > DRAM_SIZE) {
-    fprintf(stderr, "Error! Data memory size exceeded");
-    exit(-1);
-  }
-
-  // fill instruction memory
-  for (auto it = imemMap.begin(); it != imemMap.end(); it++) {
-    im[(it->first.to_uint() / 4)].set_slc(((it->first.to_uint()) % 4) * 8, it->second);
-  }
-
-  // fill data memory
-  for (auto it = dmemMap.begin(); it != dmemMap.end(); it++) {
-    dm[(it->first.to_uint() / 4)].set_slc(((it->first.to_uint()) % 4) * 8, it->second);
-  }
-}
-
-void BasicSimulator::insertInstructionMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
-{
-  imemMap[addr] = value;
-  if (addr > heapAddress)
-    heapAddress = addr;
-}
-
-void BasicSimulator::insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false> value)
-{
-  dmemMap[addr] = value;
-  if (addr > heapAddress)
-    heapAddress = addr;
+  if (traceFile)
+    fclose(traceFile);
 }
 
 void BasicSimulator::printCycle()
 {
-  // Use the trace file to separate program output from simulator output
-
   if (!core.stallSignals[0] && 0) {
 
     if (!core.stallSignals[0] && !core.stallIm && !core.stallDm) {
@@ -237,31 +133,21 @@ void BasicSimulator::printCycle()
       std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
       for (int oneReg = 0; oneReg < 32; oneReg++) {
-        printf("%x  ", (unsigned int)core.regFile[oneReg]); // TODO use cout everywhere (had
-                                                            // trouble printing them as hexa
+        printf("%x  ", (unsigned int)core.regFile[oneReg]);
       }
       std::cout << std::endl;
     }
-    /*
-    if (core.memtoWB.isStore)
-            fprintf(stdout, "Doing a store at %x with value %x\n", (unsigned
-    int) core.memtoWB.address, (unsigned int) core.memtoWB.valueToWrite); if
-    (core.memtoWB.isLoad) fprintf(stdout, "Doing a load at %x. Value is %x\n",
-    (unsigned int) core.memtoWB.address, (unsigned int) core.memtoWB.result);
-*/
   }
 }
 
+// Function for handling memory accesses
+
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
-  //	ac_int<32, false> mem = dm[addr >> 2];
-  //	mem.set_slc(((int) addr.slc<2>(0) << 3), value);
-  //	dm[addr >> 2] = mem;
-
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
   while (stall)
-    core.dm->process(addr, BYTE_U, STORE, value, wordRes, stall);
+    core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
 
 void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
@@ -292,20 +178,6 @@ void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 
 ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 {
-  // if data is in the cache, we must read in the cache directly
-  //#ifndef nocache
-  //    int i = getSet(addr);
-  //    for(int j(0); j < Associativity; ++j)
-  //    {
-  //        if(dctrl[i].slc<32-tagshift>(j*(32-tagshift)) == getTag(addr))
-  //        {
-  //            ac_int<32, false> mem = ddata[i*Blocksize*Associativity +
-  //            (int)getOffset(addr)*Associativity + j]; formatread(addr, 0, 0,
-  //            mem); return mem;
-  //        }
-  //    }
-  //#endif
-  // read main memory if it wasn't in cache
   ac_int<8, true> result;
   result                    = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
   ac_int<32, false> wordRes = 0;
@@ -351,6 +223,13 @@ ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
   return result;
 }
 
+/********************************************************************************************************************
+**  Software emulation of system calls.
+**
+** Currently all system calls are solved in the simulator. The function solveSyscall check the opcode in the
+** extoMem pipeline registers and verifies whether it is a syscall or not. If it is, they solve the forwarding,
+** and switch to the correct function according to reg[17].
+*********************************************************************************************************************/
 void BasicSimulator::solveSyscall()
 {
 
@@ -560,8 +439,7 @@ void BasicSimulator::solveSyscall()
       core.dctoEx.rhs = result;
     if (core.dctoEx.useRs3 && (core.dctoEx.rs3 == 10))
       core.dctoEx.datac = result;
-
-  } // if exToMem.opCode == RISCV_SYSTEM
+  }
 }
 
 ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
@@ -596,7 +474,7 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
     result = write(outputFile->_fileno, localBuffer, size);
   } else {
     if (file == 1)
-      fflush(stdout); //  prevent mixed output
+      fflush(stdout);
     else if (file == 2)
       fflush(stderr);
     result = write(file, localBuffer, size);
@@ -608,31 +486,11 @@ ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, fals
 ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
 {
   ac_int<32, true> result = 0;
-  struct stat filestat    = {0}; // for stdout, its easier to compare debug trace
-                                 // when syscalls gives same results
+  struct stat filestat    = {0};
 
   if (file != 1)
     result = fstat(file, &filestat);
 
-  /*struct  kernel_stat
-{
-unsigned long long st_dev;
-unsigned long long st_ino;
-unsigned int st_mode;
-unsigned int st_nlink;
-unsigned int st_uid;
-unsigned int st_gid;
-unsigned long long st_rdev;
-unsigned long long __pad1;
-long long st_size;
-int st_blksize;
-int __pad2;
-long long st_blocks;
-struct timespec st_atim;
-struct timespec st_mtim;
-struct timespec st_ctim;
-int __glibc_reserved[2];
-};*/
   std(stataddr, filestat.st_dev);               // unsigned long long
   std(stataddr + 8, filestat.st_ino);           // unsigned long long
   stw(stataddr + 16, filestat.st_mode);         // unsigned int

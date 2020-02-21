@@ -18,11 +18,11 @@ public:
       extend();
       printCycle();
     }
-    printStat();
+    printEnd();
   }
 
   virtual void printCycle()   = 0;
-  virtual void printStat()    = 0;
+  virtual void printEnd()     = 0;
   virtual void extend()       = 0;
   virtual void solveSyscall() = 0;
 };

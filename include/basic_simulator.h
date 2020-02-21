@@ -7,8 +7,6 @@
 
 class BasicSimulator : public Simulator {
   unsigned heapAddress;
-  std::map<ac_int<32, false>, ac_int<8, false>> imemMap;
-  std::map<ac_int<32, false>, ac_int<8, false>> dmemMap;
 
   ac_int<32, false>*im, *dm;
 
@@ -22,15 +20,23 @@ public:
   ~BasicSimulator();
 
 protected:
-  void fillMemory();
-
   void printCycle();
-  void printStat(){};
+  void printEnd(){};
   void extend(){};
-  void solveSyscall();
 
-  void insertInstructionMemoryMap(ac_int<32, false> addr, ac_int<8, false> value);
-  void insertDataMemoryMap(ac_int<32, false> addr, ac_int<8, false> value);
+  // Functions for memory accesses
+  void stb(ac_int<32, false> addr, ac_int<8, true> value);
+  void sth(ac_int<32, false> addr, ac_int<16, true> value);
+  void stw(ac_int<32, false> addr, ac_int<32, true> value);
+  void std(ac_int<32, false> addr, ac_int<64, true> value);
+
+  ac_int<8, true> ldb(ac_int<32, false> addr);
+  ac_int<16, true> ldh(ac_int<32, false> addr);
+  ac_int<32, true> ldw(ac_int<32, false> addr);
+  ac_int<32, true> ldd(ac_int<32, false> addr);
+
+  // Functions for solving syscalls
+  void solveSyscall();
 
   ac_int<32, true> doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
   ac_int<32, true> doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size);
@@ -44,16 +50,6 @@ protected:
   ac_int<32, true> doGettimeofday(ac_int<32, false> timeValPtr);
   ac_int<32, true> doUnlink(ac_int<32, false> path);
   ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
-
-  void stb(ac_int<32, false> addr, ac_int<8, true> value);
-  void sth(ac_int<32, false> addr, ac_int<16, true> value);
-  void stw(ac_int<32, false> addr, ac_int<32, true> value);
-  void std(ac_int<32, false> addr, ac_int<64, true> value);
-
-  ac_int<8, true> ldb(ac_int<32, false> addr);
-  ac_int<16, true> ldh(ac_int<32, false> addr);
-  ac_int<32, true> ldw(ac_int<32, false> addr);
-  ac_int<32, true> ldd(ac_int<32, false> addr);
 };
 
 #endif // __BASIC_SIMULATOR_H__
