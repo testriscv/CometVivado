@@ -183,9 +183,11 @@ public:
           if (opType == STORE) {
             switch (mask) {
               case BYTE:
+              case BYTE_U:
                 localValStore.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<8>(0));
                 break;
               case HALF:
+              case HALF_U:
                 localValStore.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<16>(0));
                 break;
               case WORD:
@@ -275,9 +277,11 @@ public:
           if (opType == STORE) {
             switch (mask) {
               case BYTE:
+              case BYTE_U:
                 newVal.set_slc((((int)addr.slc<2>(0)) << 3) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<8>(0));
                 break;
               case HALF:
+              case HALF_U:
                 newVal.set_slc((addr[1] ? 16 : 0) + TAG_SIZE + 4 * 8 * offset, dataIn.slc<16>(0));
                 break;
               case WORD:
