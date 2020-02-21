@@ -11,3 +11,5 @@ catapult/
 /build/
 /.cproject
 /.project
+.clangd/
+compile_commands.json
