@@ -78,8 +78,8 @@ int main(int argc, char** argv)
     Core core;
     ac_int<32, false> im[8192], dm[8192];
 
-    core.im = new CacheMemory(new IncompleteMemory(im), false);
-    core.dm = new CacheMemory(new IncompleteMemory(dm), true);
+    core.im = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(im), false);
+    core.dm = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(dm), true);
 
     core.pc = initialState.pc;
     for (int oneReg = 0; oneReg < 32; oneReg++)

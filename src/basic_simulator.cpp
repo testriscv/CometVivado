@@ -21,11 +21,11 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   core.cycle = 0;
 
-  // core.im = new SimpleMemory(im);
-  // core.dm = new SimpleMemory(dm);
+  // core.im = new SimpleMemory<4>(im);
+  // core.dm = new SimpleMemory<4>(dm);
 
-  core.im = new CacheMemory(new SimpleMemory(im), false);
-  core.dm = new CacheMemory(new SimpleMemory(dm), false);
+  core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
+  core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
 
   for (int i = 0; i < 32; i++) {
     core.regFile[i] = 0;

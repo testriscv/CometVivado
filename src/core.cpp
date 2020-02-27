@@ -743,8 +743,8 @@ void doCycle(struct Core& core, // Core containing all values
 void doCore(bool globalStall, ac_int<32, false> imData[8192], ac_int<32, false> dmData[8192])
 {
   Core core;
-  IncompleteMemory imInterface = IncompleteMemory(imData);
-  IncompleteMemory dmInterface = IncompleteMemory(dmData);
+  IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
+  IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
   //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
 

@@ -31,7 +31,8 @@ struct Core {
   ExtoMem extoMem;
   MemtoWB memtoWB;
 
-  MemoryInterface *dm, *im;
+  // Interface size are configured with 4 bytes interface size (32 bits)
+  MemoryInterface<4>*dm, *im;
 
   ac_int<32, true> regFile[32];
   ac_int<32, false> pc;
