@@ -740,7 +740,7 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[8192], ac_int<32, false> dmData[8192])
+void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24])
 {
   Core core;
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);

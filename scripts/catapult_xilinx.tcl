@@ -29,5 +29,6 @@ directive set /doCore/imData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
 directive set /doCore/dmData:rsc -MAP_TO_MODULE Xilinx_RAMS.BLOCK_SPRAM_NOCHANGE
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
+directive set /doCore/core/core.multiplicationUnit.process:if:else:for -UNROLL yes
 go architect
 go extract

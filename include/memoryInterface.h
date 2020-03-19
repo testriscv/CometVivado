@@ -32,9 +32,9 @@ public:
     // no latency, wait is always set to false
     waitOut = false;
     if (opType == STORE) {
-      data[addr >> 2] = dataIn;
+      data[(addr >> 2) & 0xffffff] = dataIn;
     } else if (opType == LOAD) {
-      dataOut = data[addr >> 2];
+      dataOut = data[(addr >> 2) & 0xffffff];
     }
   }
 };
