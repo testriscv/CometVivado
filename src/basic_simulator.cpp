@@ -16,6 +16,9 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
                                const char* outFile, const char* tFile)
 {
 
+  char* coreAsChar = (char*)&core;
+  memset(coreAsChar, 0, sizeof(Core));
+
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
