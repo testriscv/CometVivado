@@ -731,12 +731,13 @@ void doCycle(struct Core& core, // Core containing all values
 
   if (wbOut_temp.we && wbOut_temp.useRd && !localStall && !core.stallIm && !core.stallDm) {
     core.regFile[wbOut_temp.rd] = wbOut_temp.value;
-    core.cycle++;
   }
 
   branchUnit(ftoDC_temp.nextPCFetch, dctoEx_temp.nextPCDC, dctoEx_temp.isBranch, extoMem_temp.nextPC,
              extoMem_temp.isBranch, core.pc, core.ftoDC.we, core.dctoEx.we,
              core.stallSignals[STALL_FETCH] || core.stallIm || core.stallDm || localStall);
+
+  core.cycle++;
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
