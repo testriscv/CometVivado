@@ -295,9 +295,9 @@ void execute(struct DCtoEx dctoEx, struct ExtoMem& extoMem)
           break;
         case RISCV_OPI_SRI:
           if (dctoEx.funct7.slc<1>(5)) // SRAI
-            extoMem.result = dctoEx.lhs >> (ac_int<5, false>)shamt;
+            extoMem.result = dctoEx.lhs >> shamt;
           else // SRLI
-            extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)shamt;
+            extoMem.result = (ac_int<32, false>)dctoEx.lhs >> shamt;
           break;
       }
       break;
