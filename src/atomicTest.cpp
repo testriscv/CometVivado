@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     std::string message("");
 
     getTest(infile, message, instruction, numberOfCycles, initialState, finalState);
-    std::cerr << message;
+    std::cerr << message << '\n';
     numberOfCycles = 35;
 
     // We initialize a simulator with the state
