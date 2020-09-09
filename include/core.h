@@ -52,12 +52,6 @@ struct Core {
   // modelsim
 };
 
-// Functions for copying values
-void copyFtoDC(struct FtoDC& dest, struct FtoDC src);
-void copyDCtoEx(struct DCtoEx& dest, struct DCtoEx src);
-void copyExtoMem(struct ExtoMem& dest, struct ExtoMem src);
-void copyMemtoWB(struct MemtoWB& dest, struct MemtoWB src);
-
 void doCycle(struct Core& core, bool globalStall);
 
 #endif // __CORE_H__
