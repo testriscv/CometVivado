@@ -28,7 +28,6 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
   ac_int<7, false> opCode = instruction.slc<7>(0); // could be reduced to 5 bits because 1:0 is always 11
 
   // Construction of different immediate values
-  ac_int<12, false> imm12_I = instruction.slc<12>(20);
   ac_int<12, false> imm12_S = 0;
   imm12_S.set_slc(5, instruction.slc<7>(25));
   imm12_S.set_slc(0, instruction.slc<5>(7));
@@ -391,9 +390,6 @@ void execute(struct DCtoEx dctoEx, struct ExtoMem& extoMem)
 
 void memory(struct ExtoMem extoMem, struct MemtoWB& memtoWB)
 {
-
-  ac_int<2, false> datasize = extoMem.funct3.slc<2>(0);
-  bool signenable           = !extoMem.funct3.slc<1>(2);
   memtoWB.we                = extoMem.we;
   memtoWB.useRd             = extoMem.useRd;
   memtoWB.result            = extoMem.result;
