@@ -2,7 +2,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string>
-#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -230,10 +229,11 @@ ElfFile* ElfFile::copy(char* newDest)
 
   // sendfile will work with non-socket output (i.e. regular file) on
   // Linux 2.6.33+
-  off_t bytesCopied    = 0;
-  struct stat fileinfo = {0};
-  fstat(input, &fileinfo);
-  sendfile(output, input, &bytesCopied, fileinfo.st_size);
+  // This is dead code, will NOT compile on OSX
+  // off_t bytesCopied    = 0;
+  // struct stat fileinfo = {0};
+  // fstat(input, &fileinfo);
+  // sendfile(output, input, &bytesCopied, fileinfo.st_size);
 
   close(input);
   close(output);
