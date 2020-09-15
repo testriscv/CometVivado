@@ -6,8 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <riscvISA.h>
-
+#include "riscvISA.h"
 #include "basic_simulator.h"
 #include "core.h"
 #include "elfFile.h"
@@ -53,7 +52,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   int counter = 0;
   for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++) {
     ElfSection* oneSection = elfFile.sectionTable->at(sectionCounter);
-    if (oneSection->address != 0 && strncmp(oneSection->getName().c_str(), ".text", 5)) {
+    if (oneSection->address != 0 && oneSection->getName() != ".text") {
       // If the address is not null we place its content into memory
       unsigned char* sectionContent = oneSection->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
@@ -68,7 +67,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
       free(sectionContent);
     }
 
-    if (!strncmp(oneSection->getName().c_str(), ".text", 5)) {
+    if (oneSection->getName() == ".text") {
       unsigned char* sectionContent = oneSection->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
@@ -81,7 +80,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   //****************************************************************************
   // Looking for start symbol
-  for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
+  for (size_t oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
     ElfSymbol* symbol             = elfFile.symbols->at(oneSymbol);
     unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
     const char* name              = (const char*)&(sectionContent[symbol->name]);
@@ -99,15 +98,15 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   this->stw(STACK_INIT, argc);
 
   ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
-  for (int oneArg = 0; oneArg < argc; oneArg++) {
+  for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
     this->stw(STACK_INIT + 4 * oneArg + 4, currentPlaceStrings);
 
     int oneCharIndex = 0;
-    char oneChar     = args[oneArg].c_str()[oneCharIndex];
+    char oneChar     = args[oneArg][oneCharIndex];
     while (oneChar != 0) {
       this->stb(currentPlaceStrings + oneCharIndex, oneChar);
       oneCharIndex++;
-      oneChar = args[oneArg].c_str()[oneCharIndex];
+      oneChar = args[oneArg][oneCharIndex];
     }
     this->stb(currentPlaceStrings + oneCharIndex, oneChar);
 
