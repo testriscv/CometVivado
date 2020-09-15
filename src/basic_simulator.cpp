@@ -21,7 +21,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
-  core.cycle = 0;
+  //core.cycle = 0;
 
   // core.im = new SimpleMemory<4>(im);
   // core.dm = new SimpleMemory<4>(dm);
@@ -29,9 +29,9 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
   core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
 
-  for (int i = 0; i < 32; i++) {
-    core.regFile[i] = 0;
-  }
+  // for (int i = 0; i < 32; i++) {
+  //   core.regFile[i] = 0;
+  // }
 
   heapAddress = 0;
 
@@ -49,29 +49,24 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   //****************************************************************************
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
-  int counter = 0;
-  for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++) {
-    ElfSection* oneSection = elfFile.sectionTable->at(sectionCounter);
-    if (oneSection->address != 0 && oneSection->getName() != ".text") {
-      // If the address is not null we place its content into memory
-      unsigned char* sectionContent = oneSection->getSectionCode();
-      for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
-        counter++;
-        this->stb(oneSection->address + byteNumber, sectionContent[byteNumber]);
-      }
 
+  for(auto const &section : *elfFile.sectionTable){
+    if(section->address != 0 && section->getName() != ".text"){
+      unsigned char* sectionContent = section->getSectionCode();
+      for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++)
+        this->stb(section->address + byteNumber, sectionContent[byteNumber]);
+     
       // We update the size of the heap
-      if (oneSection->address + oneSection->size > heapAddress)
-        heapAddress = oneSection->address + oneSection->size;
+      if (section->address + section->size > heapAddress)
+        heapAddress = section->address + section->size;
 
       free(sectionContent);
     }
-
-    if (oneSection->getName() == ".text") {
-      unsigned char* sectionContent = oneSection->getSectionCode();
-      for (unsigned int byteNumber = 0; byteNumber < oneSection->size; byteNumber++) {
+    if (section->getName() == ".text") {
+      unsigned char* sectionContent = section->getSectionCode();
+      for (unsigned int byteNumber = 0; byteNumber < section->size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
-        im[(oneSection->address + byteNumber) / 4].set_slc(((oneSection->address + byteNumber) % 4) * 8,
+        im[(section->address + byteNumber) / 4].set_slc(((section->address + byteNumber) % 4) * 8,
                                                            ac_int<8, false>(sectionContent[byteNumber]));
       }
       free(sectionContent);
@@ -80,22 +75,21 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   //****************************************************************************
   // Looking for start symbol
-  for (size_t oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
-    ElfSymbol* symbol             = elfFile.symbols->at(oneSymbol);
-    unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
-    const char* name              = (const char*)&(sectionContent[symbol->name]);
-    if (strcmp(name, "_start") == 0) {
-      core.pc = symbol->offset;
-    }
-
-    free(sectionContent);
+  unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
+  for (auto const &symbol : *elfFile.symbols){
+    const char* name = (const char*)&(sectionContent[symbol->name]);
+    if (strcmp(name, "_start") == 0) 
+        core.pc = symbol->offset;
   }
+  free(sectionContent);
 
   //****************************************************************************
   // Adding command line arguments on the stack
   unsigned int argc = args.size();
-
-  this->stw(STACK_INIT, argc);
+ 
+  // TODO: stw fills the cache, maybe here we should only fill the main memory. (Davide)
+  //this->stw(STACK_INIT, argc);  
+  dm[STACK_INIT >> 2] = argc;  
 
   ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
   for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
