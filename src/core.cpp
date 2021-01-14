@@ -666,7 +666,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
+  // CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
   core.im = &imInterface;
   core.dm = &dmInterface;

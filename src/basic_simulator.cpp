@@ -24,11 +24,11 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
 
-  // core.im = new SimpleMemory<4>(im);
-  // core.dm = new SimpleMemory<4>(dm);
+  core.im = new SimpleMemory<4>(im);
+  core.dm = new SimpleMemory<4>(dm);
   
-  core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
-  core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
+  // core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
+  // core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
 
   heapAddress = 0;
 
