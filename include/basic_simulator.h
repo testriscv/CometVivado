@@ -8,20 +8,24 @@
 class BasicSimulator : public Simulator {
   unsigned heapAddress;
 
+  // Signature address when doing compliance tests
+  ac_int<32, false>*begin_signature, *end_signature;
+  
   ac_int<32, false>*im, *dm;
 
   FILE* inputFile;
   FILE* outputFile;
   FILE* traceFile;
+  FILE* signatureFile;
 
 public:
   BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile,
-                 const char* tFile);
+                 const char* tFile, const char* sFile);
   ~BasicSimulator();
 
 protected:
   void printCycle();
-  void printEnd(){};
+  void printEnd();
   void extend(){};
 
   // Functions for memory accesses

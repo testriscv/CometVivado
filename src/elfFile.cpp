@@ -27,11 +27,11 @@ char needToFixEndianness = 0;
 
 ElfFile::ElfFile(const char* pathToElfFile)
 {
-
+  
   this->pathToElfFile = pathToElfFile;
   this->elfFile       = fopen(pathToElfFile, "r+");
   if (this->elfFile == NULL) {
-    printf("Failing to open %s\n exiting...\n", pathToElfFile);
+    printf("[Comet Simulator] Failing to open %s\nexiting...\n", pathToElfFile);
     exit(-1);
   }
 
@@ -48,7 +48,7 @@ ElfFile::ElfFile(const char* pathToElfFile)
   else if (eident[EI_CLASS] == ELFCLASS64)
     this->is32Bits = 0;
   else {
-    fprintf(stderr, "Error while reading ELF file header, cannot handle this "
+    fprintf(stderr, "[Comet Simulator] Error while reading ELF file header, cannot handle this "
                     "type of ELF file...\n");
     exit(-1);
   }
@@ -138,10 +138,11 @@ ElfFile::ElfFile(const char* pathToElfFile)
 
   if (DEBUG)
     for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++) {
+      printf("(%u / %lu) ", sectionNumber, tableSize);
       ElfSection* sect = this->sectionTable->at(sectionNumber);
-      printf("Section is at %x, of size %x\n", sect->offset, sect->size);
+      printf("Section %x is at %x (%x), of size %x\n", sect->nameIndex, sect->offset, sect->address, sect->size);
     }
-
+  
   //*************************************************************************************
   // Location of the String table containing every name
 
@@ -198,6 +199,10 @@ ElfFile::ElfFile(const char* pathToElfFile)
       this->indexOfSymbolNameSection = sectionNumber;
       break;
     }
+  }
+  
+  if(DEBUG){
+  	printf("ELF FILE reading done.\n");
   }
 }
 

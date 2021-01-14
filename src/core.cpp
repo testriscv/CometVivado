@@ -506,6 +506,7 @@ void forwardUnit(ac_int<5, false> decodeRs1, bool decodeUseRs1, ac_int<5, false>
 void doCycle(struct Core& core, // Core containing all values
              bool globalStall)
 {
+  // printf("PC : %x\n", core.pc);
   bool localStall = globalStall;
 
   core.stallSignals[0] = 0;
@@ -665,7 +666,7 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  //    CacheMemory dmCache = CacheMemory(&dmInterface, false);
+  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
 
   core.im = &imInterface;
   core.dm = &dmInterface;

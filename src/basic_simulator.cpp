@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -11,8 +12,10 @@
 #include "core.h"
 #include "elfFile.h"
 
+#define DEBUG 0
+
 BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> args, const char* inFile,
-                               const char* outFile, const char* tFile)
+                               const char* outFile, const char* tFile, const char* sFile)
 {
 
   char* coreAsChar = (char*)&core;
@@ -23,7 +26,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   // core.im = new SimpleMemory<4>(im);
   // core.dm = new SimpleMemory<4>(dm);
-
+  
   core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
   core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
 
@@ -32,23 +35,32 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   inputFile  = stdin;
   outputFile = stdout;
   traceFile  = stderr;
-
+  signatureFile = NULL;
+  
   if (inFile)
     inputFile = fopen(inFile, "rb");
   if (outFile)
     outputFile = fopen(outFile, "wb");
   if (tFile)
     traceFile = fopen(tFile, "wb");
+  if(sFile)
+    signatureFile = fopen(sFile, "wb");
+    begin_signature = new ac_int<32, false>;
+    end_signature = new ac_int<32, false>;
 
   //****************************************************************************
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
 
   for(auto const &section : *elfFile.sectionTable){
-    if(section->address != 0 && section->getName() != ".text"){
+    if(section->address != 0 && section->getName() != ".text" && section->getName() != ".text.init"){
       unsigned char* sectionContent = section->getSectionCode();
-      for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++)
+      for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++){
+      	if(DEBUG){
+          // printf("Load Instructions in Memory : %x\n", (section->address + byteNumber));
+        }
         this->stb(section->address + byteNumber, sectionContent[byteNumber]);
+        }
      
       // We update the size of the heap
       if (section->address + section->size > heapAddress)
@@ -56,15 +68,22 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
       free(sectionContent);
     }
-    if (section->getName() == ".text") {
+    if (section->getName() == ".text" || section->getName() == ".text.init") {
       unsigned char* sectionContent = section->getSectionCode();
       for (unsigned int byteNumber = 0; byteNumber < section->size; byteNumber++) {
         // Write the instruction byte in Instruction Memory using Little Endian
+        if(DEBUG){
+          // printf(" Load Instructions in I-Memory : %x\n", (section->address + byteNumber));
+        }
         im[(section->address + byteNumber) / 4].set_slc(((section->address + byteNumber) % 4) * 8,
                                                            ac_int<8, false>(sectionContent[byteNumber]));
       }
       free(sectionContent);
     }
+  }
+  
+  if(DEBUG){
+    printf("Populate Instruction Memory done.\n");
   }
 
   //****************************************************************************
@@ -74,9 +93,18 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
     const char* name = (const char*)&(sectionContent[symbol->name]);
     if (strcmp(name, "_start") == 0) 
         core.pc = symbol->offset;
+    if (signatureFile != NULL){
+      if (strcmp(name, "begin_signature") == 0)
+        *begin_signature = symbol->offset;
+      else if (strcmp(name, "end_signature") == 0)
+        *end_signature = symbol->offset;
+    }
   }
   free(sectionContent);
 
+  if(DEBUG){
+    printf("Start Symbol Reading done.\n");
+  }
   //****************************************************************************
   // Adding command line arguments on the stack
   unsigned int argc = args.size();
@@ -101,6 +129,11 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
     oneCharIndex++;
     currentPlaceStrings += oneCharIndex;
   }
+  
+  if(DEBUG){
+    printf("Populate Data Memory done.\n");
+  }
+  
   core.regFile[2] = STACK_INIT;
 }
 
@@ -116,7 +149,7 @@ BasicSimulator::~BasicSimulator()
 
 void BasicSimulator::printCycle()
 {
-  if (!core.stallSignals[0] && 0) {
+  if (!core.stallSignals[0]) {
 
     if (!core.stallSignals[0] && !core.stallIm && !core.stallDm) {
       printf("Debug trace : %x ", (unsigned int)core.ftoDC.pc);
@@ -126,6 +159,30 @@ void BasicSimulator::printCycle()
         printf("%x  ", (unsigned int)core.regFile[oneReg]);
       }
       std::cout << std::endl;
+    }
+  }
+}
+
+void BasicSimulator::printEnd()
+{
+  /*
+  RISCV-COMPLIANCE Ending Routine to get the signature 
+  stored between begin_signature and end_signature. 
+  */
+  if(signatureFile != NULL){
+    
+    ac_int<32, false> wordNumber;
+    ac_int<32, false> addr_offset = 4;
+    ac_int<32, false> begin_offset = ((*begin_signature)%4); // correct address alignement
+    
+    if(DEBUG){
+      printf("BEGIN/END_SIGNATURE: %x/%x (%x)", (unsigned int)(*begin_signature), (unsigned int)(*end_signature), (unsigned int)begin_offset);
+    }
+    
+    //memory read
+    for (wordNumber = *begin_signature - begin_offset; wordNumber < *end_signature - begin_offset; wordNumber+=addr_offset)
+    {
+      fprintf(signatureFile, "%08x\n", (unsigned int)this->ldw(wordNumber));
     }
   }
 }
