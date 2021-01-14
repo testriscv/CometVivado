@@ -59,4 +59,4 @@ test:applications:
   stage: test
   script:
     - cd tests
-    - ./runTests.sh
+    - ./basic_tests/runTests.sh
