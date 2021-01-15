@@ -16,7 +16,7 @@ public:
       doCycle(core, 0);
       solveSyscall();
       extend();
-      //printCycle();
+      printCycle();
     }
     printEnd();
   }

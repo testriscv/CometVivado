@@ -18,8 +18,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
                                const char* outFile, const char* tFile, const char* sFile)
 {
 
-  char* coreAsChar = (char*)&core;
-  memset(coreAsChar, 0, sizeof(Core));
+  memset((char*)&core, 0, sizeof(Core));
 
   im = new ac_int<32, false>[DRAM_SIZE >> 2];
   dm = new ac_int<32, false>[DRAM_SIZE >> 2];
@@ -122,19 +121,19 @@ BasicSimulator::~BasicSimulator()
     fclose(outputFile);
   if (traceFile)
     fclose(traceFile);
+  if(signatureFile)
+    fclose(signatureFile);
 }
 
 void BasicSimulator::printCycle()
 {
-  if (!core.stallSignals[0]) {
-
+  if(DEBUG){ 
     if (!core.stallSignals[0] && !core.stallIm && !core.stallDm) {
       printf("Debug trace : %x ", (unsigned int)core.ftoDC.pc);
       std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
 
-      for (int oneReg = 0; oneReg < 32; oneReg++) {
-        printf("%x  ", (unsigned int)core.regFile[oneReg]);
-      }
+      for (const auto &reg : core.regFile)
+        printf("%x  ", (unsigned int)reg);
       std::cout << std::endl;
     }
   }
@@ -147,9 +146,7 @@ void BasicSimulator::printEnd()
   stored between begin_signature and end_signature. 
   */
   if(signatureFile != NULL){
-    
-    ac_int<32, false> wordNumber;
-    ac_int<32, false> addr_offset = 4;
+    const auto addr_offset = 4;
     const auto begin_offset = ((begin_signature)%4); // correct address alignement
     
     if(DEBUG){
@@ -157,7 +154,7 @@ void BasicSimulator::printEnd()
     }
     
     //memory read
-    for (wordNumber = begin_signature - begin_offset; wordNumber < end_signature - begin_offset; wordNumber+=addr_offset)
+    for (auto wordNumber = begin_signature - begin_offset; wordNumber < end_signature - begin_offset; wordNumber+=addr_offset)
     {
       fprintf(signatureFile, "%08x\n", (unsigned int)this->ldw(wordNumber));
     }
