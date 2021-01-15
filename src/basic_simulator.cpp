@@ -51,25 +51,9 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   if(DEBUG){
     printf("Start Symbol Reading done.\n");
   }
-  //****************************************************************************
-  // Adding command line arguments on the stack
-  unsigned int argc = args.size();
- 
-  mem[STACK_INIT >> 2] = argc;  
 
-  auto currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
-  for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
-    mem[(STACK_INIT + 4 * oneArg + 4) >> 2] = currentPlaceStrings;
-    
-    int oneCharIndex = 0;
-    for(const auto c : args[oneArg]){
-      setByte(currentPlaceStrings + oneCharIndex, c);
-      oneCharIndex++;
-    }
-    setByte(currentPlaceStrings + oneCharIndex, 0);
-    currentPlaceStrings += oneCharIndex + 1;
-  }
-  
+  pushArgsOnStack(args);
+
   if(DEBUG){
     printf("Populate Data Memory done.\n");
   }
@@ -98,6 +82,25 @@ void BasicSimulator::readElf(const char *binaryFile){
     end_signature = find_by_name(elfFile.symbols, "end_signature").offset;
   }
 }
+
+void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){
+  unsigned int argc = args.size();
+ 
+  mem[STACK_INIT >> 2] = argc;  
+
+  auto currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
+  for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
+    mem[(STACK_INIT + 4 * oneArg + 4) >> 2] = currentPlaceStrings;
+    
+    int oneCharIndex = 0;
+    for(const auto c : args[oneArg]){
+      setByte(currentPlaceStrings + oneCharIndex, c);
+      oneCharIndex++;
+    }
+    setByte(currentPlaceStrings + oneCharIndex, 0);
+    currentPlaceStrings += oneCharIndex + 1;
+  }
+} 
 
 BasicSimulator::~BasicSimulator()
 {

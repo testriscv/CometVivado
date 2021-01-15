@@ -17,9 +17,6 @@ class BasicSimulator : public Simulator {
   FILE* outputFile;
   FILE* traceFile;
   FILE* signatureFile;
-private:
-  void setByte(unsigned, ac_int<8, true>);
-  void readElf(const char*);
 
 public:
   BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile,
@@ -57,6 +54,11 @@ protected:
   ac_int<32, true> doGettimeofday(ac_int<32, false> timeValPtr);
   ac_int<32, true> doUnlink(ac_int<32, false> path);
   ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
+
+private:
+  void setByte(unsigned, ac_int<8, true>);
+  void readElf(const char*);
+  void pushArgsOnStack(const std::vector<std::string>);
 };
 
 #endif // __BASIC_SIMULATOR_H__
