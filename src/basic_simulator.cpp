@@ -49,34 +49,21 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   //****************************************************************************
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
-
-  for(auto const &section : *elfFile.sectionTable){
-    if(section->address != 0 && section->getName() != ".text" && section->getName() != ".text.init"){
-      unsigned char* sectionContent = section->getSectionCode();
-      for (unsigned byteNumber = 0; byteNumber < section->size; byteNumber++){
-      	if(DEBUG){
-          // printf("Load Instructions in Memory : %x\n", (section->address + byteNumber));
-        }
-        this->stb(section->address + byteNumber, sectionContent[byteNumber]);
-        }
+  for(auto const &section : elfFile.sectionTable){
+    if(section.address != 0 && section.name != ".text"){
+      for (unsigned i = 0; i < section.size; i++)
+        this->stb(section.address + i, elfFile.content[section.offset + i]);
      
       // We update the size of the heap
-      if (section->address + section->size > heapAddress)
-        heapAddress = section->address + section->size;
-
-      free(sectionContent);
+      if (section.address + section.size > heapAddress)
+        heapAddress = section.address + section.size;
     }
-    if (section->getName() == ".text" || section->getName() == ".text.init") {
-      unsigned char* sectionContent = section->getSectionCode();
-      for (unsigned int byteNumber = 0; byteNumber < section->size; byteNumber++) {
-        // Write the instruction byte in Instruction Memory using Little Endian
-        if(DEBUG){
-          // printf(" Load Instructions in I-Memory : %x\n", (section->address + byteNumber));
-        }
-        im[(section->address + byteNumber) / 4].set_slc(((section->address + byteNumber) % 4) * 8,
-                                                           ac_int<8, false>(sectionContent[byteNumber]));
+    if (section.name == ".text" || section.name == ".text.init") {
+      // Write the instruction byte in Instruction Memory using Little Endian
+      for (unsigned i = 0; i < section.size; i++) {
+        im[(section.address + i) / 4].set_slc(((section.address + i) % 4) * 8,
+                                                ac_int<8, false>(elfFile.content[section.offset + i]));
       }
-      free(sectionContent);
     }
   }
   
@@ -85,20 +72,12 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   }
 
   //****************************************************************************
-  // Looking for start symbol
-  unsigned char* sectionContent = elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode();
-  for (auto const &symbol : *elfFile.symbols){
-    const char* name = (const char*)&(sectionContent[symbol->name]);
-    if (strcmp(name, "_start") == 0) 
-        core.pc = symbol->offset;
-    if (signatureFile != NULL){
-      if (strcmp(name, "begin_signature") == 0)
-        begin_signature = symbol->offset;
-      else if (strcmp(name, "end_signature") == 0)
-        end_signature = symbol->offset;
-    }
+  // Looking for start symbols
+  core.pc = find_by_name(elfFile.symbols, "_start").offset;
+  if (signatureFile != NULL){
+    begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
+    end_signature = find_by_name(elfFile.symbols, "end_signature").offset;
   }
-  free(sectionContent);
 
   if(DEBUG){
     printf("Start Symbol Reading done.\n");
@@ -186,7 +165,6 @@ void BasicSimulator::printEnd()
 }
 
 // Function for handling memory accesses
-
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
   ac_int<32, false> wordRes = 0;

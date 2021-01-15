@@ -1,44 +1,47 @@
-
-// #ifdef __LINUX_API
-
 #ifndef __ELFFILE
 #define __ELFFILE
 
+#include <cstdio>
 #include <string>
 #include <vector>
 
 #include "elf.h"
 
-class ElfSection;
-class ElfRelocation;
-class ElfSymbol;
+static constexpr uint8_t ELF_MAGIC[] = {ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3};
 
-class ElfFile {
-public:
-  Elf32_Ehdr fileHeader32;
-  Elf64_Ehdr fileHeader64;
+static constexpr size_t E_SHOFF     = 0x20;
+static constexpr size_t E_SHENTSIZE = 0x2E;
+static constexpr size_t E_SHNUM     = 0x30;
+static constexpr size_t E_SHSTRNDX  = 0x32;
 
-  int is32Bits;
+template<unsigned N> constexpr size_t little_endian(const uint8_t *bytes){
+    return (bytes[N-1] << 8 * (N-1)) | little_endian<N-1>(bytes);
+}
 
-  std::vector<ElfSection*>* sectionTable;
-  std::vector<std::string>* nameTable;
-  std::vector<ElfSymbol*>* symbols;
+template<> constexpr size_t little_endian<0>(const uint8_t *bytes){
+    return 0;
+}
 
-  int indexOfSymbolNameSection;
+template<unsigned N> constexpr size_t big_endian(const unsigned char *bytes){
+    return (bytes[0] << 8 * (N-1)) | big_endian<N-1>(bytes+1);
+}
 
-  ElfFile(const char* pathToElfFile);
-  ~ElfFile();
-  ElfFile* copy(char* newDest);
+template<> constexpr size_t big_endian<0>(const unsigned char *bytes){
+    return 0;
+}
 
-  FILE* elfFile;
-  const char* pathToElfFile;
-};
+// Function used to lookup Sections or Symbols by name
+template <typename T> const T find_by_name(const std::vector<T> v, const std::string name)
+{
+  for(const auto &s : v){
+      if (s.name == name)
+        return s;
+  }
+  fprintf(stderr, "Error: \"%s\" name not found\n", name.c_str());
+  exit(-1);
+}
 
-class ElfSection {
-public:
-  ElfFile* containingElfFile;
-  int id;
-
+struct ElfSection {
   unsigned int size;
   unsigned int offset;
   unsigned int nameIndex;
@@ -46,50 +49,81 @@ public:
   unsigned int type;
   unsigned int info;
 
-  // General functions
-  std::string getName();
+  std::string name;
 
-  // Test for special section types
-  bool isRelSection();
-  bool isRelaSection();
-
-  // Functions to access content
-  unsigned char* getSectionCode();
-  std::vector<ElfRelocation*>* getRelocations();
-  void writeSectionCode(unsigned char* newContent);
-  void writeSectionCode(FILE* file, unsigned char* newContent);
-
-  // Class constructor
-  ElfSection(ElfFile* elfFile, int id, Elf32_Shdr header);
-  ElfSection(ElfFile* elfFile, int id, Elf64_Shdr header);
+  template <typename ElfShdr> ElfSection(const ElfShdr);
 };
 
-class ElfSymbol {
-public:
-  unsigned int name;
+struct ElfSymbol {
+  unsigned int nameIndex;
   unsigned int type;
   unsigned int offset;
   unsigned int size;
   unsigned int section;
   unsigned int value;
 
-  // Class constructors
-  ElfSymbol(Elf32_Sym);
-  ElfSymbol(Elf64_Sym);
+  std::string name;
+
+  template <typename ElfSymT> ElfSymbol(const ElfSymT);
 };
 
-class ElfRelocation {
+class ElfFile {
 public:
-  unsigned int offset;
-  unsigned int symbol;
-  unsigned int type;
-  unsigned int info;
+  std::vector<ElfSection> sectionTable;
+  std::vector<ElfSymbol> symbols;
+  std::vector<uint8_t> content;
 
-  // Class constructors
-  ElfRelocation(Elf32_Rel);
-  ElfRelocation(Elf32_Rela);
-  ElfRelocation(Elf64_Rel);
-  ElfRelocation(Elf64_Rela);
+  ElfFile(const char* pathToElfFile);
+  ~ElfFile() = default;
+
+private:
+  template <typename ElfSymT> void readSymbolTable();
+  template <typename ElfShdrT> void fillSectionTable();
+
+  void fillNameTable();
+  void fillSymbolsName();
 };
+
+template <typename ElfSymT> void ElfFile::readSymbolTable()
+{
+  for (const auto& section : sectionTable) {
+    if (section.type == SHT_SYMTAB) {
+      const auto* rawSymbols = reinterpret_cast<ElfSymT*>(&content[section.offset]);
+      const auto N           = section.size / sizeof(ElfSymT);
+      for (int i = 0; i < N; i++)
+        symbols.push_back(ElfSymbol(rawSymbols[i]));
+    }
+  }
+}
+
+template <typename ElfShdrT> void ElfFile::fillSectionTable()
+{
+  const auto tableOffset  = little_endian<4>(&content[E_SHOFF]);
+  const auto tableSize    = little_endian<2>(&content[E_SHNUM]);
+  const auto* rawSections = reinterpret_cast<ElfShdrT*>(&content[tableOffset]);
+
+  sectionTable.reserve(tableSize);
+  for (int i = 0; i < tableSize; i++)
+    sectionTable.push_back(ElfSection(rawSections[i]));
+}
+
+template <typename ElfShdrT> ElfSection::ElfSection(const ElfShdrT header)
+{
+  offset    = (header.sh_offset);
+  size      = (header.sh_size);
+  nameIndex = (header.sh_name);
+  address   = (header.sh_addr);
+  type      = (header.sh_type);
+  info      = (header.sh_info);
+}
+
+template <typename ElfSymT> ElfSymbol::ElfSymbol(const ElfSymT sym)
+{
+  offset    = sym.st_value;
+  type      = ELF32_ST_TYPE(sym.st_info); // TODO: make this generic
+  section   = sym.st_shndx;
+  size      = sym.st_size;
+  nameIndex = sym.st_name;
+}
 
 #endif
