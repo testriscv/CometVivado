@@ -14,8 +14,9 @@
 
 #define DEBUG 0
 
-BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> args, const char* inFile,
-                               const char* outFile, const char* tFile, const char* sFile)
+BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> args, 
+                               std::string inFile, std::string outFile, 
+                               std::string tFile, std::string sFile)
 {
 
   memset((char*)&core, 0, sizeof(Core));
@@ -28,40 +29,40 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
   // core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
 
-  heapAddress = 0;
+  openFiles(inFile, outFile, tFile, sFile);
 
-  inputFile  = stdin;
-  outputFile = stdout;
-  traceFile  = stderr;
-  signatureFile = NULL;
-  
-  if (inFile)
-    inputFile = fopen(inFile, "rb");
-  if (outFile)
-    outputFile = fopen(outFile, "wb");
-  if (tFile)
-    traceFile = fopen(tFile, "wb");
-  if(sFile)
-    signatureFile = fopen(sFile, "wb");
-
-  //****************************************************************************
-  // Populate memory using ELF file
-  readElf(binaryFile);
-
-  if(DEBUG){
-    printf("Start Symbol Reading done.\n");
-  }
+  readElf(binaryFile.c_str());
 
   pushArgsOnStack(args);
 
-  if(DEBUG){
-    printf("Populate Data Memory done.\n");
-  }
-  
   core.regFile[2] = STACK_INIT;
 }
 
+FILE* fopenCheck(const char* fname, const char* mode){
+    FILE* fp = fopen(fname, mode);
+    if(fp == NULL){
+        fprintf(stderr, "Error: cannot open file %s\n", fname);
+        exit(-1);
+    }
+    return fp;
+}
+
+void openOrDefault(std::string fname, const char* mode, FILE* def, FILE* &dest){
+  if (fname.empty())
+    dest = def;
+  else
+    dest = fopenCheck(fname.c_str(), mode);
+}
+
+void BasicSimulator::openFiles(std::string inFile, std::string outFile, std::string tFile, std::string sFile){
+  openOrDefault(inFile, "rb", stdin, inputFile);
+  openOrDefault(outFile, "wb", stdout, outputFile);
+  openOrDefault(tFile, "wb", stderr, traceFile);
+  openOrDefault(sFile, "wb", NULL, signatureFile);
+}
+
 void BasicSimulator::readElf(const char *binaryFile){
+  heapAddress = 0;
   ElfFile elfFile(binaryFile);
   for(auto const &section : elfFile.sectionTable){
     if(section.address != 0){
@@ -81,6 +82,10 @@ void BasicSimulator::readElf(const char *binaryFile){
     begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
     end_signature = find_by_name(elfFile.symbols, "end_signature").offset;
   }
+  if(DEBUG){
+    printf("Elf Reading done.\n");
+  }
+
 }
 
 void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){
@@ -99,6 +104,9 @@ void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){
     }
     setByte(currentPlaceStrings + oneCharIndex, 0);
     currentPlaceStrings += oneCharIndex + 1;
+  }
+  if(DEBUG){
+    printf("Populate Data Memory done.\n");
   }
 } 
 

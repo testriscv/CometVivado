@@ -2,7 +2,6 @@
 #define __BASIC_SIMULATOR_H__
 
 #include "simulator.h"
-#include <map>
 #include <vector>
 
 class BasicSimulator : public Simulator {
@@ -19,8 +18,9 @@ class BasicSimulator : public Simulator {
   FILE* signatureFile;
 
 public:
-  BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile,
-                 const char* tFile, const char* sFile);
+  BasicSimulator(std::string binaryFile, std::vector<std::string>, 
+                 std::string inFile, std::string outFile,
+                 std::string tFile, std::string sFile);
   ~BasicSimulator();
 
 protected:
@@ -59,6 +59,7 @@ private:
   void setByte(unsigned, ac_int<8, true>);
   void readElf(const char*);
   void pushArgsOnStack(const std::vector<std::string>);
+  void openFiles(std::string inFile, std::string outFile, std::string tFile, std::string sFile);
 };
 
 #endif // __BASIC_SIMULATOR_H__

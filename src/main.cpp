@@ -30,7 +30,7 @@ int main(int argc, char** argv)
   benchArgs.push_back(binaryFile);
   for (auto a : pargs)
     benchArgs.push_back(a);
-  BasicSimulator sim(binaryFile.c_str(), benchArgs, inputFile.c_str(), outputFile.c_str(), traceFile.c_str(), signatureFile.c_str());
+  BasicSimulator sim(binaryFile, benchArgs, inputFile, outputFile, traceFile, signatureFile);
 
   sim.run();
 
