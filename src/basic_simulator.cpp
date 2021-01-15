@@ -46,27 +46,7 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   //****************************************************************************
   // Populate memory using ELF file
-  ElfFile elfFile(binaryFile);
-  for(auto const &section : elfFile.sectionTable){
-    if(section.address != 0){
-      for (unsigned i = 0; i < section.size; i++)
-        setByte(section.address + i, elfFile.content[section.offset + i]);
-     
-       // update the size of the heap
-       if (section.name != ".text" && section.name != ".text.init") {
-         if (section.address + section.size > heapAddress)
-           heapAddress = section.address + section.size;
-       }
-    }
-  }
-  
-  //****************************************************************************
-  // Looking for start symbol
-  core.pc = find_by_name(elfFile.symbols, "_start").offset;
-  if (signatureFile != NULL){
-    begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
-    end_signature = find_by_name(elfFile.symbols, "end_signature").offset;
-  }
+  readElf(binaryFile);
 
   if(DEBUG){
     printf("Start Symbol Reading done.\n");
@@ -95,6 +75,28 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   }
   
   core.regFile[2] = STACK_INIT;
+}
+
+void BasicSimulator::readElf(const char *binaryFile){
+  ElfFile elfFile(binaryFile);
+  for(auto const &section : elfFile.sectionTable){
+    if(section.address != 0){
+      for (unsigned i = 0; i < section.size; i++)
+        setByte(section.address + i, elfFile.content[section.offset + i]);
+     
+       // update the size of the heap
+       if (section.name != ".text" && section.name != ".text.init") {
+         if (section.address + section.size > heapAddress)
+           heapAddress = section.address + section.size;
+       }
+    }
+  }
+  
+  core.pc = find_by_name(elfFile.symbols, "_start").offset;
+  if (signatureFile != NULL){
+    begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
+    end_signature = find_by_name(elfFile.symbols, "end_signature").offset;
+  }
 }
 
 BasicSimulator::~BasicSimulator()

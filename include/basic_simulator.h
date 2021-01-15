@@ -17,6 +17,9 @@ class BasicSimulator : public Simulator {
   FILE* outputFile;
   FILE* traceFile;
   FILE* signatureFile;
+private:
+  void setByte(unsigned, ac_int<8, true>);
+  void readElf(const char*);
 
 public:
   BasicSimulator(const char* binaryFile, std::vector<std::string>, const char* inFile, const char* outFile,
@@ -28,7 +31,6 @@ protected:
   void printEnd();
   void extend(){};
 
-  void setByte(unsigned, ac_int<8, true>);
   // Functions for memory accesses
   void stb(ac_int<32, false> addr, ac_int<8, true> value);
   void sth(ac_int<32, false> addr, ac_int<16, true> value);
