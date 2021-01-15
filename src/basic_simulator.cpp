@@ -45,8 +45,6 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
     traceFile = fopen(tFile, "wb");
   if(sFile)
     signatureFile = fopen(sFile, "wb");
-    begin_signature = new ac_int<32, false>;
-    end_signature = new ac_int<32, false>;
 
   //****************************************************************************
   // Populate memory using ELF file
@@ -95,9 +93,9 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
         core.pc = symbol->offset;
     if (signatureFile != NULL){
       if (strcmp(name, "begin_signature") == 0)
-        *begin_signature = symbol->offset;
+        begin_signature = symbol->offset;
       else if (strcmp(name, "end_signature") == 0)
-        *end_signature = symbol->offset;
+        end_signature = symbol->offset;
     }
   }
   free(sectionContent);
@@ -173,14 +171,14 @@ void BasicSimulator::printEnd()
     
     ac_int<32, false> wordNumber;
     ac_int<32, false> addr_offset = 4;
-    ac_int<32, false> begin_offset = ((*begin_signature)%4); // correct address alignement
+    const auto begin_offset = ((begin_signature)%4); // correct address alignement
     
     if(DEBUG){
-      printf("BEGIN/END_SIGNATURE: %x/%x (%x)", (unsigned int)(*begin_signature), (unsigned int)(*end_signature), (unsigned int)begin_offset);
+      printf("BEGIN/END_SIGNATURE: %x/%x (%x)", begin_signature, end_signature, begin_offset);
     }
     
     //memory read
-    for (wordNumber = *begin_signature - begin_offset; wordNumber < *end_signature - begin_offset; wordNumber+=addr_offset)
+    for (wordNumber = begin_signature - begin_offset; wordNumber < end_signature - begin_offset; wordNumber+=addr_offset)
     {
       fprintf(signatureFile, "%08x\n", (unsigned int)this->ldw(wordNumber));
     }

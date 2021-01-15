@@ -9,7 +9,7 @@ class BasicSimulator : public Simulator {
   unsigned heapAddress;
 
   // Signature address when doing compliance tests
-  ac_int<32, false>*begin_signature, *end_signature;
+  unsigned int begin_signature, end_signature;
   
   ac_int<32, false>*im, *dm;
 
