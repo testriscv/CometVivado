@@ -11,7 +11,7 @@ class BasicSimulator : public Simulator {
   // Signature address when doing compliance tests
   unsigned int begin_signature, end_signature;
   
-  ac_int<32, false>*im, *dm;
+  std::vector<ac_int<32, false> > mem;
 
   FILE* inputFile;
   FILE* outputFile;
@@ -28,6 +28,7 @@ protected:
   void printEnd();
   void extend(){};
 
+  void setByte(unsigned, ac_int<8, true>);
   // Functions for memory accesses
   void stb(ac_int<32, false> addr, ac_int<8, true> value);
   void sth(ac_int<32, false> addr, ac_int<16, true> value);

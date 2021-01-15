@@ -20,14 +20,13 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
 
   memset((char*)&core, 0, sizeof(Core));
 
-  im = new ac_int<32, false>[DRAM_SIZE >> 2];
-  dm = new ac_int<32, false>[DRAM_SIZE >> 2];
+  mem.reserve(DRAM_SIZE >> 2);
 
-  core.im = new SimpleMemory<4>(im);
-  core.dm = new SimpleMemory<4>(dm);
+  core.im = new SimpleMemory<4>(mem.data());
+  core.dm = new SimpleMemory<4>(mem.data());
   
-  // core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(im), false);
-  // core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(dm), false);
+  // core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
+  // core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
 
   heapAddress = 0;
 
@@ -49,29 +48,20 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // Populate memory using ELF file
   ElfFile elfFile(binaryFile);
   for(auto const &section : elfFile.sectionTable){
-    if(section.address != 0 && section.name != ".text"){
+    if(section.address != 0){
       for (unsigned i = 0; i < section.size; i++)
-        this->stb(section.address + i, elfFile.content[section.offset + i]);
+        setByte(section.address + i, elfFile.content[section.offset + i]);
      
-      // We update the size of the heap
-      if (section.address + section.size > heapAddress)
-        heapAddress = section.address + section.size;
-    }
-    if (section.name == ".text" || section.name == ".text.init") {
-      // Write the instruction byte in Instruction Memory using Little Endian
-      for (unsigned i = 0; i < section.size; i++) {
-        im[(section.address + i) / 4].set_slc(((section.address + i) % 4) * 8,
-                                                ac_int<8, false>(elfFile.content[section.offset + i]));
-      }
+       // update the size of the heap
+       if (section.name != ".text" && section.name != ".text.init") {
+         if (section.address + section.size > heapAddress)
+           heapAddress = section.address + section.size;
+       }
     }
   }
   
-  if(DEBUG){
-    printf("Populate Instruction Memory done.\n");
-  }
-
   //****************************************************************************
-  // Looking for start symbols
+  // Looking for start symbol
   core.pc = find_by_name(elfFile.symbols, "_start").offset;
   if (signatureFile != NULL){
     begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
@@ -85,25 +75,19 @@ BasicSimulator::BasicSimulator(const char* binaryFile, std::vector<std::string> 
   // Adding command line arguments on the stack
   unsigned int argc = args.size();
  
-  // TODO: stw fills the cache, maybe here we should only fill the main memory. (Davide)
-  //this->stw(STACK_INIT, argc);  
-  dm[STACK_INIT >> 2] = argc;  
+  mem[STACK_INIT >> 2] = argc;  
 
-  ac_int<32, true> currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
+  auto currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
   for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
-    this->stw(STACK_INIT + 4 * oneArg + 4, currentPlaceStrings);
-
+    mem[(STACK_INIT + 4 * oneArg + 4) >> 2] = currentPlaceStrings;
+    
     int oneCharIndex = 0;
-    char oneChar     = args[oneArg][oneCharIndex];
-    while (oneChar != 0) {
-      this->stb(currentPlaceStrings + oneCharIndex, oneChar);
+    for(const auto c : args[oneArg]){
+      setByte(currentPlaceStrings + oneCharIndex, c);
       oneCharIndex++;
-      oneChar = args[oneArg][oneCharIndex];
     }
-    this->stb(currentPlaceStrings + oneCharIndex, oneChar);
-
-    oneCharIndex++;
-    currentPlaceStrings += oneCharIndex;
+    setByte(currentPlaceStrings + oneCharIndex, 0);
+    currentPlaceStrings += oneCharIndex + 1;
   }
   
   if(DEBUG){
@@ -161,6 +145,10 @@ void BasicSimulator::printEnd()
   }
 }
 
+void BasicSimulator::setByte(unsigned addr, ac_int<8, true> value){
+  mem[addr >> 2].set_slc((addr % 4) * 8, value); 
+}
+
 // Function for handling memory accesses
 void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
@@ -199,7 +187,7 @@ void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
 ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 {
   ac_int<8, true> result;
-  result                    = dm[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
+  result                    = mem[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
   while (stall)
