@@ -86,7 +86,7 @@ public:
   }
 
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, bool& releaseIDM)
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
   {
 
     // bit size is the log(setSize)
@@ -355,9 +355,8 @@ public:
       }
     }
 
-    this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut, nextLevelWaitOut);
+    this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
     waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
-    releaseIDM = nextLevelWaitOut || (cacheState != 0 && cacheState != 1);
   }
 };
 

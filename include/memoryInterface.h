@@ -13,7 +13,7 @@ protected:
 
 public:
   virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-                       ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, bool& releaseIDM) = 0;
+                       ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut) = 0;
 };
 
 template <unsigned int INTERFACE_SIZE> class IncompleteMemory : public MemoryInterface<INTERFACE_SIZE> {
@@ -23,7 +23,7 @@ public:
 public:
   IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
-               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut, bool& releaseIDM)
+               ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
   {
 
     // Incomplete memory only works for 32 bits
@@ -31,7 +31,6 @@ public:
 
     // no latency, wait is always set to false
     waitOut = false;
-    releaseIDM = false;
     if (opType == STORE) {
       data[(addr >> 2) & 0xffffff] = dataIn;
     } else if (opType == LOAD) {

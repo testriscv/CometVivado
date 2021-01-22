@@ -169,7 +169,7 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
   bool stall                = true;
   bool releaseIDM           = false;
   while (stall)
-    core.dm->process(addr, BYTE, STORE, value, wordRes, stall, releaseIDM);
+    core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
 
 void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
@@ -206,7 +206,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
   bool stall                = true;
   bool releaseIDM           = false;
   while (stall)
-    core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall, releaseIDM);
+    core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
 
   result = wordRes.slc<8>(0);
   return result;

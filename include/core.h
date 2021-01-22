@@ -40,7 +40,6 @@ struct Core {
   // stall
   bool stallSignals[5] = {0, 0, 0, 0, 0};
   bool stallIm, stallDm;
-  bool releaseIM, releaseDM;
   unsigned long cycle;
   /// Multicycle operation
 

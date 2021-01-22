@@ -516,8 +516,6 @@ void doCycle(struct Core& core, // Core containing all values
   core.stallSignals[4] = 0;
   core.stallIm         = false;
   core.stallDm         = false;
-  core.releaseIM       = false;
-  core.releaseDM       = false;
 
   // declare temporary structs
   struct FtoDC ftoDC_temp;
@@ -559,7 +557,7 @@ void doCycle(struct Core& core, // Core containing all values
   // declare temporary register file
   ac_int<32, false> nextInst;
 
-  core.im->process(core.pc, WORD, (!localStall && !core.releaseIM) ? LOAD : NONE, 0, nextInst, core.stallIm, core.releaseDM);
+  core.im->process(core.pc, WORD, (!localStall && !core.stallDm) ? LOAD : NONE, 0, nextInst, core.stallIm);
 
   fetch(core.pc, ftoDC_temp, nextInst);
   decode(core.ftoDC, dctoEx_temp, core.regFile);
@@ -598,10 +596,10 @@ void doCycle(struct Core& core, // Core containing all values
       break;
   }
   
-  memOpType opType = (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.releaseDM && memtoWB_temp.isLoad) ? LOAD 
-    : (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.releaseDM && memtoWB_temp.isStore ? STORE : NONE);
+  memOpType opType = (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isLoad) ? LOAD 
+    : (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isStore ? STORE : NONE);
 
-  core.dm->process(memtoWB_temp.address, mask, opType, memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm, core.releaseIM);
+  core.dm->process(memtoWB_temp.address, mask, opType, memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
   
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm) {
