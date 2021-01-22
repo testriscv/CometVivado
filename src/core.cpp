@@ -516,6 +516,8 @@ void doCycle(struct Core& core, // Core containing all values
   core.stallSignals[4] = 0;
   core.stallIm         = false;
   core.stallDm         = false;
+  core.releaseIM       = false;
+  core.releaseDM       = false;
 
   // declare temporary structs
   struct FtoDC ftoDC_temp;
@@ -557,8 +559,7 @@ void doCycle(struct Core& core, // Core containing all values
   // declare temporary register file
   ac_int<32, false> nextInst;
 
-  if (!localStall && !core.stallDm)
-    core.im->process(core.pc, WORD, LOAD, 0, nextInst, core.stallIm);
+  core.im->process(core.pc, WORD, (!localStall && !core.releaseIM) ? LOAD : NONE, 0, nextInst, core.stallIm, core.releaseDM);
 
   fetch(core.pc, ftoDC_temp, nextInst);
   decode(core.ftoDC, dctoEx_temp, core.regFile);
@@ -573,34 +574,35 @@ void doCycle(struct Core& core, // Core containing all values
                 memtoWB_temp.rd, memtoWB_temp.useRd, wbOut_temp.rd, wbOut_temp.useRd, core.stallSignals,
                 forwardRegisters);
 
-  if (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm) {
-
-    memMask mask;
-    // TODO: carry the data size to memToWb
-    switch (core.extoMem.funct3) {
-      case 0:
-        mask = BYTE;
-        break;
-      case 1:
-        mask = HALF;
-        break;
-      case 2:
-        mask = WORD;
-        break;
-      case 4:
-        mask = BYTE_U;
-        break;
-      case 5:
-        mask = HALF_U;
-        break;
-      // Should NEVER happen
-      default:
-        mask = WORD;
-        break;
-    }
-    core.dm->process(memtoWB_temp.address, mask, memtoWB_temp.isLoad ? LOAD : (memtoWB_temp.isStore ? STORE : NONE),
-                     memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
+  memMask mask;
+  // TODO: carry the data size to memToWb
+  switch (core.extoMem.funct3) {
+    case 0:
+      mask = BYTE;
+      break;
+    case 1:
+      mask = HALF;
+      break;
+    case 2:
+      mask = WORD;
+      break;
+    case 4:
+      mask = BYTE_U;
+      break;
+    case 5:
+      mask = HALF_U;
+      break;
+    // Should NEVER happen
+    default:
+      mask = WORD;
+      break;
   }
+  
+  memOpType opType = (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.releaseDM && memtoWB_temp.isLoad) ? LOAD 
+    : (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.releaseDM && memtoWB_temp.isStore ? STORE : NONE);
+
+  core.dm->process(memtoWB_temp.address, mask, opType, memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm, core.releaseIM);
+  
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm) {
     core.ftoDC = ftoDC_temp;
@@ -666,10 +668,11 @@ void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, fals
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  // CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
+  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
+  CacheMemory<4, 16, 64> imCache = CacheMemory<4, 16, 64>(&imInterface, false);
 
-  core.im = &imInterface;
-  core.dm = &dmInterface;
+  core.im = &imCache;
+  core.dm = &dmCache;
   core.pc = 0;
 
   while (1) {
