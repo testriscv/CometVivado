@@ -34,7 +34,7 @@ class CacheMemory : public MemoryInterface<INTERFACE_SIZE> {
   static const int LOG_INTERFACE_SIZE     = log2const<INTERFACE_SIZE>::value;
 
 public:
-  MemoryInterface<INTERFACE_SIZE>* nextLevel;
+  IncompleteMemory<INTERFACE_SIZE>* nextLevel;
 
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
@@ -66,7 +66,7 @@ public:
   // Stats
   unsigned long numberAccess, numberMiss;
 
-  CacheMemory(MemoryInterface<INTERFACE_SIZE>* nextLevel, bool v)
+  CacheMemory(IncompleteMemory<INTERFACE_SIZE>* nextLevel, bool v)
   {
     this->nextLevel = nextLevel;
     for (int oneSetElement = 0; oneSetElement < SET_SIZE; oneSetElement++) {
@@ -107,7 +107,8 @@ public:
         dataOut                           = dataOutStore;
         wasStore                          = false;
         cacheState                        = 0;
-
+        waitOut                           = 0;
+        return;
       } else if (opType != NONE) {
 
         ac_int<LINE_SIZE * 8 + TAG_SIZE, false> val1 = cacheMemory[place][0];

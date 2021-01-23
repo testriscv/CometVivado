@@ -24,11 +24,11 @@ BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> 
 
   mem.reserve(DRAM_SIZE >> 2);
 
-  core.im = new SimpleMemory<4>(mem.data());
-  core.dm = new SimpleMemory<4>(mem.data());
+  //core.im = new SimpleMemory<4>(mem.data());
+  //core.dm = new SimpleMemory<4>(mem.data());
   
-  // core.im = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
-  // core.dm = new CacheMemory<4, 16, 64>(new SimpleMemory<4>(mem.data()), false);
+  core.im = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(mem.data()), false);
+  core.dm = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(mem.data()), false);
 
   openFiles(inFile, outFile, tFile, sFile);
 
@@ -167,6 +167,7 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
 {
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
+  bool releaseIDM           = false;
   while (stall)
     core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
@@ -203,6 +204,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
   result                    = mem[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
+  bool releaseIDM           = false;
   while (stall)
     core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
 

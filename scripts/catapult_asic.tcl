@@ -24,6 +24,20 @@ solution library add C28SOI_SC_12_CORE_LL_ccs -file /opt/DesignKit/catapult_lib/
 go libraries
 directive set -CLOCKS {clk {-CLOCK_PERIOD 2 -CLOCK_EDGE rising -CLOCK_UNCERTAINTY 0.0 -CLOCK_HIGH_TIME 1.0 -RESET_SYNC_NAME rst -RESET_ASYNC_NAME arst_n -RESET_KIND sync -RESET_SYNC_ACTIVE high -RESET_ASYNC_ACTIVE low -ENABLE_ACTIVE high}}
 go assembly
+directive set /doCore/core/imCache.cacheMemory:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/imCache.age:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/imCache.dataValid:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/dmCache.cacheMemory:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/dmCache.age:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/dmCache.dataValid:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+
+directive set /doCore/core/imCache.cacheMemory:rsc -INTERLEAVE 4
+directive set /doCore/core/imCache.age:rsc -INTERLEAVE 4
+directive set /doCore/core/imCache.dataValid:rsc -INTERLEAVE 4
+directive set /doCore/core/dmCache.cacheMemory:rsc -INTERLEAVE 4
+directive set /doCore/core/dmCache.age:rsc -INTERLEAVE 4
+directive set /doCore/core/dmCache.dataValid:rsc -INTERLEAVE 4
+
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
