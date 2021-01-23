@@ -1,8 +1,7 @@
-#include <iomanip>
 #include <sstream>
-#include <string.h>
+#include <string>
 
-#include <riscvISA.h>
+#include "riscvISA.h"
 
 const char* riscvNamesOP[8]   = {"ADD", "SLL", "CMPLT", "CMPLTU", "XOR", "", "OR", "AND"};
 const char* riscvNamesOPI[8]  = {"ADDi", "SLLi", "SLTi", "CMPLTUi", "XORi", "SRLi", "ORi", "ANDi"};

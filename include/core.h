@@ -1,16 +1,13 @@
 #ifndef __CORE_H__
 #define __CORE_H__
 
-#include <ac_int.h>
-#include <riscvISA.h>
+#include "ac_int.h"
+#include "riscvISA.h"
 
 // all the possible memories
-#include <cacheMemory.h>
-#include <memoryInterface.h>
-#include <pipelineRegisters.h>
-
-#define DRAM_SIZE ((size_t)1 << 26)
-#define STACK_INIT (DRAM_SIZE - 0x1000)
+#include "cacheMemory.h"
+#include "memoryInterface.h"
+#include "pipelineRegisters.h"
 
 #ifndef MEMORY_INTERFACE
 #define MEMORY_INTERFACE SimpleMemory
@@ -20,7 +17,7 @@
  * Stall signals enum
  * ****************************************************************************************
  */
-typedef enum { STALL_FETCH = 0, STALL_DECODE = 1, STALL_EXECUTE = 2, STALL_MEMORY = 3, STALL_WRITEBACK = 4 } StallNames;
+enum StallNames{ STALL_FETCH = 0, STALL_DECODE = 1, STALL_EXECUTE = 2, STALL_MEMORY = 3, STALL_WRITEBACK = 4 };
 
 // This is ugly but otherwise with have a dependency : alu.h includes core.h
 // (for pipeline regs) and core.h includes alu.h...

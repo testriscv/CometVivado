@@ -1,7 +1,8 @@
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <sys/stat.h>
 
 #include <sys/time.h>
@@ -85,7 +86,6 @@ void BasicSimulator::readElf(const char *binaryFile){
   if(DEBUG){
     printf("Elf Reading done.\n");
   }
-
 }
 
 void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){

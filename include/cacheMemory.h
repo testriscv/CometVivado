@@ -8,9 +8,9 @@
 #ifndef INCLUDE_CACHEMEMORY_H_
 #define INCLUDE_CACHEMEMORY_H_
 
+#include "ac_int.h"
 #include "logarithm.h"
 #include "memoryInterface.h"
-#include <ac_int.h>
 
 /************************************************************************
  * 	Following values are templates:

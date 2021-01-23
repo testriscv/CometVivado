@@ -7,9 +7,8 @@
  */
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
-#include <iomanip>
-#include <sstream>
-#include <string.h>
+
+#include <string>
 
 #ifndef __HLS__
 std::string printDecodedInstrRISCV(unsigned int oneInstruction);

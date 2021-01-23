@@ -1,10 +1,7 @@
-#include <ac_int.h>
-#include <cacheMemory.h>
-#include <core.h>
+#include "ac_int.h"
+#include "cacheMemory.h"
+#include "core.h"
 
-#ifndef __HLS__
-#include "simulator.h"
-#endif // __HLS__
 
 void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruction)
 {

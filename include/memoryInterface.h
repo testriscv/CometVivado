@@ -1,7 +1,7 @@
 #ifndef __MEMORY_INTERFACE_H__
 #define __MEMORY_INTERFACE_H__
 
-#include <ac_int.h>
+#include "ac_int.h"
 
 typedef enum { BYTE = 0, HALF, WORD, BYTE_U, HALF_U, LONG } memMask;
 
@@ -24,8 +24,7 @@ public:
   IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
   void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
                ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
-  {
-
+  { 
     // Incomplete memory only works for 32 bits
     assert(INTERFACE_SIZE == 4);
 
