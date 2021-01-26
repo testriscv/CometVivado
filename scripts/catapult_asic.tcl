@@ -31,12 +31,17 @@ directive set /doCore/core/dmCache.cacheMemory:rsc -MAP_TO_MODULE ccs_sample_mem
 directive set /doCore/core/dmCache.age:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
 directive set /doCore/core/dmCache.dataValid:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
 
+directive set /doCore/core/imCache.dirtyBit:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set /doCore/core/dmCache.dirtyBit:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+
 directive set /doCore/core/imCache.cacheMemory:rsc -INTERLEAVE 4
 directive set /doCore/core/imCache.age:rsc -INTERLEAVE 4
 directive set /doCore/core/imCache.dataValid:rsc -INTERLEAVE 4
+directive set /doCore/core/imCache.dirtyBit:rsc -INTERLEAVE 4
 directive set /doCore/core/dmCache.cacheMemory:rsc -INTERLEAVE 4
 directive set /doCore/core/dmCache.age:rsc -INTERLEAVE 4
 directive set /doCore/core/dmCache.dataValid:rsc -INTERLEAVE 4
+directive set /doCore/core/dmCache.dirtyBit:rsc -INTERLEAVE 4
 
 directive set /doCore/globalStall:rsc -MAP_TO_MODULE {[DirectInput]}
 directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}

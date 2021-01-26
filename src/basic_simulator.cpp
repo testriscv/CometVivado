@@ -71,7 +71,7 @@ void BasicSimulator::readElf(const char *binaryFile){
         setByte(section.address + i, elfFile.content[section.offset + i]);
      
        // update the size of the heap
-       if (section.name != ".text" && section.name != ".text.init") {
+       if (section.name != ".text") {
          if (section.address + section.size > heapAddress)
            heapAddress = section.address + section.size;
        }

@@ -8,9 +8,9 @@
 #ifndef INCLUDE_CACHEMEMORY_H_
 #define INCLUDE_CACHEMEMORY_H_
 
-#include "ac_int.h"
 #include "logarithm.h"
 #include "memoryInterface.h"
+#include <ac_int.h>
 
 /************************************************************************
  * 	Following values are templates:
@@ -39,6 +39,7 @@ public:
   ac_int<TAG_SIZE + LINE_SIZE * 8, false> cacheMemory[SET_SIZE][ASSOCIATIVITY];
   ac_int<40, false> age[SET_SIZE][ASSOCIATIVITY];
   ac_int<1, false> dataValid[SET_SIZE][ASSOCIATIVITY];
+  ac_int<1, false> dirtyBit[SET_SIZE][ASSOCIATIVITY];
 
   ac_int<6, false> cacheState;                // Used for the internal state machine
   ac_int<LOG_ASSOCIATIVITY, false> older = 0; // Set where the miss occurs
@@ -52,12 +53,14 @@ public:
   ac_int<40, false> cycle;
   ac_int<LOG_ASSOCIATIVITY, false> setMiss;
   bool isValid;
+  bool isDirty;
 
   bool wasStore = false;
   ac_int<LOG_ASSOCIATIVITY, false> setStore;
   ac_int<LOG_SET_SIZE, false> placeStore;
   ac_int<LINE_SIZE * 8 + TAG_SIZE, false> valStore;
   ac_int<INTERFACE_SIZE * 8, false> dataOutStore;
+  ac_int<1, false> valDirty = 0;
 
   bool nextLevelWaitOut;
 
@@ -74,6 +77,7 @@ public:
         cacheMemory[oneSetElement][oneSet] = 0;
         age[oneSetElement][oneSet]         = 0;
         dataValid[oneSetElement][oneSet]   = 0;
+        dirtyBit[oneSetElement][oneSet]    = 0;
       }
     }
     VERBOSE          = v;
@@ -100,10 +104,10 @@ public:
       cycle++;
 
       if (wasStore || cacheState == 1) {
-
         cacheMemory[placeStore][setStore] = valStore;
         age[placeStore][setStore]         = cycle;
         dataValid[placeStore][setStore]   = 1;
+        dirtyBit[placeStore][setStore]    = valDirty;
         dataOut                           = dataOutStore;
         wasStore                          = false;
         cacheState                        = 0;
@@ -120,12 +124,18 @@ public:
         ac_int<1, false> valid2 = dataValid[place][1];
         ac_int<1, false> valid3 = dataValid[place][2];
         ac_int<1, false> valid4 = dataValid[place][3];
+        
 
         ac_int<16, false> age1 = age[place][0];
         ac_int<16, false> age2 = age[place][1];
         ac_int<16, false> age3 = age[place][2];
         ac_int<16, false> age4 = age[place][3];
 
+        ac_int<1, false> dirty1 = dirtyBit[place][0];
+        ac_int<1, false> dirty2 = dirtyBit[place][1];
+        ac_int<1, false> dirty3 = dirtyBit[place][2];
+        ac_int<1, false> dirty4 = dirtyBit[place][3];
+        
         if (cacheState == 0) {
           numberAccess++;
 
@@ -200,6 +210,7 @@ public:
               placeStore = place;
               setStore   = set;
               valStore   = localValStore;
+              valDirty   = 1;
               wasStore   = true;
 
             } else {
@@ -256,6 +267,14 @@ public:
                           : ((age2 < age1 && age2 < age3 && age2 < age4)
                                  ? valid2
                                  : ((age3 < age2 && age3 < age1 && age3 < age4) ? valid3 : valid4));
+            isDirty = (age1 < age2 && age1 < age3 && age1 < age4)
+                          ? dirty1
+                          : ((age2 < age1 && age2 < age3 && age2 < age4)
+                                 ? dirty2
+                                 : ((age3 < age2 && age3 < age1 && age3 < age4) ? dirty3 : dirty4));
+            if(isDirty == 0){
+             cacheState = STATE_CACHE_LAST_STORE - 1;
+            }
             // printf("TAG is %x\n", oldVal.slc<TAG_SIZE>(0));
           }
 
@@ -291,6 +310,7 @@ public:
           cacheState--;
 
           if (cacheState == 1) {
+            valDirty = 0;
             if (opType == STORE) {
               switch (mask) {
                 case BYTE:
@@ -308,6 +328,7 @@ public:
                   newVal.set_slc(TAG_SIZE + 4 * 8 * offset, dataIn);
                   break;
               }
+              valDirty = 1;
             }
 
             placeStore = place;
@@ -356,7 +377,7 @@ public:
     }
 
     this->nextLevel->process(nextLevelAddr, LONG, nextLevelOpType, nextLevelDataIn, nextLevelDataOut, nextLevelWaitOut);
-    waitOut = nextLevelWaitOut || cacheState || (wasStore && opType != NONE);
+    waitOut = nextLevelWaitOut || cacheState || wasStore;
   }
 };
 

@@ -1,11 +1,9 @@
 OUTPUT_ARCH( "riscv" )
-ENTRY(rvtest_entry_point)
+ENTRY(_start)
 
 SECTIONS
 {
   . = 0x010000;
-  .text.init : { *(.text.init) }
-  . = ALIGN(0x1000);
   .text : { *(.text) }
   . = ALIGN(0x1000);
   .data : { *(.data) }
