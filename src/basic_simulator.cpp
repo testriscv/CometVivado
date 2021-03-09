@@ -15,8 +15,8 @@
 
 #define DEBUG 0
 
-BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> args, 
-                               std::string inFile, std::string outFile, 
+BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> args,
+                               std::string inFile, std::string outFile,
                                std::string tFile, std::string sFile)
 {
 
@@ -26,7 +26,7 @@ BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> 
 
   //core.im = new SimpleMemory<4>(mem.data());
   //core.dm = new SimpleMemory<4>(mem.data());
-  
+
   core.im = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(mem.data()), false);
   core.dm = new CacheMemory<4, 16, 64>(new IncompleteMemory<4>(mem.data()), false);
 
@@ -69,7 +69,7 @@ void BasicSimulator::readElf(const char *binaryFile){
     if(section.address != 0){
       for (unsigned i = 0; i < section.size; i++)
         setByte(section.address + i, elfFile.content[section.offset + i]);
-     
+
        // update the size of the heap
        if (section.name != ".text") {
          if (section.address + section.size > heapAddress)
@@ -77,7 +77,7 @@ void BasicSimulator::readElf(const char *binaryFile){
        }
     }
   }
-  
+
   core.pc = find_by_name(elfFile.symbols, "_start").offset;
   if (signatureFile != NULL){
     begin_signature = find_by_name(elfFile.symbols, "begin_signature").offset;
@@ -90,13 +90,13 @@ void BasicSimulator::readElf(const char *binaryFile){
 
 void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){
   unsigned int argc = args.size();
- 
-  mem[STACK_INIT >> 2] = argc;  
+
+  mem[STACK_INIT >> 2] = argc;
 
   auto currentPlaceStrings = STACK_INIT + 4 + 4 * argc;
   for (unsigned oneArg = 0; oneArg < argc; oneArg++) {
     mem[(STACK_INIT + 4 * oneArg + 4) >> 2] = currentPlaceStrings;
-    
+
     int oneCharIndex = 0;
     for(const auto c : args[oneArg]){
       setByte(currentPlaceStrings + oneCharIndex, c);
@@ -108,7 +108,7 @@ void BasicSimulator::pushArgsOnStack(const std::vector<std::string> args){
   if(DEBUG){
     printf("Populate Data Memory done.\n");
   }
-} 
+}
 
 BasicSimulator::~BasicSimulator()
 {
@@ -124,7 +124,8 @@ BasicSimulator::~BasicSimulator()
 
 void BasicSimulator::printCycle()
 {
-  if(DEBUG){ 
+  //print something every cycle
+  if(DEBUG){
     if (!core.stallSignals[0] && !core.stallIm && !core.stallDm) {
       printf("Debug trace : %x ", (unsigned int)core.ftoDC.pc);
       std::cout << printDecodedInstrRISCV(core.ftoDC.instruction);
@@ -139,17 +140,17 @@ void BasicSimulator::printCycle()
 void BasicSimulator::printEnd()
 {
   /*
-  RISCV-COMPLIANCE Ending Routine to get the signature 
-  stored between begin_signature and end_signature. 
+  RISCV-COMPLIANCE Ending Routine to get the signature
+  stored between begin_signature and end_signature.
   */
   if(signatureFile != NULL){
     const auto addr_offset = 4;
     const auto begin_offset = ((begin_signature)%4); // correct address alignement
-    
+
     if(DEBUG){
       printf("BEGIN/END_SIGNATURE: %x/%x (%x)", begin_signature, end_signature, begin_offset);
     }
-    
+
     //memory read
     for (auto wordNumber = begin_signature - begin_offset; wordNumber < end_signature - begin_offset; wordNumber+=addr_offset)
     {
@@ -159,7 +160,7 @@ void BasicSimulator::printEnd()
 }
 
 void BasicSimulator::setByte(unsigned addr, ac_int<8, true> value){
-  mem[addr >> 2].set_slc((addr % 4) * 8, value); 
+  mem[addr >> 2].set_slc((addr % 4) * 8, value);
 }
 
 // Function for handling memory accesses

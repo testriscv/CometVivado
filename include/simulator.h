@@ -8,7 +8,10 @@ protected:
   Core core;
   bool exitFlag;
 
+
 public:
+  int breakpoint;
+  int timeout;
   virtual void run()
   {
     exitFlag = false;
@@ -17,6 +20,15 @@ public:
       solveSyscall();
       extend();
       printCycle();
+      //We handle breakpoints
+      if (this->breakpoint != -1 && core.cycle == this->breakpoint){
+       printf("Reached break\n");
+      }
+
+      if (this->core.cycle >= this->timeout){
+        printf("Timeout!\n");
+        break;
+      }
     }
     printEnd();
   }
