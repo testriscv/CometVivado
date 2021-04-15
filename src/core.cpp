@@ -1,3 +1,18 @@
+/** Copyright 2021 INRIA, Université de Rennes 1 and ENS Rennes
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*       http://www.apache.org/licenses/LICENSE-2.0
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
+
+
 #include "ac_int.h"
 #include "cacheMemory.h"
 #include "core.h"
@@ -592,12 +607,12 @@ void doCycle(struct Core& core, // Core containing all values
       mask = WORD;
       break;
   }
-  
-  memOpType opType = (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isLoad) ? LOAD 
+
+  memOpType opType = (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isLoad) ? LOAD
     : (!core.stallSignals[STALL_MEMORY] && !localStall && memtoWB_temp.we && !core.stallIm && memtoWB_temp.isStore ? STORE : NONE);
 
   core.dm->process(memtoWB_temp.address, mask, opType, memtoWB_temp.valueToWrite, memtoWB_temp.result, core.stallDm);
-  
+
   // commit the changes to the pipeline register
   if (!core.stallSignals[STALL_FETCH] && !localStall && !core.stallIm && !core.stallDm) {
     core.ftoDC = ftoDC_temp;

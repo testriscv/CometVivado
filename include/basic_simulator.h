@@ -1,3 +1,18 @@
+/** Copyright 2021 INRIA, Université de Rennes 1 and ENS Rennes
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*       http://www.apache.org/licenses/LICENSE-2.0
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
+
+
 #ifndef __BASIC_SIMULATOR_H__
 #define __BASIC_SIMULATOR_H__
 
@@ -13,7 +28,7 @@ class BasicSimulator : public Simulator {
 
   // Signature address when doing compliance tests
   unsigned int begin_signature, end_signature;
-  
+
   std::vector<ac_int<32, false> > mem;
 
   FILE* inputFile;
@@ -22,7 +37,7 @@ class BasicSimulator : public Simulator {
   FILE* signatureFile;
 
 public:
-  BasicSimulator(std::string binaryFile, std::vector<std::string>, 
+  BasicSimulator(std::string binaryFile, std::vector<std::string>,
                  std::string inFile, std::string outFile,
                  std::string tFile, std::string sFile);
   ~BasicSimulator();

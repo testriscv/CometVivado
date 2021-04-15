@@ -1,9 +1,17 @@
-/*
- * cacheMemory.h
- *
- *  Created on: 15 févr. 2019
- *      Author: simon
- */
+/** Copyright 2021 INRIA, Université de Rennes 1 and ENS Rennes
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at
+*       http://www.apache.org/licenses/LICENSE-2.0
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*/
+
+
 
 #ifndef INCLUDE_CACHEMEMORY_H_
 #define INCLUDE_CACHEMEMORY_H_
@@ -124,7 +132,7 @@ public:
         ac_int<1, false> valid2 = dataValid[place][1];
         ac_int<1, false> valid3 = dataValid[place][2];
         ac_int<1, false> valid4 = dataValid[place][3];
-        
+
 
         ac_int<16, false> age1 = age[place][0];
         ac_int<16, false> age2 = age[place][1];
@@ -135,7 +143,7 @@ public:
         ac_int<1, false> dirty2 = dirtyBit[place][1];
         ac_int<1, false> dirty3 = dirtyBit[place][2];
         ac_int<1, false> dirty4 = dirtyBit[place][3];
-        
+
         if (cacheState == 0) {
           numberAccess++;
 
