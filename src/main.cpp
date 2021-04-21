@@ -54,6 +54,7 @@ int main(int argc, char** argv)
   sim.timeout = std::stoi(timeout, NULL);
 
   sim.run();
+  sim.printInfo();
 
   return 0;
 }
