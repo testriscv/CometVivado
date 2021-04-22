@@ -1,3 +1,4 @@
+
 /** Copyright 2021 INRIA, Université de Rennes 1 and ENS Rennes
 *
 *   Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +55,6 @@ int main(int argc, char** argv)
   sim.timeout = std::stoi(timeout, NULL);
 
   sim.run();
-  sim.printInfo();
 
   return 0;
 }

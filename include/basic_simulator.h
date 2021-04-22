@@ -46,6 +46,7 @@ protected:
   void printCycle();
   void printEnd();
   void extend(){};
+  void printCoreReg(const char* strTemp);
 
   // Functions for memory accesses
   void stb(ac_int<32, false> addr, ac_int<8, true> value);
