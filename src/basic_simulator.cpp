@@ -175,7 +175,17 @@ void BasicSimulator::printEnd()
   }
 }
 
-void BasicSimulator::setByte(unsigned addr, ac_int<8, true> value){
+std::string BasicSimulator::string_from_mem(const unsigned addr) {
+  int i = 0;
+  std::string str;
+  for(char c = ldb(addr); c != 0; i++){
+    c = ldb(addr + i);
+    str.push_back(c);
+  }
+
+  return str;
+}
+
 void BasicSimulator::setByte(const unsigned addr, const ac_int<8, true> value){
   mem[addr >> 2].set_slc((addr % 4) * 8, value);
 }
@@ -486,43 +496,35 @@ void BasicSimulator::solveSyscall()
 
 ac_int<32, true> BasicSimulator::doRead(const unsigned file, const unsigned bufferAddr, const unsigned size)
 {
-  char* localBuffer = new char[size.to_int()];
+  std::vector<char> localBuffer(size);
   ac_int<32, true> result;
 
   if (file == 0 && inputFile)
-    result = read(inputFile->_fileno, localBuffer, size);
+    result = read(inputFile->_fileno, localBuffer.data(), size);
   else
-    result = read(file, localBuffer, size);
+    result = read(file, localBuffer.data(), size);
 
   for (int i(0); i < result; i++) {
     this->stb(bufferAddr + i, localBuffer[i]);
   }
 
-  delete[] localBuffer;
   return result;
 }
 
 ac_int<32, true> BasicSimulator::doWrite(const unsigned file, const unsigned bufferAddr, const unsigned size)
 {
-  char* localBuffer = new char[size.to_int()];
+  std::vector<char> localBuffer;
+  localBuffer.reserve(size);
 
   for (int i = 0; i < size; i++)
-    localBuffer[i] = this->ldb(bufferAddr + i);
+    localBuffer.push_back(this->ldb(bufferAddr + i));
 
-  ac_int<32, true> result = 0;
-  if (file == 1 && outputFile) // 3 is the first available file descriptor
-  {
+  if (file == 1 || outputFile)
     fflush(stdout);
-    result = write(outputFile->_fileno, localBuffer, size);
-  } else {
-    if (file == 1)
-      fflush(stdout);
-    else if (file == 2)
-      fflush(stderr);
-    result = write(file, localBuffer, size);
-  }
-  delete[] localBuffer;
-  return result;
+  else if (file == 2)
+    fflush(stderr);
+  const auto fn = outputFile ? outputFile->_fileno : file;
+  return write(fn, localBuffer.data(), size);
 }
 
 ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
@@ -559,20 +561,6 @@ ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, fals
 
 ac_int<32, true> BasicSimulator::doOpen(const unsigned path, const unsigned flags, const unsigned mode)
 {
-  int oneStringElement = this->ldb(path);
-  int index            = 0;
-  while (oneStringElement != 0) {
-    index++;
-    oneStringElement = this->ldb(path + index);
-  }
-
-  int pathSize = index + 1;
-
-  char* localPath = new char[pathSize + 1];
-  for (int i = 0; i < pathSize; i++)
-    localPath[i] = this->ldb(path + i);
-  localPath[pathSize] = '\0';
-
   // convert riscv flags to unix flags
   int riscvflags = flags;
   // TODO: Check str are is not used
@@ -620,10 +608,9 @@ ac_int<32, true> BasicSimulator::doOpen(const unsigned path, const unsigned flag
     riscvflags ^= SYS_O_NOCTTY;
     str += "NOCTTY";
   }
-  int result = open(localPath, unixflags, mode.to_int());
 
-  delete[] localPath;
-  return result;
+  const auto localPath = string_from_mem(path);
+  return open(localPath.c_str(), unixflags, static_cast<int>(mode));
 }
 
 ac_int<32, true> BasicSimulator::doOpenat(const unsigned dir, const unsigned path, const unsigned flags, const unsigned mode)
@@ -649,22 +636,9 @@ ac_int<32, true> BasicSimulator::doLseek(const unsigned file, const unsigned ptr
 
 ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
 {
-  int oneStringElement = this->ldb(filename);
-  int index            = 0;
-  while (oneStringElement != 0) {
-    index++;
-    oneStringElement = this->ldb(filename + index);
-  }
-
-  int pathSize = index + 1;
-
-  char* localPath = new char[pathSize + 1];
-  for (int i = 0; i < pathSize; i++)
-    localPath[i] = this->ldb(filename + i);
-  localPath[pathSize] = '\0';
-
+  const auto localPath = string_from_mem(filename);
   struct stat filestat;
-  int result = stat(localPath, &filestat);
+  int result = stat(localPath.c_str(), &filestat);
 
   std(stataddr, filestat.st_dev);               // unsigned long long
   std(stataddr + 8, filestat.st_ino);           // unsigned long long
@@ -687,7 +661,6 @@ ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, f
   stw(stataddr + 96, filestat.__pad0);          // long
   stw(stataddr + 100, filestat.__pad0);         // long
 
-  delete[] localPath;
   return result;
 }
 
@@ -717,24 +690,8 @@ ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
 
 ac_int<32, true> BasicSimulator::doUnlink(const unsigned path)
 {
-  int oneStringElement = this->ldb(path);
-  int index            = 0;
-  while (oneStringElement != '\0') {
-    index++;
-    oneStringElement = this->ldb(path + index);
-  }
-
-  int pathSize = index + 1;
-
-  char* localPath = new char[pathSize + 1];
-  for (int i = 0; i < pathSize; i++)
-    localPath[i] = this->ldb(path + i);
-  localPath[pathSize] = '\0';
-
-  int result = unlink(localPath);
-
-  delete[] localPath;
-  return result;
+  const auto localPath = string_from_mem(path);
+  return unlink(localPath.c_str());
 }
 
 

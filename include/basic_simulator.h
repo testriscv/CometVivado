@@ -75,6 +75,7 @@ protected:
   ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
 
 private:
+  std::string string_from_mem(const unsigned); // TODO make const
   void setByte(const unsigned, const ac_int<8, true>);
   void readElf(const char*);
   void pushArgsOnStack(const std::vector<std::string>);
