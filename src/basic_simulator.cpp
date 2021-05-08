@@ -176,11 +176,12 @@ void BasicSimulator::printEnd()
 }
 
 void BasicSimulator::setByte(unsigned addr, ac_int<8, true> value){
+void BasicSimulator::setByte(const unsigned addr, const ac_int<8, true> value){
   mem[addr >> 2].set_slc((addr % 4) * 8, value);
 }
 
 // Function for handling memory accesses
-void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
+void BasicSimulator::stb(const ac_int<32, false> addr, const ac_int<8, true> value)
 {
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
@@ -189,13 +190,13 @@ void BasicSimulator::stb(ac_int<32, false> addr, ac_int<8, true> value)
     core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
 
-void BasicSimulator::sth(ac_int<32, false> addr, ac_int<16, true> value)
+void BasicSimulator::sth(const ac_int<32, false> addr, const ac_int<16, true> value)
 {
   this->stb(addr + 1, value.slc<8>(8));
   this->stb(addr + 0, value.slc<8>(0));
 }
 
-void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
+void BasicSimulator::stw(const ac_int<32, false> addr, const ac_int<32, true> value)
 {
   this->stb(addr + 3, value.slc<8>(24));
   this->stb(addr + 2, value.slc<8>(16));
@@ -203,7 +204,7 @@ void BasicSimulator::stw(ac_int<32, false> addr, ac_int<32, true> value)
   this->stb(addr + 0, value.slc<8>(0));
 }
 
-void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
+void BasicSimulator::std(const ac_int<32, false> addr, const ac_int<64, true> value)
 {
   this->stb(addr + 7, value.slc<8>(56));
   this->stb(addr + 6, value.slc<8>(48));
@@ -215,8 +216,9 @@ void BasicSimulator::std(ac_int<32, false> addr, ac_int<64, true> value)
   this->stb(addr + 0, value.slc<8>(0));
 }
 
-ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
+ac_int<8, true> BasicSimulator::ldb(const ac_int<32, false> addr)
 {
+  //TODO: result is set and then overwritten, releaseIDM not used
   ac_int<8, true> result;
   result                    = mem[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
   ac_int<32, false> wordRes = 0;
@@ -230,7 +232,7 @@ ac_int<8, true> BasicSimulator::ldb(ac_int<32, false> addr)
 }
 
 // Little endian version
-ac_int<16, true> BasicSimulator::ldh(ac_int<32, false> addr)
+ac_int<16, true> BasicSimulator::ldh(const ac_int<32, false> addr)
 {
   ac_int<16, true> result = 0;
   result.set_slc(8, this->ldb(addr + 1));
@@ -238,7 +240,7 @@ ac_int<16, true> BasicSimulator::ldh(ac_int<32, false> addr)
   return result;
 }
 
-ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
+ac_int<32, true> BasicSimulator::ldw(const ac_int<32, false> addr)
 {
   ac_int<32, true> result = 0;
   result.set_slc(24, this->ldb(addr + 3));
@@ -248,7 +250,7 @@ ac_int<32, true> BasicSimulator::ldw(ac_int<32, false> addr)
   return result;
 }
 
-ac_int<32, true> BasicSimulator::ldd(ac_int<32, false> addr)
+ac_int<32, true> BasicSimulator::ldd(const ac_int<32, false> addr)
 {
   ac_int<32, true> result = 0;
   result.set_slc(56, this->ldb(addr + 7));
@@ -482,7 +484,7 @@ void BasicSimulator::solveSyscall()
   }
 }
 
-ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ac_int<32, true> BasicSimulator::doRead(const unsigned file, const unsigned bufferAddr, const unsigned size)
 {
   char* localBuffer = new char[size.to_int()];
   ac_int<32, true> result;
@@ -500,7 +502,7 @@ ac_int<32, true> BasicSimulator::doRead(ac_int<32, false> file, ac_int<32, false
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doWrite(ac_int<32, false> file, ac_int<32, false> bufferAddr, ac_int<32, false> size)
+ac_int<32, true> BasicSimulator::doWrite(const unsigned file, const unsigned bufferAddr, const unsigned size)
 {
   char* localBuffer = new char[size.to_int()];
 
@@ -555,7 +557,7 @@ ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, fals
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false> flags, ac_int<32, false> mode)
+ac_int<32, true> BasicSimulator::doOpen(const unsigned path, const unsigned flags, const unsigned mode)
 {
   int oneStringElement = this->ldb(path);
   int index            = 0;
@@ -573,6 +575,7 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
 
   // convert riscv flags to unix flags
   int riscvflags = flags;
+  // TODO: Check str are is not used
   std::string str;
   if (riscvflags & SYS_O_WRONLY)
     str += "WRONLY, ";
@@ -623,14 +626,13 @@ ac_int<32, true> BasicSimulator::doOpen(ac_int<32, false> path, ac_int<32, false
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doOpenat(ac_int<32, false> dir, ac_int<32, false> path, ac_int<32, false> flags,
-                                          ac_int<32, false> mode)
+ac_int<32, true> BasicSimulator::doOpenat(const unsigned dir, const unsigned path, const unsigned flags, const unsigned mode)
 {
   fprintf(stderr, "Syscall : SYS_openat not implemented yet...\n");
   exit(-1);
 }
 
-ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
+ac_int<32, true> BasicSimulator::doClose(const unsigned file)
 {
   if (file > 2) // don't close simulator's stdin, stdout & stderr
   {
@@ -640,10 +642,9 @@ ac_int<32, true> BasicSimulator::doClose(ac_int<32, false> file)
   return 0;
 }
 
-ac_int<32, true> BasicSimulator::doLseek(ac_int<32, false> file, ac_int<32, false> ptr, ac_int<32, false> dir)
+ac_int<32, true> BasicSimulator::doLseek(const unsigned file, const unsigned ptr, const unsigned dir)
 {
-  int result = lseek(file, ptr, dir);
-  return result;
+  return lseek(file, ptr, dir);
 }
 
 ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, false> stataddr)
@@ -714,7 +715,7 @@ ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doUnlink(ac_int<32, false> path)
+ac_int<32, true> BasicSimulator::doUnlink(const unsigned path)
 {
   int oneStringElement = this->ldb(path);
   int index            = 0;
