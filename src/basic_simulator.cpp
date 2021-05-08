@@ -31,9 +31,9 @@
 
 #define DEBUG 0
 
-BasicSimulator::BasicSimulator(std::string binaryFile, std::vector<std::string> args,
-                               std::string inFile, std::string outFile,
-                               std::string tFile, std::string sFile)
+BasicSimulator::BasicSimulator(const std::string binaryFile, const std::vector<std::string> args,
+                               const std::string inFile, const std::string outFile,
+                               const std::string tFile, const std::string sFile)
 {
 
   memset((char*)&core, 0, sizeof(Core));
@@ -64,24 +64,21 @@ FILE* fopenCheck(const char* fname, const char* mode){
     return fp;
 }
 
-void openOrDefault(std::string fname, const char* mode, FILE* def, FILE* &dest){
-  if (fname.empty())
-    dest = def;
-  else
-    dest = fopenCheck(fname.c_str(), mode);
+FILE* openOrDefault(const std::string fname, const char* mode, FILE* def){
+    return (fname.empty()) ? def : fopenCheck(fname.c_str(), mode);
 }
 
-void BasicSimulator::openFiles(std::string inFile, std::string outFile, std::string tFile, std::string sFile){
-  openOrDefault(inFile, "rb", stdin, inputFile);
-  openOrDefault(outFile, "wb", stdout, outputFile);
-  openOrDefault(tFile, "wb", stderr, traceFile);
-  openOrDefault(sFile, "wb", NULL, signatureFile);
+void BasicSimulator::openFiles(const std::string inFile, const std::string outFile, const std::string tFile, const std::string sFile){
+  inputFile = openOrDefault(inFile, "rb", stdin);
+  outputFile = openOrDefault(outFile, "wb", stdout);
+  traceFile = openOrDefault(tFile, "wb", stderr);
+  signatureFile = openOrDefault(sFile, "wb", NULL);
 }
 
 void BasicSimulator::readElf(const char *binaryFile){
   heapAddress = 0;
   ElfFile elfFile(binaryFile);
-  for(auto const &section : elfFile.sectionTable){
+  for(const auto &section : elfFile.sectionTable){
     if(section.address != 0){
       for (unsigned i = 0; i < section.size; i++)
         setByte(section.address + i, elfFile.content[section.offset + i]);
@@ -148,7 +145,7 @@ void BasicSimulator::printCycle()
 
       for (const auto &reg : core.regFile)
         printf("%x  ", (unsigned int)reg);
-      std::cout << std::endl;
+      std::cout << '\n';
     }
   }
 }
@@ -170,7 +167,7 @@ void BasicSimulator::printEnd()
     //memory read
     for (auto wordNumber = begin_signature - begin_offset; wordNumber < end_signature - begin_offset; wordNumber+=addr_offset)
     {
-      fprintf(signatureFile, "%08x\n", (unsigned int)this->ldw(wordNumber));
+      fprintf(signatureFile, "%08x\n", (unsigned int)ldw(wordNumber));
     }
   }
 }
@@ -195,82 +192,76 @@ void BasicSimulator::stb(const ac_int<32, false> addr, const ac_int<8, true> val
 {
   ac_int<32, false> wordRes = 0;
   bool stall                = true;
-  bool releaseIDM           = false;
   while (stall)
     core.dm->process(addr, BYTE, STORE, value, wordRes, stall);
 }
 
 void BasicSimulator::sth(const ac_int<32, false> addr, const ac_int<16, true> value)
 {
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  stb(addr + 1, value.slc<8>(8));
+  stb(addr + 0, value.slc<8>(0));
 }
 
 void BasicSimulator::stw(const ac_int<32, false> addr, const ac_int<32, true> value)
 {
-  this->stb(addr + 3, value.slc<8>(24));
-  this->stb(addr + 2, value.slc<8>(16));
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  stb(addr + 3, value.slc<8>(24));
+  stb(addr + 2, value.slc<8>(16));
+  stb(addr + 1, value.slc<8>(8));
+  stb(addr + 0, value.slc<8>(0));
 }
 
 void BasicSimulator::std(const ac_int<32, false> addr, const ac_int<64, true> value)
 {
-  this->stb(addr + 7, value.slc<8>(56));
-  this->stb(addr + 6, value.slc<8>(48));
-  this->stb(addr + 5, value.slc<8>(40));
-  this->stb(addr + 4, value.slc<8>(32));
-  this->stb(addr + 3, value.slc<8>(24));
-  this->stb(addr + 2, value.slc<8>(16));
-  this->stb(addr + 1, value.slc<8>(8));
-  this->stb(addr + 0, value.slc<8>(0));
+  stb(addr + 7, value.slc<8>(56));
+  stb(addr + 6, value.slc<8>(48));
+  stb(addr + 5, value.slc<8>(40));
+  stb(addr + 4, value.slc<8>(32));
+  stb(addr + 3, value.slc<8>(24));
+  stb(addr + 2, value.slc<8>(16));
+  stb(addr + 1, value.slc<8>(8));
+  stb(addr + 0, value.slc<8>(0));
 }
 
 ac_int<8, true> BasicSimulator::ldb(const ac_int<32, false> addr)
 {
-  //TODO: result is set and then overwritten, releaseIDM not used
-  ac_int<8, true> result;
-  result                    = mem[addr >> 2].slc<8>(((int)addr.slc<2>(0)) << 3);
+  bool stall = true;
   ac_int<32, false> wordRes = 0;
-  bool stall                = true;
-  bool releaseIDM           = false;
   while (stall)
     core.dm->process(addr, BYTE_U, LOAD, 0, wordRes, stall);
 
-  result = wordRes.slc<8>(0);
-  return result;
+  return wordRes.slc<8>(0);
 }
 
 // Little endian version
 ac_int<16, true> BasicSimulator::ldh(const ac_int<32, false> addr)
 {
   ac_int<16, true> result = 0;
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  result.set_slc(8, ldb(addr + 1));
+  result.set_slc(0, ldb(addr));
   return result;
 }
 
 ac_int<32, true> BasicSimulator::ldw(const ac_int<32, false> addr)
 {
   ac_int<32, true> result = 0;
-  result.set_slc(24, this->ldb(addr + 3));
-  result.set_slc(16, this->ldb(addr + 2));
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  result.set_slc(24, ldb(addr + 3));
+  result.set_slc(16, ldb(addr + 2));
+  result.set_slc(8, ldb(addr + 1));
+  result.set_slc(0, ldb(addr));
   return result;
 }
 
 ac_int<32, true> BasicSimulator::ldd(const ac_int<32, false> addr)
 {
   ac_int<32, true> result = 0;
-  result.set_slc(56, this->ldb(addr + 7));
-  result.set_slc(48, this->ldb(addr + 6));
-  result.set_slc(40, this->ldb(addr + 5));
-  result.set_slc(32, this->ldb(addr + 4));
-  result.set_slc(24, this->ldb(addr + 3));
-  result.set_slc(16, this->ldb(addr + 2));
-  result.set_slc(8, this->ldb(addr + 1));
-  result.set_slc(0, this->ldb(addr));
+  result.set_slc(56, ldb(addr + 7));
+  result.set_slc(48, ldb(addr + 6));
+  result.set_slc(40, ldb(addr + 5));
+  result.set_slc(32, ldb(addr + 4));
+  result.set_slc(24, ldb(addr + 3));
+  result.set_slc(16, ldb(addr + 2));
+  result.set_slc(8, ldb(addr + 1));
+  result.set_slc(0, ldb(addr));
 
   return result;
 }
@@ -314,37 +305,37 @@ void BasicSimulator::solveSyscall()
         exitFlag = 1; // Currently we break on ECALL
         break;
       case SYS_read:
-        result = this->doRead(arg1, arg2, arg3);
+        result = doRead(arg1, arg2, arg3);
         break;
       case SYS_write:
-        result = this->doWrite(arg1, arg2, arg3);
+        result = doWrite(arg1, arg2, arg3);
         break;
       case SYS_brk:
-        result = this->doSbrk(arg1);
+        result = doSbrk(arg1);
         break;
       case SYS_open:
-        result = this->doOpen(arg1, arg2, arg3);
+        result = doOpen(arg1, arg2, arg3);
         break;
       case SYS_openat:
-        result = this->doOpenat(arg1, arg2, arg3, arg4);
+        result = doOpenat(arg1, arg2, arg3, arg4);
         break;
       case SYS_lseek:
-        result = this->doLseek(arg1, arg2, arg3);
+        result = doLseek(arg1, arg2, arg3);
         break;
       case SYS_close:
-        result = this->doClose(arg1);
+        result = doClose(arg1);
         break;
       case SYS_fstat:
-        result = this->doFstat(arg1, arg2);
+        result = doFstat(arg1, arg2);
         break;
       case SYS_stat:
-        result = this->doStat(arg1, arg2);
+        result = doStat(arg1, arg2);
         break;
       case SYS_gettimeofday:
-        result = this->doGettimeofday(arg1);
+        result = doGettimeofday(arg1);
         break;
       case SYS_unlink:
-        result = this->doUnlink(arg1);
+        result = doUnlink(arg1);
         break;
       case SYS_exit_group:
         fprintf(stderr, "Syscall : SYS_exit_group\n");
@@ -505,7 +496,7 @@ ac_int<32, true> BasicSimulator::doRead(const unsigned file, const unsigned buff
     result = read(file, localBuffer.data(), size);
 
   for (int i(0); i < result; i++) {
-    this->stb(bufferAddr + i, localBuffer[i]);
+    stb(bufferAddr + i, localBuffer[i]);
   }
 
   return result;
@@ -517,7 +508,7 @@ ac_int<32, true> BasicSimulator::doWrite(const unsigned file, const unsigned buf
   localBuffer.reserve(size);
 
   for (int i = 0; i < size; i++)
-    localBuffer.push_back(this->ldb(bufferAddr + i));
+    localBuffer.push_back(ldb(bufferAddr + i));
 
   if (file == 1 || outputFile)
     fflush(stdout);
@@ -527,7 +518,7 @@ ac_int<32, true> BasicSimulator::doWrite(const unsigned file, const unsigned buf
   return write(fn, localBuffer.data(), size);
 }
 
-ac_int<32, true> BasicSimulator::doFstat(ac_int<32, false> file, ac_int<32, false> stataddr)
+ac_int<32, true> BasicSimulator::doFstat(const unsigned file, const ac_int<32, false> stataddr)
 {
   ac_int<32, true> result = 0;
   struct stat filestat    = {0};
@@ -563,7 +554,7 @@ ac_int<32, true> BasicSimulator::doOpen(const unsigned path, const unsigned flag
 {
   // convert riscv flags to unix flags
   int riscvflags = flags;
-  // TODO: Check str are is not used
+  // TODO: Check str is not used
   std::string str;
   if (riscvflags & SYS_O_WRONLY)
     str += "WRONLY, ";
@@ -622,9 +613,7 @@ ac_int<32, true> BasicSimulator::doOpenat(const unsigned dir, const unsigned pat
 ac_int<32, true> BasicSimulator::doClose(const unsigned file)
 {
   if (file > 2) // don't close simulator's stdin, stdout & stderr
-  {
     return close(file);
-  }
 
   return 0;
 }
@@ -664,26 +653,22 @@ ac_int<32, true> BasicSimulator::doStat(ac_int<32, false> filename, ac_int<32, f
   return result;
 }
 
-ac_int<32, true> BasicSimulator::doSbrk(ac_int<32, false> value)
+ac_int<32, true> BasicSimulator::doSbrk(const ac_int<32, false> value)
 {
-  ac_int<32, true> result;
-  if (value == 0) {
-    result = heapAddress;
-  } else {
+  if (value != 0) {
     heapAddress = value;
-    result      = value;
   }
 
-  return result;
+  return heapAddress;
 }
 
-ac_int<32, true> BasicSimulator::doGettimeofday(ac_int<32, false> timeValPtr)
+ac_int<32, true> BasicSimulator::doGettimeofday(const ac_int<32, false> timeValPtr)
 {
   struct timeval oneTimeVal;
   int result = gettimeofday(&oneTimeVal, NULL);
 
-  this->stw(timeValPtr, oneTimeVal.tv_sec);
-  this->stw(timeValPtr + 4, oneTimeVal.tv_usec);
+  stw(timeValPtr, oneTimeVal.tv_sec);
+  stw(timeValPtr + 4, oneTimeVal.tv_usec);
 
   return result;
 }

@@ -37,9 +37,9 @@ class BasicSimulator : public Simulator {
   FILE* signatureFile;
 
 public:
-  BasicSimulator(std::string binaryFile, std::vector<std::string>,
-                 std::string inFile, std::string outFile,
-                 std::string tFile, std::string sFile);
+  BasicSimulator(const std::string binaryFile, const std::vector<std::string>,
+                 const std::string inFile, const std::string outFile,
+                 const std::string tFile, const std::string sFile);
   ~BasicSimulator();
 
 protected:
@@ -69,17 +69,17 @@ protected:
   ac_int<32, true> doLseek(const unsigned file, const unsigned ptr, const unsigned dir);
   ac_int<32, true> doClose(const unsigned file);
   ac_int<32, true> doStat(ac_int<32, false> filename, ac_int<32, false> ptr);
-  ac_int<32, true> doSbrk(ac_int<32, false> value);
-  ac_int<32, true> doGettimeofday(ac_int<32, false> timeValPtr);
+  ac_int<32, true> doSbrk(const ac_int<32, false> value);
+  ac_int<32, true> doGettimeofday(const ac_int<32, false> timeValPtr);
   ac_int<32, true> doUnlink(const unsigned path);
-  ac_int<32, true> doFstat(ac_int<32, false> file, ac_int<32, false> stataddr);
+  ac_int<32, true> doFstat(const unsigned file, const ac_int<32, false> stataddr);
 
 private:
   std::string string_from_mem(const unsigned); // TODO make const
   void setByte(const unsigned, const ac_int<8, true>);
   void readElf(const char*);
   void pushArgsOnStack(const std::vector<std::string>);
-  void openFiles(std::string inFile, std::string outFile, std::string tFile, std::string sFile);
+  void openFiles(const std::string inFile, const std::string outFile, const std::string tFile, const std::string sFile);
 };
 
 #endif // __BASIC_SIMULATOR_H__
