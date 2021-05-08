@@ -27,7 +27,7 @@ protected:
   bool wait;
 
 public:
-  virtual void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
+  virtual void process(const ac_int<32, false> addr, const memMask mask, const memOpType opType, const ac_int<INTERFACE_SIZE * 8, false> dataIn,
                        ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut) = 0;
 };
 
@@ -37,7 +37,7 @@ public:
 
 public:
   IncompleteMemory(ac_int<32, false>* arg) { data = arg; }
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
+  void process(const ac_int<32, false> addr, const memMask mask, const memOpType opType, const ac_int<INTERFACE_SIZE * 8, false> dataIn,
                ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
   {
     // Incomplete memory only works for 32 bits
@@ -58,7 +58,7 @@ public:
   ac_int<32, false>* data;
 
   SimpleMemory(ac_int<32, false>* arg) { data = arg; }
-  void process(ac_int<32, false> addr, memMask mask, memOpType opType, ac_int<INTERFACE_SIZE * 8, false> dataIn,
+  void process(const ac_int<32, false> addr, const memMask mask, const memOpType opType, const ac_int<INTERFACE_SIZE * 8, false> dataIn,
                ac_int<INTERFACE_SIZE * 8, false>& dataOut, bool& waitOut)
   {
     // no latency, wait is always set to false
@@ -80,7 +80,6 @@ public:
           case HALF_U:
             temp = data[addr >> 2];
             data[addr >> 2].set_slc(addr[1] ? 16 : 0, dataIn.template slc<16>(0));
-
             break;
           case WORD:
             temp            = data[addr >> 2];
@@ -120,7 +119,9 @@ public:
             dataOut = data[addr >> 2].slc<16>(addr[1] ? 16 : 0) & 0xffff;
             break;
         }
+        break;
 
+      default: // case NONE
         break;
     }
     waitOut = false;
