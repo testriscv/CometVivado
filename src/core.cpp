@@ -18,7 +18,7 @@
 #include "core.h"
 
 
-void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruction)
+void fetch(const ac_int<32, false> pc, struct FtoDC& ftoDC, const ac_int<32, false> instruction)
 {
   ftoDC.instruction = instruction;
   ftoDC.pc          = pc;
@@ -26,7 +26,7 @@ void fetch(ac_int<32, false> pc, struct FtoDC& ftoDC, ac_int<32, false> instruct
   ftoDC.we          = 1;
 }
 
-void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> registerFile[32])
+void decode(const struct FtoDC ftoDC, struct DCtoEx& dctoEx, const ac_int<32, true> registerFile[32])
 {
   ac_int<32, false> pc          = ftoDC.pc;
   ac_int<32, false> instruction = ftoDC.instruction;
@@ -202,7 +202,7 @@ void decode(struct FtoDC ftoDC, struct DCtoEx& dctoEx, ac_int<32, true> register
   }
 }
 
-void execute(struct DCtoEx dctoEx, struct ExtoMem& extoMem)
+void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
 {
   extoMem.pc                = dctoEx.pc;
   extoMem.opCode            = dctoEx.opCode;
@@ -400,7 +400,7 @@ void execute(struct DCtoEx dctoEx, struct ExtoMem& extoMem)
   }
 }
 
-void memory(struct ExtoMem extoMem, struct MemtoWB& memtoWB)
+void memory(const struct ExtoMem extoMem, struct MemtoWB& memtoWB)
 {
   memtoWB.we                = extoMem.we;
   memtoWB.useRd             = extoMem.useRd;
@@ -430,7 +430,7 @@ void memory(struct ExtoMem extoMem, struct MemtoWB& memtoWB)
   }
 }
 
-void writeback(struct MemtoWB memtoWB, struct WBOut& wbOut)
+void writeback(const struct MemtoWB memtoWB, struct WBOut& wbOut)
 {
   wbOut.we = memtoWB.we;
   if ((memtoWB.rd != 0) && (memtoWB.we) && memtoWB.useRd) {
