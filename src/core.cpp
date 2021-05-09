@@ -305,7 +305,7 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
           extoMem.result = dctoEx.lhs << (ac_int<5, false>)dctoEx.rhs;
           break;
         case RISCV_OPI_SRI:
-          if (dctoEx.funct7.slc<1>(5)) // SRAI
+          if (dctoEx.funct7[5]) // SRAI
             extoMem.result = dctoEx.lhs >> shamt;
           else // SRLI
             extoMem.result = (ac_int<32, false>)dctoEx.lhs >> shamt;
@@ -313,13 +313,13 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
       }
       break;
     case RISCV_OP:
-      if (dctoEx.funct7.slc<1>(0)) // M Extension
+      if (dctoEx.funct7[0]) // M Extension
       {
 
       } else {
         switch (dctoEx.funct3) {
           case RISCV_OP_ADD:
-            if (dctoEx.funct7.slc<1>(5)) // SUB
+            if (dctoEx.funct7[5]) // SUB
               extoMem.result = dctoEx.lhs - dctoEx.rhs;
             else // ADD
               extoMem.result = dctoEx.lhs + dctoEx.rhs;
@@ -337,7 +337,7 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
             extoMem.result = dctoEx.lhs ^ dctoEx.rhs;
             break;
           case RISCV_OP_SR:
-            if (dctoEx.funct7.slc<1>(5)) // SRA
+            if (dctoEx.funct7[5]) // SRA
               extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
             else // SRL
               extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs;
