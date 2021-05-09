@@ -28,16 +28,16 @@ void fetch(const ac_int<32, false> pc, struct FtoDC& ftoDC, const ac_int<32, fal
 
 void decode(const struct FtoDC ftoDC, struct DCtoEx& dctoEx, const ac_int<32, true> registerFile[32])
 {
-  ac_int<32, false> pc          = ftoDC.pc;
-  ac_int<32, false> instruction = ftoDC.instruction;
+  const ac_int<32, false> pc          = ftoDC.pc;
+  const ac_int<32, false> instruction = ftoDC.instruction;
 
   // R-type instruction
-  ac_int<7, false> funct7 = instruction.slc<7>(25);
-  ac_int<5, false> rs2    = instruction.slc<5>(20);
-  ac_int<5, false> rs1    = instruction.slc<5>(15);
-  ac_int<3, false> funct3 = instruction.slc<3>(12);
-  ac_int<5, false> rd     = instruction.slc<5>(7);
-  ac_int<7, false> opCode = instruction.slc<7>(0); // could be reduced to 5 bits because 1:0 is always 11
+  const ac_int<7, false> funct7 = instruction.slc<7>(25);
+  const ac_int<5, false> rs2    = instruction.slc<5>(20);
+  const ac_int<5, false> rs1    = instruction.slc<5>(15);
+  const ac_int<3, false> funct3 = instruction.slc<3>(12);
+  const ac_int<5, false> rd     = instruction.slc<5>(7);
+  const ac_int<7, false> opCode = instruction.slc<7>(0); // could be reduced to 5 bits because 1:0 is always 11
 
   // Construction of different immediate values
   ac_int<12, false> imm12_S = 0;
@@ -70,8 +70,8 @@ void decode(const struct FtoDC ftoDC, struct DCtoEx& dctoEx, const ac_int<32, tr
   imm21_1_signed.set_slc(0, imm21_1);
 
   // Register access
-  ac_int<32, false> valueReg1 = registerFile[rs1];
-  ac_int<32, false> valueReg2 = registerFile[rs2];
+  const ac_int<32, false> valueReg1 = registerFile[rs1];
+  const ac_int<32, false> valueReg2 = registerFile[rs2];
 
   dctoEx.rs1         = rs1;
   dctoEx.rs2         = rs2;
@@ -223,7 +223,7 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
   ac_int<13, true> imm13_signed = 0;
   imm13_signed.set_slc(0, imm13);
 
-  ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
+  const ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
 
   // switch must be in the else, otherwise external op may trigger default
   // case
@@ -440,9 +440,9 @@ void writeback(const struct MemtoWB memtoWB, struct WBOut& wbOut)
   }
 }
 
-void branchUnit(ac_int<32, false> nextPC_fetch, ac_int<32, false> nextPC_decode, bool isBranch_decode,
-                ac_int<32, false> nextPC_execute, bool isBranch_execute, ac_int<32, false>& pc, bool& we_fetch,
-                bool& we_decode, bool stall_fetch)
+void branchUnit(const ac_int<32, false> nextPC_fetch, const ac_int<32, false> nextPC_decode, const bool isBranch_decode,
+                const ac_int<32, false> nextPC_execute, const bool isBranch_execute, ac_int<32, false>& pc, bool& we_fetch,
+                bool& we_decode, const bool stall_fetch)
 {
 
   if (!stall_fetch) {
@@ -459,15 +459,13 @@ void branchUnit(ac_int<32, false> nextPC_fetch, ac_int<32, false> nextPC_decode,
   }
 }
 
-void forwardUnit(ac_int<5, false> decodeRs1, bool decodeUseRs1, ac_int<5, false> decodeRs2, bool decodeUseRs2,
-                 ac_int<5, false> decodeRs3, bool decodeUseRs3,
-
-                 ac_int<5, false> executeRd, bool executeUseRd, bool executeIsLongComputation,
-
-                 ac_int<5, false> memoryRd, bool memoryUseRd,
-
-                 ac_int<5, false> writebackRd, bool writebackUseRd,
-
+void forwardUnit(const ac_int<5, false> decodeRs1, const bool decodeUseRs1, 
+                 const ac_int<5, false> decodeRs2, const bool decodeUseRs2,
+                 const ac_int<5, false> decodeRs3, const bool decodeUseRs3,
+                 const ac_int<5, false> executeRd, const bool executeUseRd, 
+                 const bool executeIsLongComputation,
+                 const ac_int<5, false> memoryRd, const bool memoryUseRd,
+                 const ac_int<5, false> writebackRd, const bool writebackUseRd,
                  bool stall[5], struct ForwardReg& forwardRegisters)
 {
 
