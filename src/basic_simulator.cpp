@@ -491,7 +491,7 @@ ac_int<32, true> BasicSimulator::doRead(const unsigned file, const unsigned buff
   ac_int<32, true> result;
 
   if (file == 0 && inputFile)
-    result = read(inputFile->_fileno, localBuffer.data(), size);
+    result = read(fileno(inputFile), localBuffer.data(), size);
   else
     result = read(file, localBuffer.data(), size);
 
@@ -514,7 +514,7 @@ ac_int<32, true> BasicSimulator::doWrite(const unsigned file, const unsigned buf
     fflush(stdout);
   else if (file == 2)
     fflush(stderr);
-  const auto fn = outputFile ? outputFile->_fileno : file;
+  const auto fn = outputFile ? fileno(outputFile) : file;
   return write(fn, localBuffer.data(), size);
 }
 
