@@ -526,30 +526,32 @@ ac_int<32, true> BasicSimulator::doFstat(const unsigned file, const ac_int<32, f
   if (file != 1)
     result = fstat(file, &filestat);
 
-  long __pad0_1 = 0;
-  int __pad0_2 = 0;
-  unsigned long long __pad0_3 = 0;
+  char *filestatAsChar = (char*) &filestat;
 
-  std(stataddr, filestat.st_dev);               // unsigned long long
-  std(stataddr + 8, filestat.st_ino);           // unsigned long long
-  stw(stataddr + 16, filestat.st_mode);         // unsigned int
-  stw(stataddr + 20, filestat.st_nlink);        // unsigned int
-  stw(stataddr + 24, filestat.st_uid);          // unsigned int
-  stw(stataddr + 28, filestat.st_gid);          // unsigned int
-  std(stataddr + 32, filestat.st_rdev);         // unsigned long long
-  std(stataddr + 40, __pad0_3);          // unsigned long long
-  std(stataddr + 48, filestat.st_size);         // long long
-  stw(stataddr + 56, filestat.st_blksize);      // int
-  stw(stataddr + 60, __pad0_2);          // int
-  std(stataddr + 64, filestat.st_blocks);       // long long
-  stw(stataddr + 72, filestat.st_atim.tv_sec);  // long
-  stw(stataddr + 76, filestat.st_atim.tv_nsec); // long
-  stw(stataddr + 80, filestat.st_mtim.tv_sec);  // long
-  stw(stataddr + 84, filestat.st_mtim.tv_nsec); // long
-  stw(stataddr + 88, filestat.st_ctim.tv_sec);  // long
-  stw(stataddr + 92, filestat.st_ctim.tv_nsec); // long
-  stw(stataddr + 96, __pad0_1);          // long
-  stw(stataddr + 100, __pad0_1);         // long
+  for (int offset = 0; offset< sizeof(struct stat); offset++){
+    stb(stataddr+offset, filestatAsChar[offset]);
+  }
+
+  // std(stataddr, filestat.st_dev);               // unsigned long long
+  // std(stataddr + 8, filestat.st_ino);           // unsigned long long
+  // stw(stataddr + 16, filestat.st_mode);         // unsigned int
+  // stw(stataddr + 20, filestat.st_nlink);        // unsigned int
+  // stw(stataddr + 24, filestat.st_uid);          // unsigned int
+  // stw(stataddr + 28, filestat.st_gid);          // unsigned int
+  // std(stataddr + 32, filestat.st_rdev);         // unsigned long long
+  // std(stataddr + 40, __pad0_3);          // unsigned long long
+  // std(stataddr + 48, filestat.st_size);         // long long
+  // stw(stataddr + 56, filestat.st_blksize);      // int
+  // stw(stataddr + 60, __pad0_2);          // int
+  // std(stataddr + 64, filestat.st_blocks);       // long long
+  // stw(stataddr + 72, filestat.st_atim.tv_sec);  // long
+  // stw(stataddr + 76, filestat.st_atim.tv_nsec); // long
+  // stw(stataddr + 80, filestat.st_mtim.tv_sec);  // long
+  // stw(stataddr + 84, filestat.st_mtim.tv_nsec); // long
+  // stw(stataddr + 88, filestat.st_ctim.tv_sec);  // long
+  // stw(stataddr + 92, filestat.st_ctim.tv_nsec); // long
+  // stw(stataddr + 96, __pad0_1);          // long
+  // stw(stataddr + 100, __pad0_1);         // long
 
   return result;
 }
