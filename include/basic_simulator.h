@@ -20,8 +20,6 @@
 #include "ac_int.h"
 #include "simulator.h"
 
-#define DRAM_SIZE ((size_t)1 << 26)
-#define STACK_INIT (DRAM_SIZE - 0x1000)
 
 class BasicSimulator : public Simulator {
   unsigned heapAddress;

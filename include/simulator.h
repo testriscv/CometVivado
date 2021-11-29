@@ -17,6 +17,11 @@
 #define __SIMULATOR_H__
 
 #include "core.h"
+#include "ac_int.h"
+
+
+#define DRAM_SIZE ((size_t)1 << 26)
+#define STACK_INIT (DRAM_SIZE - 0x1000)
 
 class Simulator {
 protected:
@@ -27,6 +32,13 @@ protected:
 public:
   int breakpoint;
   int timeout;
+  int nbUnrecognizedDC = 0;
+  int nbUnrecognizedExec = 0;
+  int nbOutOfInstrMem = 0;
+  int nbOutOfMem = 0;
+
+  unsigned int textStart, textEnd;
+
   virtual void run()
   {
     exitFlag = false;
@@ -45,10 +57,23 @@ public:
         printf("Timeout!\n");
         break;
       }
+
+      if (!isRecognized(this->core.ftoDC.instruction)){
+        nbUnrecognizedDC++;
+      }
+      if (!isRecognized(this->core.dctoEx.instruction)){
+        nbUnrecognizedExec++;
+      }
+      if (core.pc > textEnd || core.pc < textStart){
+        nbOutOfInstrMem++;
+      }
+      if (core.memtoWB.address > DRAM_SIZE && (core.memtoWB.isLoad || core.memtoWB.isStore)){
+        nbOutOfMem++;
+      }
     }
     printEnd();
 	printCoreReg();
-	printf("\nCore cycle: %ld\n", this->core.cycle); 
+	printf("\nCore cycle: %ld\n", this->core.cycle);
   }
 
 

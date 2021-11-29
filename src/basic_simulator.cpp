@@ -88,6 +88,10 @@ void BasicSimulator::readElf(const char *binaryFile){
          if (section.address + section.size > heapAddress)
            heapAddress = section.address + section.size;
        }
+       else {
+         this->textStart = section.address;
+         this->textEnd = section.address + section.size;
+       }
     }
   }
 
@@ -693,14 +697,14 @@ void BasicSimulator::printCoreReg(const char* strTemp = "default")
 		if (strTemp == "default")
 			if (this->breakpoint == -1)
 				pFile.open("goldenPipelineReg.txt");
-			else 
+			else
 				pFile.open("faultyPipelineReg.txt");
-		else 
+		else
 			pFile.open(strTemp);
 
 		if (pFile.is_open())
 		{
-			pFile << "pipleline registers:";		
+			pFile << "pipleline registers:";
 			pFile << "\ncore.ftoDC.pc: " <<  (unsigned int)this->core.ftoDC.pc;
 			pFile << "\ncore.ftoDC.instruction: " <<  (unsigned int)this->core.ftoDC.instruction;
 			pFile << "\ncore.ftoDC.nextPCFetch:  " <<  (unsigned int)this->core.ftoDC.nextPCFetch;
@@ -750,7 +754,7 @@ void BasicSimulator::printCoreReg(const char* strTemp = "default")
 			pFile << "\ncore.memtoWB.we: " <<  (unsigned int)this->core.memtoWB.we;
 			pFile << "\n";
 			pFile.close();
-		} else 
+		} else
 			printf("\nUnable to open pFile\n");
 		//////////////////////////////////////////////
 		// pFile << "\ncore.dm: " <<  (unsigned int)this->core.dm;
@@ -763,18 +767,18 @@ void BasicSimulator::printCoreReg(const char* strTemp = "default")
 				rFile.open("goldenRegFile.txt");
 			else
 				rFile.open("faultyRegFile.txt");
-		else 
+		else
 			rFile.open(strTemp, std::ios_base::app);
 
 		if (rFile.is_open())
 		{
-			rFile << "core RegFiles:";		
+			rFile << "core RegFiles:";
 			int i = 0;
 			for (const auto &reg : this->core.regFile)
 				rFile << "\nRegFile[" << i++ << "]: " << (signed int)reg;
 			rFile << "\n";
 			rFile.close();
-		} else 
+		} else
 			printf("\nUnable to open rFile\n");
 		////////////////////////////////////////////////
 		std::ofstream cFile;
@@ -784,9 +788,9 @@ void BasicSimulator::printCoreReg(const char* strTemp = "default")
 				cFile.open("goldenCntrlSignal.txt");
 			else
 				cFile.open("faultyCntrlSignal.txt");
-		else 
+		else
 			cFile.open(strTemp, std::ios_base::app);
-			
+
 		if (cFile.is_open())
 		{
 			cFile << "core cntrl signals:";
@@ -801,6 +805,6 @@ void BasicSimulator::printCoreReg(const char* strTemp = "default")
 			cFile << "\ncore.cycle :   " << (unsigned long int)this->core.cycle;
 			cFile << "\n";
 			cFile.close();
-		} else 
+		} else
 			printf("\nUnable to open cFile\n");
 	}

@@ -182,3 +182,114 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction)
 
   return result;
 }
+
+bool isRecognized(ac_int<32, false> instruction){
+  const ac_int<3, false> funct3 = instruction.slc<3>(12);
+  const ac_int<7, false> opCode = instruction.slc<7>(0);
+  switch (opCode) {
+    case RISCV_LUI:
+      break;
+    case RISCV_AUIPC:
+      break;
+    case RISCV_JAL:
+      break;
+    case RISCV_JALR:
+      break;
+    case RISCV_BR:
+      switch (funct3) {
+        case RISCV_BR_BEQ:
+          break;
+        case RISCV_BR_BNE:
+          break;
+        case RISCV_BR_BLT:
+          break;
+        case RISCV_BR_BGE:
+          break;
+        case RISCV_BR_BLTU:
+          break;
+        case RISCV_BR_BGEU:
+          break;
+        default:
+          return false;
+          break;
+      }
+      break;
+    case RISCV_LD:
+      break;
+    case RISCV_ST:
+      break;
+    case RISCV_OPI:
+      switch (funct3) {
+        case RISCV_OPI_ADDI:
+          break;
+        case RISCV_OPI_SLTI:
+          break;
+        case RISCV_OPI_SLTIU:
+          break;
+        case RISCV_OPI_XORI:
+          break;
+        case RISCV_OPI_ORI:
+          break;
+        case RISCV_OPI_ANDI:
+          break;
+        case RISCV_OPI_SLLI:
+          break;
+        case RISCV_OPI_SRI:
+          break;
+        default:
+          return false;
+          break;
+      }
+      break;
+    case RISCV_OP:
+      switch (funct3) {
+        case RISCV_OP_ADD:
+          break;
+        case RISCV_OP_SLL:
+          break;
+        case RISCV_OP_SLT:
+          break;
+        case RISCV_OP_SLTU:
+          break;
+        case RISCV_OP_XOR:
+          break;
+        case RISCV_OP_SR:
+          break;
+        case RISCV_OP_OR:
+          break;
+        case RISCV_OP_AND:
+          break;
+        default:
+          return false;
+          break;
+      }
+      break;
+    case RISCV_MISC_MEM:
+      break;
+    case RISCV_SYSTEM:
+      switch (funct3) {
+        case RISCV_SYSTEM_ENV:
+          break;
+        case RISCV_SYSTEM_CSRRW:
+          break;
+        case RISCV_SYSTEM_CSRRS:
+          break;
+        case RISCV_SYSTEM_CSRRC:
+          break;
+        case RISCV_SYSTEM_CSRRWI:
+          break;
+        case RISCV_SYSTEM_CSRRSI:
+          break;
+        case RISCV_SYSTEM_CSRRCI:
+          break;
+        default:
+          return false;
+          break;
+      }
+      break;
+    default:
+      return false;
+      break;
+  }
+  return true;
+}

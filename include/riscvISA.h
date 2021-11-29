@@ -17,10 +17,12 @@
 #define INCLUDES_ISA_RISCVISA_H_
 
 #include <string>
+#include "ac_int.h"
 
 #ifndef __HLS__
 std::string printDecodedInstrRISCV(unsigned int oneInstruction);
 #endif
+bool isRecognized(ac_int<32, false> instruction);
 
 // Major opcodes
 #define RISCV_LUI 0x37      // 0x0D
