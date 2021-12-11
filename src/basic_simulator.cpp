@@ -162,7 +162,7 @@ void BasicSimulator::printEnd()
   */
   if(signatureFile != NULL){
     const auto addr_offset = 4;
-    const auto begin_offset = ((begin_signature)%4); // correct address alignement
+    const auto begin_offset = ((begin_signature)%4); // correct address alignment
 
     if(DEBUG){
       printf("BEGIN/END_SIGNATURE: %x/%x (%x)", begin_signature, end_signature, begin_offset);
@@ -306,7 +306,7 @@ void BasicSimulator::solveSyscall()
 
     switch (syscallId) {
       case SYS_exit:
-        exitFlag = 1; // Currently we break on ECALL
+        exitFlag = true; // Currently, we break on ECALL
         break;
       case SYS_read:
         result = doRead(arg1, arg2, arg3);

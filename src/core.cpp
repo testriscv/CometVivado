@@ -352,7 +352,7 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
       }
       break;
     case RISCV_MISC_MEM: // this does nothing because all memory accesses are
-                         // ordered and we have only one core
+                         // ordered, and we have only one core
       break;
 
     case RISCV_SYSTEM:
