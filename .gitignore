@@ -1,4 +1,4 @@
-#benchmarks build artifacts
+# benchmarks build artifacts
 benchmarks/build/
 benchmarks/*/build/
 benchmarks/*/res
@@ -6,10 +6,16 @@ benchmarks/res
 benchmarks/*/*.riscv32
 catapult/
 !catapult/genCore.py
-#simulator binaries
+# simulator binaries
 *.sim
-/build/
+# build artifacts
+build/
+cmake-build-*/
+# tools
 /.cproject
 /.project
 .clangd/
+.idea/
+.cache/
+.vs/
 compile_commands.json
