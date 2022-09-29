@@ -1,5 +1,6 @@
 before_script:
-  - source ~/.bashrc
+  - export PATH=/opt/Catapult-10.3a/Mgc_home/bin:$PATH
+  - export LM_LICENSE_FILE=1717@licence.irisa.fr:2100@licence.irisa.fr
   - mkdir -p cache
 
 cache:
@@ -25,16 +26,6 @@ cbuild:
     - cmake ..
     - make all
 
-benchBuild:
-  stage: build
-  artifacts:
-    paths:
-      - build_bench
-  script:
-    - cd tests
-    - make all
-    - mkdir ../build_bench
-    - mv ./*/*.riscv32_hw ../build_bench/
 
 catapult_ASIC:
   stage: HLS
