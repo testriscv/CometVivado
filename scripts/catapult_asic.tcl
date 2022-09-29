@@ -48,5 +48,6 @@ directive set /doCore/core/core.regFile:rsc -MAP_TO_MODULE {[Register]}
 directive set /doCore/core/while -PIPELINE_INIT_INTERVAL 1
 directive set /doCore/imData:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
 directive set /doCore/dmData:rsc -MAP_TO_MODULE ccs_sample_mem.ccs_ram_sync_singleport
+directive set -GEN_EXTERNAL_ENABLE true
 go architect
 go extract

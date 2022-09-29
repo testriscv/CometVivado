@@ -30,6 +30,7 @@ int main(int argc, char** argv)
   std::vector<std::string> benchArgs, pargs;
   std::string breakpoint = "-1";
   std::string timeout = "-1";
+  bool monitor = false;
 
   CLI::App app{"Comet RISC-V Simulator"};
   app.add_option("-f,--file", binaryFile, "Specifies the RISC-V program binary file (elf)")->required();
@@ -42,14 +43,14 @@ int main(int argc, char** argv)
   app.add_option("-s,--signature-output", signatureFile, "Specifies signature file for testing purposes");
   app.add_option("-b,--break", breakpoint, "Provide a breakpoint at the cycle given (along with gdb : break basic_simulator.cpp:129)");
   app.add_option("-e,--end", timeout, "Add a timeout option to the execution (the simulator stops if this number of cycle is reached)");
-
+  app.add_flag("-m,--monitor", monitor, "Monitor faults during the execution and prints state of internal registers at the end");
   CLI11_PARSE(app, argc, argv);
 
   // add the binary file name at the start of argv[]
   benchArgs.push_back(binaryFile);
   for (auto a : pargs)
     benchArgs.push_back(a);
-  BasicSimulator sim(binaryFile, benchArgs, inputFile, outputFile, traceFile, signatureFile);
+  BasicSimulator sim(binaryFile, benchArgs, inputFile, outputFile, traceFile, signatureFile, monitor);
 
   sim.breakpoint = std::stoi(breakpoint, NULL);
   sim.timeout = std::stoi(timeout, NULL);

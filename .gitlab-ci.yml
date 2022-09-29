@@ -1,6 +1,5 @@
 before_script:
-  - export PATH=/opt/Catapult-10.3a/Mgc_home/bin:$PATH
-  - export LM_LICENSE_FILE=1717@licence.irisa.fr:2100@licence.irisa.fr
+  - source ~/.bashrc
   - mkdir -p cache
 
 cache:
@@ -11,6 +10,7 @@ stages:
   - build
   - test
   - HLS
+  - gateSynthesis
 
 # Note: we cannot use submodule commit as cache key, so we do it manually in
 # subfolder of a big cache
@@ -25,29 +25,69 @@ cbuild:
     - cmake ..
     - make all
 
+benchBuild:
+  stage: build
+  artifacts:
+    paths:
+      - build_bench
+  script:
+    - cd tests
+    - make all
+    - mkdir ../build_bench
+    - mv ./*/*.riscv32_hw ../build_bench/
+
 catapult_ASIC:
   stage: HLS
   artifacts:
     paths:
       - comet.vhdl
+      - script.dc
+      - script.dc.sdc
     expire_in: 200y
   script:
     - mkdir build-catapult-asic
     - cd build-catapult-asic
     - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_asic.tcl
     - mv Catapult/doCore.v1/concat_rtl.vhdl ../comet.vhdl
+    - mv Catapult/doCore.v1/concat_rtl.vhdl.dc ../script.dc
+    - mv Catapult/doCore.v1/concat_rtl.vhdl.dc.sdc ../script.dc.sdc
+
+designCompiler:
+  stage: gateSynthesis
+  artifacts:
+    paths:
+      - comet-gate.vhdl
+      - comet-gate.v
+    expire_in: 200y
+  dependencies:
+    - catapult_ASIC
+  script:
+    - mkdir build-dc
+    - cp comet.vhdl ./build-dc/concat_rtl.vhdl
+    - cp script.dc ./build-dc/concat_rtl.vhdl.dc
+    - cp script.dc.sdc ./build-dc/concat_rtl.vhdl.dc.sdc
+    - cd build-dc
+    - echo "write -hierarchy -format verilog -output gate.v" >> concat_rtl.vhdl.dc
+    - echo "write -hierarchy -format vhdl -output gate.vhdl" >> concat_rtl.vhdl.dc
+    - design_vision -f concat_rtl.vhdl.dc -no_gui
+    - mv gate.vhdl ../comet-gate.vhdl
+    - mv gate.v ../comet-gate.v
+
 
 catapult_Xilinx:
   stage: HLS
   artifacts:
     paths:
       - comet.vhdl
+      - comet.v
     expire_in: 200y
   script:
     - mkdir build-catapult-xilinx
     - cd build-catapult-xilinx
     - catapult -shell -file $CI_PROJECT_DIR/scripts/catapult_xilinx.tcl
     - mv Catapult/doCore.v1/concat_rtl.vhdl ../comet.vhdl
+    - mv Catapult/doCore.v1/concat_rtl.v ../comet.v
+
 
 test:atomic:
   stage: test

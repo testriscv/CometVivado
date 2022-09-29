@@ -179,7 +179,7 @@ void decode(const struct FtoDC ftoDC, struct DCtoEx& dctoEx, const ac_int<32, tr
 
       break;
     case RISCV_SYSTEM:
-      // TODO
+
 
       break;
     default:
@@ -459,10 +459,10 @@ void branchUnit(const ac_int<32, false> nextPC_fetch, const ac_int<32, false> ne
   }
 }
 
-void forwardUnit(const ac_int<5, false> decodeRs1, const bool decodeUseRs1, 
+void forwardUnit(const ac_int<5, false> decodeRs1, const bool decodeUseRs1,
                  const ac_int<5, false> decodeRs2, const bool decodeUseRs2,
                  const ac_int<5, false> decodeRs3, const bool decodeUseRs3,
-                 const ac_int<5, false> executeRd, const bool executeUseRd, 
+                 const ac_int<5, false> executeRd, const bool executeUseRd,
                  const bool executeIsLongComputation,
                  const ac_int<5, false> memoryRd, const bool memoryUseRd,
                  const ac_int<5, false> writebackRd, const bool writebackUseRd,
@@ -670,20 +670,23 @@ void doCycle(struct Core& core, // Core containing all values
 }
 
 // void doCore(IncompleteMemory im, IncompleteMemory dm, bool globalStall)
-void doCore(bool globalStall, ac_int<32, false> imData[1 << 24], ac_int<32, false> dmData[1 << 24])
+void doCore(bool globalStall, ac_int<32, false> imData[1 << 24],
+            ac_int<32, false> dmData[1 << 24])
 {
   Core core;
+
   IncompleteMemory<4> imInterface = IncompleteMemory<4>(imData);
   IncompleteMemory<4> dmInterface = IncompleteMemory<4>(dmData);
 
-  CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
-  CacheMemory<4, 16, 64> imCache = CacheMemory<4, 16, 64>(&imInterface, false);
+  // CacheMemory<4, 16, 64> dmCache = CacheMemory<4, 16, 64>(&dmInterface, false);
+  // CacheMemory<4, 16, 64> imCache = CacheMemory<4, 16, 64>(&imInterface, false);
 
-  core.im = &imCache;
-  core.dm = &dmCache;
-  core.pc = 0;
+  core.im         = &imInterface;
+  core.dm         = &dmInterface;
+  core.pc         = 0;
 
   while (1) {
     doCycle(core, globalStall);
   }
+  return;
 }

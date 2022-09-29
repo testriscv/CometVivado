@@ -33,10 +33,11 @@
 
 BasicSimulator::BasicSimulator(const std::string binaryFile, const std::vector<std::string> args,
                                const std::string inFile, const std::string outFile,
-                               const std::string tFile, const std::string sFile)
+                               const std::string tFile, const std::string sFile, bool monitor)
 {
 
   memset((char*)&core, 0, sizeof(Core));
+  this->monitor = monitor;
 
   mem.reserve(DRAM_SIZE >> 2);
 
@@ -674,12 +675,15 @@ ac_int<32, true> BasicSimulator::doSbrk(const ac_int<32, false> value)
 
 ac_int<32, true> BasicSimulator::doGettimeofday(const ac_int<32, false> timeValPtr)
 {
+
+	printf("Call to get time of day !\n");
   struct timeval oneTimeVal;
   int result = gettimeofday(&oneTimeVal, NULL);
 
   stw(timeValPtr, oneTimeVal.tv_sec);
   stw(timeValPtr + 4, oneTimeVal.tv_usec);
 
+printf("Values : %d and %d\n", this->core.cycle/800000000, (this->core.cycle/800)%1000000);
   return result;
 }
 

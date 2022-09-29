@@ -27,6 +27,8 @@ class Simulator {
 protected:
   Core core;
   bool exitFlag;
+  bool monitor = false;
+
 
 
 public:
@@ -41,7 +43,7 @@ public:
 
   virtual void run()
   {
-    exitFlag = false;
+    exitFlag  = false;
     while (!exitFlag) {
       doCycle(core, 0);
       solveSyscall();
@@ -49,8 +51,10 @@ public:
       printCycle();
       //We handle breakpoints
       if (this->breakpoint != -1 && core.cycle == this->breakpoint){
- 	   printCoreReg("BeforeInj.txt");
-      printf("Reached break\n");
+        if (monitor){
+ 	        printCoreReg("BeforeInj.txt");
+        }
+        printf("Reached break\n");
       }
 
       if (this->core.cycle >= this->timeout){
@@ -58,21 +62,24 @@ public:
         break;
       }
 
-      if (!isRecognized(this->core.ftoDC.instruction)){
-        nbUnrecognizedDC++;
-      }
-      if (!isRecognized(this->core.dctoEx.instruction)){
-        nbUnrecognizedExec++;
-      }
-      if (core.pc > textEnd || core.pc < textStart){
-        nbOutOfInstrMem++;
-      }
-      if (core.memtoWB.address > DRAM_SIZE && (core.memtoWB.isLoad || core.memtoWB.isStore)){
-        nbOutOfMem++;
+      if (monitor){
+        if (!isRecognized(this->core.ftoDC.instruction)){
+          nbUnrecognizedDC++;
+        }
+        if (!isRecognized(this->core.dctoEx.instruction)){
+          nbUnrecognizedExec++;
+        }
+        if (core.pc > textEnd || core.pc < textStart){
+          nbOutOfInstrMem++;
+        }
+        if (core.memtoWB.address > DRAM_SIZE && (core.memtoWB.isLoad || core.memtoWB.isStore)){
+          nbOutOfMem++;
+        }
+        printCoreReg();
       }
     }
     printEnd();
-	printCoreReg();
+
 	printf("\nCore cycle: %ld\n", this->core.cycle);
   }
 

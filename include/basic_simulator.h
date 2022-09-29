@@ -37,7 +37,7 @@ class BasicSimulator : public Simulator {
 public:
   BasicSimulator(const std::string binaryFile, const std::vector<std::string>,
                  const std::string inFile, const std::string outFile,
-                 const std::string tFile, const std::string sFile);
+                 const std::string tFile, const std::string sFile, bool monitor);
   ~BasicSimulator();
 
 protected:
