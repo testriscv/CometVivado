@@ -29,7 +29,7 @@ void checkElf(const std::vector<uint8_t>& content)
     exit(-1);
   }
   if (content[EI_CLASS] != ELFCLASS32) {
-    fprintf(stderr, "Error reading ELF file header: unkwnonw EI_CLASS, expected %d (ELFCLASS32)\n", ELFCLASS32);
+    fprintf(stderr, "Error reading ELF file header: unknown EI_CLASS, expected %d (ELFCLASS32)\n", ELFCLASS32);
     exit(-1);
   }
   if (content[EI_DATA] != 1) {
