@@ -130,6 +130,7 @@ void decode(const struct FtoDC ftoDC, struct DCtoEx& dctoEx, const ac_int<32, tr
 
       dctoEx.lhs    = valueReg1;
       dctoEx.rhs    = valueReg2;
+      dctoEx.datac  = imm13_signed;
       dctoEx.useRs1 = 1;
       dctoEx.useRs2 = 1;
       dctoEx.useRs3 = 0;
@@ -214,15 +215,6 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
   extoMem.isLongInstruction = 0;
   extoMem.instruction       = dctoEx.instruction;
 
-  ac_int<13, false> imm13 = 0;
-  imm13[12]               = dctoEx.instruction[31];
-  imm13.set_slc(5, dctoEx.instruction.slc<6>(25));
-  imm13.set_slc(1, dctoEx.instruction.slc<4>(8));
-  imm13[11] = dctoEx.instruction[7];
-
-  ac_int<13, true> imm13_signed = 0;
-  imm13_signed.set_slc(0, imm13);
-
   const ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
 
   // switch must be in the else, otherwise external op may trigger default
@@ -248,7 +240,7 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
       extoMem.result = dctoEx.pc + 4;
       break;
     case RISCV_BR:
-      extoMem.nextPC = extoMem.pc + imm13_signed;
+      extoMem.nextPC = dctoEx.pc + dctoEx.datac;
 
       switch (dctoEx.funct3) {
         case RISCV_BR_BEQ:
