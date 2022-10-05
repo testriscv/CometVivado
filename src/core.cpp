@@ -215,8 +215,6 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
   extoMem.isLongInstruction = 0;
   extoMem.instruction       = dctoEx.instruction;
 
-  const ac_int<5, false> shamt = dctoEx.instruction.slc<5>(20);
-
   // switch must be in the else, otherwise external op may trigger default
   // case
   switch (dctoEx.opCode) {
@@ -298,9 +296,9 @@ void execute(const struct DCtoEx dctoEx, struct ExtoMem& extoMem)
           break;
         case RISCV_OPI_SRI:
           if (dctoEx.funct7[5]) // SRAI
-            extoMem.result = dctoEx.lhs >> shamt;
+            extoMem.result = dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs.slc<5>(0);
           else // SRLI
-            extoMem.result = (ac_int<32, false>)dctoEx.lhs >> shamt;
+            extoMem.result = (ac_int<32, false>)dctoEx.lhs >> (ac_int<5, false>)dctoEx.rhs.slc<5>(0);
           break;
       }
       break;
